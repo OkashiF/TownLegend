@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>镇主传说 · Town Legend</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --parchment:   #f5e6c8;
+      --ink:         #2c1810;
+      --gold:        #d4a017;
+      --gold-light:  #f0c040;
+      --red:         #8b1a1a;
+      --green:       #2d5a27;
+      --blue:        #1a3a6b;
+      --panel-bg:    rgba(20, 12, 5, 0.92);
+      --panel-border: #5a3a1a;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0604;
+      overflow: hidden;
+      font-family: 'Noto Sans SC', sans-serif;
+      color: var(--parchment);
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw; height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* ── HUD overlay ── */
+    #hud {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #top-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 16px;
+      background: var(--panel-bg);
+      border-bottom: 2px solid var(--panel-border);
+      pointer-events: all;
+    }
+
+    .hud-title {
+      font-family: 'Silkscreen', monospace;
+      font-size: 14px;
+      color: var(--gold);
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    .hud-stat {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      padding: 3px 10px;
+      font-family: 'Silkscreen', monospace;
+      font-size: 11px;
+    }
+    .hud-stat .label { color: #9a7a50; }
+    .hud-stat .value { color: var(--gold-light); }
+
+    .hud-spacer { flex: 1; }
+
+    #btn-end-month {
+      font-family: 'Silkscreen', monospace;
+      font-size: 11px;
+      background: var(--red);
+      color: var(--parchment);
+      border: 2px solid #c04040;
+      padding: 5px 14px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all .15s;
+    }
+    #btn-end-month:hover { background: #a02020; box-shadow: 0 0 8px rgba(255,80,80,.4); }
+
+    /* ── Bottom card panel ── */
+    #card-panel {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      z-index: 10;
+      pointer-events: all;
+    }
+
+    #card-tabs {
+      display: flex;
+      gap: 2px;
+      padding: 0 16px;
+    }
+    .card-tab {
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      background: rgba(20,12,5,0.7);
+      border: 1px solid var(--panel-border);
+      border-bottom: none;
+      color: #9a7a50;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .card-tab.active { background: var(--panel-bg); color: var(--gold); }
+
+    #card-area {
+      background: var(--panel-bg);
+      border-top: 2px solid var(--panel-border);
+      padding: 10px 16px 12px;
+      min-height: 160px;
+    }
+
+    #hand-container {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--panel-border) transparent;
+    }
+
+    /* ── Card styles ── */
+    .card {
+      flex-shrink: 0;
+      width: 80px; height: 120px;
+      border: 2px solid var(--panel-border);
+      border-radius: 4px;
+      background: #1a0e05;
+      cursor: pointer;
+      position: relative;
+      transition: transform .15s, box-shadow .15s;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .card:hover { transform: translateY(-8px); box-shadow: 0 8px 24px rgba(212,160,23,.3); }
+    .card.selected { border-color: var(--gold); box-shadow: 0 0 12px rgba(212,160,23,.6); transform: translateY(-12px); }
+    .card.card-human { border-color: #4a7a8a; }
+    .card.card-monster { border-color: #8a3a3a; }
+    .card.card-building { border-color: #7a6a3a; }
+    .card.card-magic { border-color: #6a3a8a; }
+
+    .card-header {
+      font-family: 'Silkscreen', monospace;
+      font-size: 7px;
+      padding: 3px 4px 2px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .card-human .card-header { background: #1a3a4a; color: #60c0d0; }
+    .card-monster .card-header { background: #3a1a1a; color: #d06060; }
+    .card-building .card-header { background: #3a2a1a; color: #c0a060; }
+    .card-magic .card-header { background: #2a1a3a; color: #c060d0; }
+
+    .card-pixel-art {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      background: #100800;
+      image-rendering: pixelated;
+    }
+
+    .card-footer {
+      padding: 3px 4px;
+      background: rgba(0,0,0,0.6);
+    }
+    .card-name {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 9px;
+      color: var(--parchment);
+      text-align: center;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-cost {
+      font-family: 'Silkscreen', monospace;
+      font-size: 8px;
+      color: var(--gold);
+      text-align: center;
+    }
+    .card-level-badge {
+      position: absolute;
+      top: 2px; right: 2px;
+      font-family: 'Silkscreen', monospace;
+      font-size: 7px;
+      background: var(--gold);
+      color: var(--ink);
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Shop panel ── */
+    #shop-container {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    #shop-refresh-btn {
+      font-family: 'Silkscreen', monospace;
+      font-size: 9px;
+      background: var(--blue);
+      color: var(--parchment);
+      border: 1px solid #3060a0;
+      padding: 4px 8px;
+      cursor: pointer;
+      margin-top: 40px;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    #shop-refresh-btn:hover { background: #254880; }
+
+    /* ── Field overlay ── */
+    #field-overlay {
+      position: absolute;
+      top: 40px; left: 0; right: 0; bottom: 160px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      padding: 24px;
+      min-width: 320px;
+      max-width: 480px;
+    }
+    #modal-title {
+      font-family: 'Silkscreen', monospace;
+      font-size: 14px;
+      color: var(--gold);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    #modal-body { font-size: 13px; line-height: 1.8; color: var(--parchment); }
+    #modal-close {
+      display: block; width: 100%;
+      font-family: 'Silkscreen', monospace;
+      font-size: 11px;
+      background: var(--red);
+      color: var(--parchment);
+      border: 1px solid #c04040;
+      padding: 8px;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: all .15s;
+    }
+    #modal-close:hover { background: #a02020; }
+
+    /* ── Notifications ── */
+    #notifications {
+      position: absolute;
+      top: 60px; right: 16px;
+      z-index: 20;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .notif {
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      background: var(--panel-bg);
+      border-left: 3px solid var(--gold);
+      color: var(--parchment);
+      padding: 6px 12px;
+      opacity: 1;
+      transition: opacity 1s;
+      max-width: 240px;
+    }
+    .notif.fade { opacity: 0; }
+    .notif.danger { border-left-color: var(--red); }
+    .notif.success { border-left-color: #40c040; }
+
+    /* ── Card action menu ── */
+    #card-action-menu {
+      display: none;
+      position: absolute;
+      z-index: 30;
+      background: var(--panel-bg);
+      border: 1px solid var(--gold);
+      border-radius: 4px;
+      overflow: hidden;
+      min-width: 130px;
+    }
+    #card-action-menu.open { display: block; }
+    .cam-btn {
+      display: block; width: 100%;
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      padding: 8px 14px;
+      background: none;
+      color: var(--parchment);
+      border: none;
+      cursor: pointer;
+      text-align: left;
+      transition: background .1s;
+    }
+    .cam-btn:hover { background: rgba(212,160,23,.2); }
+    .cam-btn:disabled { color: #555; cursor: not-allowed; }
+
+    /* ── Assignment modal ── */
+    #assign-modal {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 40;
+      align-items: center;
+      justify-content: center;
+    }
+    #assign-modal.open { display: flex; }
+    #assign-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      padding: 20px;
+      min-width: 280px;
+    }
+    #assign-title {
+      font-family: 'Silkscreen', monospace;
+      font-size: 13px;
+      color: var(--gold);
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .assign-option {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px;
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .assign-option:hover { background: rgba(212,160,23,.1); }
+    .assign-option .opt-name {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 12px;
+      color: var(--parchment);
+    }
+    .assign-option .opt-stat {
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      color: var(--gold-light);
+    }
+    #assign-cancel {
+      display: block; width: 100%;
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      background: #333;
+      color: #999;
+      border: 1px solid #444;
+      padding: 7px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    #month-progress-wrap {
+      width: 100px; height: 8px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--panel-border);
+      border-radius: 2px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    #month-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
+      transition: width 0.1s linear;
+    }
+
+    /* ── Responsive & safe area ── */
+    #card-panel {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    #card-area {
+      padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+    }
+    @media (max-width: 600px) {
+      .hud-stat .label { display: none; }
+      .hud-stat { padding: 3px 6px; }
+      #month-progress-wrap { width: 60px; }
+    }
+  </style>
+</head>
+<body>
+<div id="game-container">
+  <!-- HUD -->
+  <div id="hud">
+    <div id="top-bar">
+      <span class="hud-title">镇主传说</span>
+      <div class="hud-stat"><span class="label">时间</span><span class="value" id="stat-month">Y1·M1·W1</span></div>
+      <div class="hud-stat"><span class="label">金币</span><span class="value" id="stat-gold">💰 120</span></div>
+      <div class="hud-stat"><span class="label">税收</span><span class="value" id="stat-tax">🏛 20/月</span></div>
+      <div class="hud-stat"><span class="label">等级</span><span class="value" id="stat-level">⭐ 1</span></div>
+      <div class="hud-stat"><span class="label">升级</span><span class="value" id="stat-progress">0/10</span></div>
+      <div class="hud-stat"><span class="label">场上</span><span class="value" id="stat-field">0/5</span></div>
+      <div class="hud-spacer"></div>
+      <div id="month-progress-wrap" title="本月进度（自动推进）">
+        <div id="month-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field overlay (slot indicators rendered here) -->
+  <div id="field-overlay"></div>
+
+  <!-- Notifications -->
+  <div id="notifications"></div>
+
+  <!-- Card panel -->
+  <div id="card-panel">
+    <div id="card-tabs">
+      <button class="card-tab active" data-tab="hand">手牌</button>
+      <button class="card-tab" data-tab="shop">商店</button>
+      <button class="card-tab" data-tab="field">场上</button>
+      <button class="card-tab" data-tab="inventory">库存</button>
+    </div>
+    <div id="card-area">
+      <div id="hand-container"></div>
+      <div id="shop-container" style="display:none"></div>
+      <div id="field-list" style="display:none"></div>
+      <div id="inventory-panel" style="display:none;overflow-y:auto;max-height:130px;"></div>
+    </div>
+  </div>
+
+  <!-- Card action menu -->
+  <div id="card-action-menu">
+    <button class="cam-btn" id="cam-play">▶ 打出上场</button>
+    <button class="cam-btn" id="cam-assign">⚑ 分配岗位</button>
+    <button class="cam-btn" id="cam-upgrade">⬆ 三张升级</button>
+    <button class="cam-btn" id="cam-info">📖 查看详情</button>
+  </div>
+
+  <!-- Assign modal -->
+  <div id="assign-modal">
+    <div id="assign-box">
+      <div id="assign-title">分配岗位</div>
+      <div id="assign-options"></div>
+      <button id="assign-cancel">取消</button>
+    </div>
+  </div>
+
+  <!-- Info modal -->
+  <div id="modal-overlay">
+    <div id="modal-box">
+      <div id="modal-title"></div>
+      <div id="modal-body"></div>
+      <button id="modal-close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
