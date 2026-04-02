@@ -1,4 +1,4 @@
-# 镇主传说 · Town Legend
+﻿# 镇主传说 · Town Legend
 
 一款运行在浏览器中的 2D 像素风卡牌放置游戏。玩家扮演城镇领主，通过购买并部署卡牌来管理经济链（战斗 → 制造 → 商店），同时应对不断涌现的怪物威胁，推动城镇持续升级。
 
@@ -87,6 +87,7 @@ npm run build  # 构建产物（dist/）
 - **顶栏** 显示：`Y年·M月·W周`、当前金币、本月税收、城镇等级、升级进度（当前/10）、场上牌数/上限、月份进度条。
 - **右侧日志** 实时滚入，按 `good`（绿）/ `bad`（红）/ `info`（灰）三色标注，保留最近 60 条。
 - **底部面板** 四个标签页，随时可切换，不影响游戏时间流动。
+- 窗口 resize 时 canvas 与所有 DOM 层同步调整，底部面板适配移动端 `safe-area-inset-bottom`。
 
 ---
 
@@ -130,6 +131,8 @@ while tickAccum >= 125ms:
 
 ### 定价规则
 
+同等级所有卡牌**价格相同**，功能差异不体现在价格上：
+
 | 卡牌等级 | 购买价 | 场上维护费/月 | 手牌维护费/月（×0.5）|
 |---|---|---|---|
 | 0 | 20 | 5 | 3（向上取整）|
@@ -140,6 +143,8 @@ while tickAccum >= 125ms:
 > **怪物卡例外**：购买价与等级相同，维护费永远为 0。
 
 ### 打出卡牌
+
+从手牌打出到场上，需满足场上牌数 < 当前上限。
 
 - **人物卡**：打出时弹出岗位选择窗口（商店 / 制造 / 战斗）。
 - **怪物卡**：打出时弹出出生点选择（左侧 / 右侧 / 顶部）。
@@ -153,6 +158,7 @@ while tickAccum >= 125ms:
 - 保留第一张，销毁另外两张。
 - 升级后：`level +1`，`upgrades +1`，所有数值属性 **× 1.3**（取整）。
 - 同时从当前卡池随机**免费获得 1 张**卡牌加入手牌。
+- 升级后仍保留在原来的位置（场上或手牌）。
 
 ---
 
@@ -288,24 +294,31 @@ dmgToHuman   = max(0, (monster.atk - debuff_monster_atk) - (human.def + buff_hum
 - HP 重置为 maxHp，`aggressionCountdown` 重置为 `aggression`。
 - 在怪物位置生成战利品包，战士走去捡取。
 - 怪物精灵飞回出生点。
+- 立即随机掉落战利品（见下表）并加入玩家库存。
 
 **人物 HP ≤ 0**：
 - HP 重置，`isActive = false`，`restMonthsLeft = townLevel`。
 - 精灵飞回城镇大厅，半透明显示。
 
+### 行人与战斗的关系
+
+当有任意怪物处于进攻状态时，当月行人数归 **0**，商店本月无收入。
+
 ---
 
 ## 经济链
 
+完整经济链为单向流程：
+
 ```
 战士击败怪物
-    ↓
+       ↓
 战利品包掉落在战场
-    ↓
+       ↓
 战士走去捡取 → 带回城镇 → 加入库存（战利品）
-    ↓
+       ↓
 制造人员每 tick 积累勤劳点 → 满足配方条件时自动合成 → 成品加入库存
-    ↓
+       ↓
 月末：商店人员 × 行人数 → 售出成品 → 获得金币
 ```
 
@@ -325,9 +338,11 @@ dmgToHuman   = max(0, (monster.atk - debuff_monster_atk) - (human.def + buff_hum
 
 ### 月末商店结算
 
+计算：
 ```
 passersby = 5 + townLevel × 3 + getMagicBonus('extra_passersby')
 sellCapacity = min(totalProducts, passersby × 2)
+shopPower = sum(shopWorker.intellect)
 income per item = product.sellPrice × (1 + shopPower × 0.05)
 ```
 
@@ -356,6 +371,11 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 - `townLevel += 1`
 - 场上牌槽上限：`5 + (townLevel - 1) × 2`
 - 商店自动刷新
+
+城镇等级同时决定：
+- 每月税收金额（= 当前等级卡牌定价）
+- 战败人物的休息时长（= townLevel 个月）
+- 商店可出现的卡牌等级上限
 
 ---
 
