@@ -13,41 +13,47 @@ const MS_PER_TICK = 125;
 
 // ── World zone coordinates (fixed pixel values in world space) ─────────────────
 export const ZONE = {
-  spawnLeft:   -120,    // left monster spawn (off-screen left)
-  spawnRight:  3720,    // right monster spawn (off-screen right)
-  spawnSouth:  1800,    // south spawn (world centre x, enters from top)
+  // 怪物出生点收回到相机可视边界内，避免出现在不可见区域
+  spawnLeft:    200,    // 左侧怪物出生点（原 -120，现收至可视范围左侧）
+  spawnRight:  3400,    // 右侧怪物出生点（原 3720，现收至可视范围右侧）
+  spawnSouth:  1800,    // 南侧出生点（从画面正上方进入，x 不变）
 
-  wallLeft:     900,    // left wall / gate x
-  wallRight:   2700,    // right wall / gate x
+  wallLeft:     900,    // 左城墙 / 城门
+  wallRight:   2700,    // 右城墙 / 城门
 
-  shop:        1100,    // shop zone centre
-  craft:       1400,    // craft zone centre
-  town:        1800,    // town hall centre (world mid)
-  barracks:    2200,    // barracks zone centre
+  shop:        1100,    // 商店区中心
+  craft:       1400,    // 制造区中心
+  town:        1800,    // 城镇大厅中心
+  barracks:    2200,    // 兵营区中心
 
-  patrolLeft:   950,    // warrior patrol left boundary (just inside left gate)
-  patrolRight: 2650,    // warrior patrol right boundary (just inside right gate)
+  patrolLeft:   950,    // 战士巡逻左边界（城门内侧）
+  patrolRight: 2650,    // 战士巡逻右边界（城门内侧）
 };
 
-// Wander radius within a zone
+// 区域内漫步半径
 const WANDER      = 40;
-// Ground Y as fraction of scene height
+// 地面 Y 占场景高度的比例
 const GROUND_FRAC = 0.62;
-// Movement speed px per tick
+// 移动速度 px/tick
 const HUMAN_SPEED   = 35;
 const MONSTER_SPEED = 22;
+
+// 人物精灵相对建筑的缩放比（建筑 scale=1，人物 scale=HUMAN_SCALE）
+// 让人物明显小于建筑，符合像素风比例习惯
+const HUMAN_SCALE   = 0.55;
+const MONSTER_SCALE = 0.65;  // 怪物略大于人物
 
 // ── Combat state for warriors ─────────────────────────────────────────────────
 type WarriorState = 'patrol' | 'chase' | 'fight' | 'loot' | 'return';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 interface LootDrop {
-  id: string;           // unique drop id
+  id: string;
   worldX: number;
   worldY: number;
   itemId: string;
   qty: number;
-  sprite: Phaser.GameObjects.Text;  // emoji label in world
+  sprite: Phaser.GameObjects.Text;
 }
 
 interface FieldSprite {
@@ -58,11 +64,10 @@ interface FieldSprite {
   x: number; y: number;
   targetX: number; targetY: number;
   bobPhase: number;
-  // warrior-specific
   warriorState:   WarriorState;
   attackCooldown: number;
-  combatTarget:   string | null;    // monster instanceId
-  lootTarget:     string | null;    // LootDrop id
+  combatTarget:   string | null;
+  lootTarget:     string | null;
   patrolDir:      1 | -1;
 }
 
@@ -110,7 +115,8 @@ export class TownScene extends Phaser.Scene {
     this.fxLayer     = this.add.container(0, 0);
     this.labelLayer  = this.add.container(0, 0);
 
-    // ── Camera setup ──────────────────────────────────────────────────────────
+    // ── 相机设置 ──────────────────────────────────────────────────────────────
+    // 边界从 x=0 扩展到 x=WORLD_WIDTH，覆盖怪物出生点所在的新坐标范围
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, this.sceneH);
     this.cameras.main.centerOn(ZONE.town, this.sceneH / 2);
     this.cameras.main.setZoom(1.0);
@@ -144,7 +150,6 @@ export class TownScene extends Phaser.Scene {
   private setupCameraControls() {
     const cam = this.cameras.main;
 
-    // Left-click drag to pan
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.isDragging = true;
       this.dragStartX = p.x;
@@ -163,7 +168,6 @@ export class TownScene extends Phaser.Scene {
 
     this.input.on('pointerup', () => { this.isDragging = false; });
 
-    // Mouse wheel to zoom
     this.input.on('wheel',
       (_p: Phaser.Input.Pointer, _gos: unknown, _dx: number, _dy: number, dy: number) => {
         const newZoom = Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.75, 1.5);
@@ -193,7 +197,6 @@ export class TownScene extends Phaser.Scene {
   private runAI() {
     const gy = this.groundY;
 
-    // Snapshot monsters
     const monsterInsts = store.field.filter(c => {
       if (!c.definitionId) return false;
       return defById(c.definitionId).type === CardType.Monster && c.isActive;
@@ -206,7 +209,6 @@ export class TownScene extends Phaser.Scene {
       const sp = this.sprites.get(inst.instanceId);
       if (!sp) continue;
 
-      // ── Human AI ────────────────────────────────────────────────────────────
       if (def.type === CardType.Human) {
         if (!inst.isActive) {
           sp.targetX = ZONE.town + (Math.random() - 0.5) * WANDER;
@@ -222,7 +224,6 @@ export class TownScene extends Phaser.Scene {
         if (job === JobType.Combat) {
           this.runWarriorAI(inst, sp, monsterInsts, gy);
         } else {
-          // Non-combat: stay in zone, gentle wander
           const zoneX = job === JobType.Shop  ? ZONE.shop
                       : job === JobType.Craft ? ZONE.craft
                       : ZONE.town;
@@ -235,19 +236,16 @@ export class TownScene extends Phaser.Scene {
         }
       }
 
-      // ── Monster AI ──────────────────────────────────────────────────────────
       if (def.type === CardType.Monster) {
         if (!inst.isActive) continue;
 
         if (inst.aggressionCountdown > 0) {
-          // Waiting – idle wander near spawn
           const spawnX = this.monsterSpawnX(inst);
           if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
             sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
             sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
           }
         } else {
-          // March toward town hall
           sp.targetX = ZONE.town + (Math.random() - 0.5) * 20;
           sp.targetY = gy;
         }
@@ -263,7 +261,6 @@ export class TownScene extends Phaser.Scene {
     monsters: typeof store.field,
     gy: number
   ) {
-    // Priority 1: pick up loot if already assigned
     if (sp.lootTarget) {
       const drop = this.lootDrops.get(sp.lootTarget);
       if (!drop) {
@@ -275,7 +272,6 @@ export class TownScene extends Phaser.Scene {
         sp.targetY = drop.worldY;
         const dist = Math.hypot(sp.x - drop.worldX, sp.y - drop.worldY);
         if (dist < 24) {
-          // Pick up
           store.addItem(drop.itemId, 'loot', drop.qty);
           store.emit('inventory');
           drop.sprite.destroy();
@@ -288,7 +284,6 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    // Priority 2: return to barracks after looting
     if (sp.warriorState === 'return') {
       sp.targetX = ZONE.barracks + (Math.random() - 0.5) * WANDER;
       sp.targetY = gy;
@@ -297,7 +292,6 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    // Priority 3: engage nearest monster (any monster on field, not just attacking)
     if (monsters.length > 0) {
       let nearestInst: typeof store.field[0] | null = null;
       let nearestSp:   FieldSprite | null = null;
@@ -327,7 +321,6 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
-    // Priority 4: unclaimed loot drops nearby – go fetch
     if (this.lootDrops.size > 0) {
       const alreadyClaimed = new Set<string>();
       for (const other of this.sprites.values()) {
@@ -347,7 +340,6 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
-    // Priority 5: patrol between gates
     sp.warriorState = 'patrol';
     sp.combatTarget = null;
     const atLeft  = sp.x <= ZONE.patrolLeft  + 20;
@@ -380,11 +372,7 @@ export class TownScene extends Phaser.Scene {
     if (ds.hp <= 0) {
       ds.hp = ds.maxHp;
       defender.aggressionCountdown = ds.aggression;
-
-      // Spawn loot drop at monster's current position
       this.spawnLootDrop(defender, mSp?.x ?? ZONE.town, mSp?.y ?? this.groundY);
-
-      // Fly monster back to spawn
       if (mSp) {
         mSp.targetX = this.monsterSpawnX(defender);
         mSp.targetY = this.groundY - 10;
@@ -408,7 +396,6 @@ export class TownScene extends Phaser.Scene {
     if (!ms.lootId) return;
     const qty = ms.lootQtyMin + Math.floor(Math.random() * (ms.lootQtyMax - ms.lootQtyMin + 1));
 
-    // Find loot emoji from store data
     const lootDef = store.getLootDef(ms.lootId);
     const emoji   = lootDef?.emoji ?? '📦';
 
@@ -449,6 +436,13 @@ export class TownScene extends Phaser.Scene {
       const key    = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       const sprite = this.add.image(0, 0, key);
       (sprite as any).__texKey = key;
+
+      // 人物比建筑小，怪物居中
+      const isMonster = def.type === CardType.Monster;
+      sprite.setScale(isMonster ? MONSTER_SCALE : HUMAN_SCALE);
+      // origin 底部居中，让脚踩在地面线上
+      sprite.setOrigin(0.5, 1);
+
       this.entityLayer.add(sprite);
 
       const label = this.add.text(0, 0, def.name, {
@@ -461,11 +455,10 @@ export class TownScene extends Phaser.Scene {
       const hpBar = this.add.graphics();
       this.labelLayer.add(hpBar);
 
-      // Initial position
       let sx = ZONE.town, sy = this.groundY;
       if (def.type === CardType.Monster) {
         sx = this.monsterSpawnX(inst);
-        sy = this.groundY - 10;
+        sy = this.groundY;
       } else if (def.type === CardType.Human) {
         const job = inst.jobAssignment ?? JobType.Idle;
         sx = job === JobType.Shop   ? ZONE.shop
@@ -507,6 +500,7 @@ export class TownScene extends Phaser.Scene {
 
       if (!inst.isActive) {
         sp.sprite.setAlpha(0.45);
+        // origin=(0.5,1) 时，sprite.y 是脚的位置，bob 直接加到 y 即可
         sp.sprite.setPosition(sp.x, sp.y + Math.sin(sp.bobPhase) * 1.5);
       } else {
         sp.sprite.setAlpha(1);
@@ -519,12 +513,14 @@ export class TownScene extends Phaser.Scene {
           sp.y += (dy / dist) * step;
           sp.sprite.setFlipX(dx < 0);
         } else {
+          // 站立时轻微上下浮动
           sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
         }
         sp.sprite.setPosition(sp.x, sp.y);
       }
 
-      sp.label.setPosition(sp.x, sp.y - 28);
+      // origin=(0.5,1) → 名牌在头顶上方
+      sp.label.setPosition(sp.x, sp.y - 30);
       this.drawHpBar(sp, inst);
     }
   }
@@ -534,7 +530,9 @@ export class TownScene extends Phaser.Scene {
     const rs = inst.runtimeStats as any;
     if (!('hp' in rs && 'maxHp' in rs)) return;
     const pct = Math.max(0, rs.hp / rs.maxHp);
-    const w = 32, h = 3, bx = sp.x - w / 2, by = sp.y - 22;
+    const w = 32, h = 3;
+    // origin=(0.5,1) → 脚在 sp.y，血条放在名牌下方 / 头顶上方
+    const bx = sp.x - w / 2, by = sp.y - 26;
     sp.hpBar.fillStyle(0x220000); sp.hpBar.fillRect(bx, by, w, h);
     const col = pct > 0.5 ? 0x40cc40 : pct > 0.25 ? 0xcccc40 : 0xcc4040;
     sp.hpBar.fillStyle(col);
@@ -550,7 +548,7 @@ export class TownScene extends Phaser.Scene {
     return ZONE.spawnLeft;
   }
 
-  // ── Background (world-space) ──────────────────────────────────────────────────
+  // ── Background ────────────────────────────────────────────────────────────────
 
   private buildBackground() {
     const W  = WORLD_WIDTH;
@@ -559,7 +557,7 @@ export class TownScene extends Phaser.Scene {
     const g  = this.add.graphics();
     this.bgLayer.add(g);
 
-    // Sky gradient
+    // 天空渐变
     for (let i = 0; i < gy; i++) {
       const t  = i / gy;
       const r  = Phaser.Math.Linear(0x1a, 0x5a, t) | 0;
@@ -569,11 +567,11 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(0, i, W, 1);
     }
 
-    // Ground base
+    // 地面
     g.fillStyle(0x4a7a3a); g.fillRect(0, gy,     W, H - gy);
     g.fillStyle(0x3a6a2a); g.fillRect(0, gy + 6, W, H - gy - 6);
 
-    // Road strip (runs through the town area only, between walls)
+    // 城内道路
     g.fillStyle(0x7a6a5a);
     g.fillRect(ZONE.wallLeft, gy + 1, ZONE.wallRight - ZONE.wallLeft, 10);
     g.fillStyle(0x9a8a7a);
@@ -581,19 +579,19 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(rx, gy + 5, 28, 2);
     }
 
-    // Dirt path outside walls (leading to gates)
+    // 城外土路
     g.fillStyle(0x8a7060);
     g.fillRect(0,              gy + 2, ZONE.wallLeft,          6);
     g.fillRect(ZONE.wallRight, gy + 2, W - ZONE.wallRight,     6);
 
-    // Sun
+    // 太阳
     g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
     [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
       ([x,y,w,h]) => g.fillRect(x as number, y as number, w as number, h as number)
     );
 
-    // Clouds (scattered across world)
+    // 云朵
     [[200,0.08],[600,0.05],[1100,0.10],[1700,0.06],[2300,0.09],[2900,0.07],[3400,0.05]].forEach(
       ([cx, ty]) => {
         g.fillStyle(0xe8f0ff, 0.8);
@@ -602,36 +600,36 @@ export class TownScene extends Phaser.Scene {
       }
     );
 
-    // Trees – scattered outside the walls
+    // 树木（城外两侧）
     const treePositions = [
-      60, 180, 320, 450, 550, 700, 780,       // left wilderness
-      2780, 2880, 2980, 3100, 3250, 3400, 3520 // right wilderness
+      300, 450, 580, 700, 780,          // 左侧（从新出生点 200 之后开始）
+      2780, 2880, 2980, 3100, 3250      // 右侧（到新出生点 3400 之前结束）
     ];
     for (const tx of treePositions) {
       const key = `tree_w_${tx}`;
       if (!this.textures.exists(key)) {
         const tg = this.add.graphics();
         drawTree(tg, 0, 0, 4);
-        tg.generateTexture(key, 32, 40);
+        g.generateTexture(key, 32, 40);
         tg.destroy();
       }
-      const t = this.add.image(tx, gy - 18, key);
+      // 树木底部贴地：origin=(0.5,1)
+      const t = this.add.image(tx, gy, key).setOrigin(0.5, 1);
       this.bgLayer.add(t);
     }
 
-    // ── Walls ──────────────────────────────────────────────────────────────────
     this.buildWalls(g, gy, H);
   }
 
   // ── Wall drawing ──────────────────────────────────────────────────────────────
 
   private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number) {
-    const wallH    = 70;     // wall height above ground
-    const wallW    = 28;     // wall thickness
-    const gateW    = 36;     // gate opening width
-    const crenH    = 10;     // crenellation height
-    const crenW    = 10;     // crenellation width
-    const crenGap  = 8;
+    const wallH   = 70;
+    const wallW   = 28;
+    const gateW   = 36;
+    const crenH   = 10;
+    const crenW   = 10;
+    const crenGap = 8;
 
     const stoneLight = 0xa09070;
     const stoneMid   = 0x806850;
@@ -642,7 +640,6 @@ export class TownScene extends Phaser.Scene {
     for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
       const wx = wallX - wallW / 2;
 
-      // Left wing of wall (before gate)
       const wingL = wx - 80;
       g.fillStyle(stoneMid);
       g.fillRect(wingL, gy - wallH, 80, wallH);
@@ -651,7 +648,6 @@ export class TownScene extends Phaser.Scene {
       g.fillStyle(stoneDark);
       g.fillRect(wingL, gy - wallH + 6, 80, 3);
 
-      // Right wing
       const wingR = wx + wallW + gateW;
       g.fillStyle(stoneMid);
       g.fillRect(wingR, gy - wallH, 80, wallH);
@@ -660,7 +656,6 @@ export class TownScene extends Phaser.Scene {
       g.fillStyle(stoneDark);
       g.fillRect(wingR, gy - wallH + 6, 80, 3);
 
-      // Gate towers (left and right of gate opening)
       const towerW = wallW + 8;
       for (const tx of [wx - 8, wx + wallW + gateW - wallW]) {
         g.fillStyle(stoneMid);
@@ -670,7 +665,6 @@ export class TownScene extends Phaser.Scene {
         g.fillStyle(stoneDark);
         g.fillRect(tx, gy - wallH - 14, towerW, 3);
 
-        // Tower crenellations
         for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
           g.fillStyle(stoneLight);
           g.fillRect(cx, gy - wallH - 20 - crenH, crenW, crenH);
@@ -678,28 +672,23 @@ export class TownScene extends Phaser.Scene {
           g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
         }
 
-        // Arrow slit
         g.fillStyle(stoneDark);
         g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - wallH - 10, 3, 8);
       }
 
-      // Gate arch
       g.fillStyle(gateColor);
       g.fillRect(wx + wallW, gy - 44, gateW, 44);
       g.fillStyle(gateHigh);
       g.fillRect(wx + wallW + 2, gy - 42, gateW - 4, 5);
-      // Gate arch top (rounded with rectangles)
       g.fillStyle(gateColor);
       g.fillRect(wx + wallW + 4, gy - 50, gateW - 8, 8);
       g.fillRect(wx + wallW + 2, gy - 48, gateW - 4, 4);
 
-      // Portcullis bars
       g.fillStyle(0x484030);
       for (let bar = 0; bar < 4; bar++) {
         g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
       }
 
-      // Ground shadow under gate
       g.fillStyle(0x201000, 0.4);
       g.fillRect(wx + wallW, gy, gateW, 8);
     }
@@ -725,7 +714,8 @@ export class TownScene extends Phaser.Scene {
         g.generateTexture(key, 48, 48);
         g.destroy();
       }
-      const img = this.add.image(cx, gy - 24, key);
+      // origin=(0.5,1) 让建筑底部贴地，消除浮空感
+      const img = this.add.image(cx, gy, key).setOrigin(0.5, 1);
       this.bldgLayer.add(img);
     }
 
@@ -739,6 +729,7 @@ export class TownScene extends Phaser.Scene {
       [ZONE.town,    '大厅'],
       [ZONE.barracks,'兵营'],
     ] as [number, string][]).forEach(([x, txt]) => {
+      // 标签跟着建筑顶部走：建筑 48px 高，底部在 gy，顶部在 gy-48，标签再往上 10px
       const t = this.add.text(x, gy - 58, txt, labelStyle).setOrigin(0.5, 1);
       this.bldgLayer.add(t);
     });
@@ -760,18 +751,16 @@ export class TownScene extends Phaser.Scene {
       g.destroy();
     }
 
-    // Passerby enters through a gate
     const fromLeft  = Math.random() > 0.5;
     const startX    = fromLeft ? ZONE.wallLeft + 10 : ZONE.wallRight - 10;
-    const endX      = fromLeft ? ZONE.wallRight - 10 : ZONE.wallLeft + 10;
-    const img       = this.add.image(startX, this.groundY + 8, 'passerby_tex');
+    const img       = this.add.image(startX, this.groundY, 'passerby_tex').setOrigin(0.5, 1);
     img.setFlipX(!fromLeft);
     this.entityLayer.add(img);
 
     this.passerbyList.push({
       img, x: startX,
       speed: (fromLeft ? 1 : -1) * (20 + Math.random() * 14),
-      groundY: this.groundY + 8,
+      groundY: this.groundY,
     });
   }
 
@@ -779,9 +768,9 @@ export class TownScene extends Phaser.Scene {
     for (let i = this.passerbyList.length - 1; i >= 0; i--) {
       const p = this.passerbyList[i];
       p.x += p.speed * dt;
+      // origin=(0.5,1) → y 直接是地面
       p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
 
-      // Leave through opposite gate
       if (p.x < ZONE.wallLeft - 20 || p.x > ZONE.wallRight + 20) {
         p.img.destroy();
         this.passerbyList.splice(i, 1);
@@ -824,6 +813,7 @@ export class TownScene extends Phaser.Scene {
       background:rgba(10,5,2,0.82); border-left:2px solid #5a3a1a;
       padding:8px 0; z-index:8; pointer-events:none;
       scrollbar-width:thin; scrollbar-color:#5a3a1a transparent;
+      transition: width 0.2s ease;
     `;
     document.getElementById('game-container')!.appendChild(panel);
     this.sideLogEl = panel;

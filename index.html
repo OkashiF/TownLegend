@@ -54,8 +54,10 @@
     #top-bar {
       display: flex;
       align-items: center;
-      gap: 16px;
-      padding: 8px 16px;
+      /* 允许换行，窄屏下自动折到第二行 */
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      padding: 6px 12px;
       background: var(--panel-bg);
       border-bottom: 2px solid var(--panel-border);
       pointer-events: all;
@@ -67,34 +69,62 @@
       color: var(--gold);
       letter-spacing: 2px;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .hud-stat {
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 4px;
       background: rgba(0,0,0,0.4);
       border: 1px solid var(--panel-border);
       border-radius: 3px;
-      padding: 3px 10px;
+      padding: 3px 8px;
       font-family: 'Silkscreen', monospace;
       font-size: 11px;
+      flex-shrink: 0;
     }
     .hud-stat .label { color: #9a7a50; }
     .hud-stat .value { color: var(--gold-light); }
 
-    .hud-spacer { flex: 1; }
+    .hud-spacer { flex: 1; min-width: 8px; }
 
-    #btn-end-month {
-      font-family: 'Silkscreen', monospace;
-      font-size: 11px;
-      background: var(--red);
-      color: var(--parchment);
-      border: 2px solid #c04040;
-      padding: 5px 14px;
-      cursor: pointer;
-      letter-spacing: 1px;
-      transition: all .15s;
+    /* 窄屏（≤600px）：隐藏 label 文字，只留图标+数值，节省宽度 */
+    @media (max-width: 600px) {
+      .hud-stat .label { display: none; }
+      .hud-stat { padding: 3px 6px; font-size: 10px; }
+      .hud-title { font-size: 11px; letter-spacing: 1px; }
+      #month-progress-wrap { width: 60px; }
     }
-    #btn-end-month:hover { background: #a02020; box-shadow: 0 0 8px rgba(255,80,80,.4); }
+
+    /* 极窄屏（≤400px）：进度条也隐藏 */
+    @media (max-width: 400px) {
+      #month-progress-wrap { display: none; }
+    }
+
+    /* ── 侧边日志 & 折叠按钮 ── */
+    #log-toggle {
+      position: absolute;
+      /* 位置由 JS 动态同步，这里给默认值 */
+      right: 220px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 12;
+      pointer-events: all;
+      cursor: pointer;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-right: none;
+      border-radius: 4px 0 0 4px;
+      padding: 6px 4px;
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      color: var(--gold);
+      line-height: 1;
+      user-select: none;
+      transition: right 0.2s ease;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+    #log-toggle:hover { background: rgba(90,58,26,0.9); }
 
     /* ── Bottom card panel ── */
     #card-panel {
@@ -102,12 +132,15 @@
       bottom: 0; left: 0; right: 0;
       z-index: 10;
       pointer-events: all;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     #card-tabs {
       display: flex;
       gap: 2px;
-      padding: 0 16px;
+      padding: 0 12px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
     }
     .card-tab {
       font-family: 'Silkscreen', monospace;
@@ -116,17 +149,23 @@
       border: 1px solid var(--panel-border);
       border-bottom: none;
       color: #9a7a50;
-      padding: 4px 12px;
+      padding: 4px 10px;
       cursor: pointer;
       transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .card-tab.active { background: var(--panel-bg); color: var(--gold); }
 
     #card-area {
       background: var(--panel-bg);
       border-top: 2px solid var(--panel-border);
-      padding: 10px 16px 12px;
-      min-height: 160px;
+      padding: 10px 12px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+      min-height: 150px;
+      /* 竖屏下限制高度，避免占满屏幕 */
+      max-height: 38vh;
+      overflow-y: auto;
     }
 
     #hand-container {
@@ -256,8 +295,10 @@
       border: 2px solid var(--gold);
       border-radius: 6px;
       padding: 24px;
-      min-width: 320px;
-      max-width: 480px;
+      min-width: 280px;
+      max-width: 420px;
+      max-height: 80vh;
+      overflow-y: auto;
     }
     #modal-title {
       font-family: 'Silkscreen', monospace;
@@ -300,7 +341,7 @@
       padding: 6px 12px;
       opacity: 1;
       transition: opacity 1s;
-      max-width: 240px;
+      max-width: 200px;
     }
     .notif.fade { opacity: 0; }
     .notif.danger { border-left-color: var(--red); }
@@ -349,7 +390,8 @@
       border: 2px solid var(--gold);
       border-radius: 6px;
       padding: 20px;
-      min-width: 280px;
+      min-width: 260px;
+      max-width: 90vw;
     }
     #assign-title {
       font-family: 'Silkscreen', monospace;
@@ -391,7 +433,7 @@
     }
 
     #month-progress-wrap {
-      width: 100px; height: 8px;
+      width: 90px; height: 8px;
       background: rgba(0,0,0,0.5);
       border: 1px solid var(--panel-border);
       border-radius: 2px;
@@ -403,19 +445,6 @@
       width: 0%;
       background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
       transition: width 0.1s linear;
-    }
-
-    /* ── Responsive & safe area ── */
-    #card-panel {
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-    #card-area {
-      padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
-    }
-    @media (max-width: 600px) {
-      .hud-stat .label { display: none; }
-      .hud-stat { padding: 3px 6px; }
-      #month-progress-wrap { width: 60px; }
     }
   </style>
 </head>
@@ -438,11 +467,14 @@
     </div>
   </div>
 
-  <!-- Field overlay (slot indicators rendered here) -->
+  <!-- Field overlay -->
   <div id="field-overlay"></div>
 
   <!-- Notifications -->
   <div id="notifications"></div>
+
+  <!-- 侧边日志折叠按钮（位置由 JS 动态同步） -->
+  <button id="log-toggle" title="展开/收起日志">日志</button>
 
   <!-- Card panel -->
   <div id="card-panel">
@@ -486,6 +518,55 @@
     </div>
   </div>
 </div>
+
+<script>
+  // 侧边日志折叠逻辑（原生 JS，无需框架）
+  (function () {
+    let logOpen = true;
+    const LOG_WIDTH = 220;
+
+    function syncToggleBtn() {
+      const btn     = document.getElementById('log-toggle');
+      const topBar  = document.getElementById('top-bar');
+      const panel   = document.getElementById('card-panel');
+      if (!btn || !topBar || !panel) return;
+
+      const topH    = topBar.offsetHeight;
+      const panelH  = panel.offsetHeight;
+      const midY    = topH + (window.innerHeight - topH - panelH) / 2;
+
+      btn.style.top   = midY + 'px';
+      btn.style.right = (logOpen ? LOG_WIDTH : 0) + 'px';
+      btn.textContent = logOpen ? '▶' : '◀';
+      btn.title       = logOpen ? '收起日志' : '展开日志';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.getElementById('log-toggle');
+      if (!btn) return;
+
+      btn.addEventListener('click', function () {
+        logOpen = !logOpen;
+        const sideLog = document.getElementById('side-log');
+        if (sideLog) {
+          sideLog.style.width = logOpen ? LOG_WIDTH + 'px' : '0';
+          sideLog.style.padding = logOpen ? '8px 0' : '0';
+        }
+        syncToggleBtn();
+      });
+
+      // 等待 side-log 由 Phaser 场景创建后再同步位置
+      const interval = setInterval(function () {
+        if (document.getElementById('side-log')) {
+          clearInterval(interval);
+          syncToggleBtn();
+        }
+      }, 100);
+
+      window.addEventListener('resize', syncToggleBtn);
+    });
+  })();
+</script>
 
 <script type="module" src="/src/main.ts"></script>
 </body>
