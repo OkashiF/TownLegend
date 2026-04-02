@@ -1,6 +1,6 @@
 import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
-  HumanStats, MonsterStats, MagicStats, ItemStack, SaveSnapshot, LootDef,
+  HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
 } from '../types';
 import { CARD_DB, drawShopCards, LEVEL_COST } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
@@ -97,6 +97,63 @@ export class GameStore {
 
   // Per-tick craft accumulator (diligence points) – realtime, not weekly
   private craftPoints = 0;
+
+  // Last crafted product emoji, consumed by TownScene for bubble FX
+  private _lastCraftedEmoji: string | null = null;
+
+  /** Consume last crafted emoji (returns null if nothing was just crafted) */
+  takeCraftedEmoji(): string | null {
+    const e = this._lastCraftedEmoji;
+    this._lastCraftedEmoji = null;
+    return e;
+  }
+
+  /** Progress toward the current/next craftable recipe */
+  getCraftProgressInfo(): { points: number; maxPoints: number } {
+    for (const recipe of RECIPE_DB) {
+      const hasMats = recipe.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty);
+      if (hasMats) {
+        return { points: Math.min(this.craftPoints, recipe.craftCost), maxPoints: recipe.craftCost };
+      }
+    }
+    const fallback = RECIPE_DB[0];
+    return { points: Math.min(this.craftPoints, fallback.craftCost), maxPoints: fallback.craftCost };
+  }
+
+  // ── Building helpers ──────────────────────────────────────────────────────────
+
+  /** Sum of capacity across all active instances of a building.
+   *  Returns 0 if no such building is on the field (expected behavior for bonus calculations). */
+  getBuildingCapacity(defId: string): number {
+    return this.field
+      .filter(c => c.definitionId === defId && c.isActive)
+      .reduce((s, c) => s + (c.runtimeStats as BuildingStats).capacity, 0);
+  }
+
+  /** Returns the total "extra rate" bonus for on-field buildings of a given type.
+   *  Each instance with bonus B contributes (B - 1), e.g. bonus=1.3 → +0.3 per instance. */
+  private getBuildingExtraRate(defId: string): number {
+    return this.field
+      .filter(c => c.definitionId === defId && c.isActive)
+      .reduce((s, c) => s + ((c.runtimeStats as BuildingStats).bonus - 1), 0);
+  }
+
+  /** Craft rate multiplier from workshops on field (1 + 0.3 per workshop with bonus=1.3) */
+  getWorkshopCraftBonus(): number {
+    const extra = this.getBuildingExtraRate('building_workshop');
+    return 1 + extra;
+  }
+
+  /** ATK bonus granted to warriors by barracks buildings (= total capacity) */
+  getBarracksAtkBonus(): number {
+    return this.getBuildingCapacity('building_barracks');
+  }
+
+  /** Income multiplier from market stalls (1 + 0.2 per stall with bonus=1.2) */
+  getStallSaleBonus(): number {
+    const extra = this.getBuildingExtraRate('building_stall');
+    return 1 + extra;
+  }
 
   constructor() {
     this.refreshShopFull();
@@ -288,11 +345,13 @@ export class GameStore {
     if (craftWorkers.length === 0) return;
 
     // Accumulate at 1/40 rate per tick so a full month (160 tick) = 4 weeks of points
+    // Apply workshop craft bonus (each workshop with bonus=1.3 adds +30%)
+    const workshopBonus = this.getWorkshopCraftBonus();
     const diligencePerTick = craftWorkers.reduce(
       (s, c) => s + (c.runtimeStats as HumanStats).diligence, 0
     ) / TICKS_PER_WEEK;
 
-    this.craftPoints += diligencePerTick;
+    this.craftPoints += diligencePerTick * workshopBonus;
 
     // Try each recipe
     let crafted = false;
@@ -307,6 +366,7 @@ export class GameStore {
       this.craftPoints -= recipe.craftCost;
       this.addItem(recipe.outputProductId, 'product', recipe.outputQty);
       const prod = productById(recipe.outputProductId);
+      this._lastCraftedEmoji = prod.emoji;
       this.addLog(`🔨 制造了 ${prod.emoji} ${prod.name} ×${recipe.outputQty}`, 'good');
       crafted = true;
     }
@@ -339,16 +399,17 @@ export class GameStore {
       return d.type === CardType.Monster && c.aggressionCountdown === 0 && c.isActive;
     });
 
-    // 4. Shop income (realtime sell via passerby interaction is visual;
-    //    actual gold settlement still happens monthly for simplicity)
+    // 4. Shop income
+    // Inn buildings add to passersby; stall buildings multiply sale income
     const shopWorkers = this.field.filter(c => {
       const d = defById(c.definitionId);
       return d.type === CardType.Human && c.jobAssignment === JobType.Shop && c.isActive;
     });
     const underAttack = attackers.length > 0;
+    const innBonus    = this.getBuildingCapacity('building_inn');
     const passersby   = underAttack
       ? 0
-      : 5 + this.townLevel * 3 + this.getMagicBonus('extra_passersby');
+      : 5 + this.townLevel * 3 + this.getMagicBonus('extra_passersby') + innBonus;
 
     const totalProds = this.totalProducts;
 
@@ -360,11 +421,12 @@ export class GameStore {
       const shopPower = shopWorkers.reduce(
         (s, c) => s + (c.runtimeStats as HumanStats).intellect, 0
       );
+      const stallMult = this.getStallSaleBonus();
       for (const stack of [...this.inventory].filter(s => s.kind === 'product')) {
         if (remaining <= 0) break;
         const sell   = Math.min(stack.qty, remaining);
         const prod   = productById(stack.itemId);
-        const income = Math.round(sell * prod.sellPrice * (1 + shopPower * 0.05));
+        const income = Math.round(sell * prod.sellPrice * (1 + shopPower * 0.05) * stallMult);
         this.removeItem(stack.itemId, 'product', sell);
         this.gold   += income;
         totalIncome += income;
@@ -415,7 +477,15 @@ export class GameStore {
       if (inst.strikeMonthsLeft > 0) inst.strikeMonthsLeft--;
       if (inst.restMonthsLeft === 0 && inst.strikeMonthsLeft === 0) {
         inst.isActive = true;
-        this.addLog(`✅ ${defById(inst.definitionId).name} 已恢复`, 'good');
+        const defn = defById(inst.definitionId);
+        if (defn.type === CardType.Monster) {
+          // Reset aggression countdown so monster starts fresh patrol after recovery
+          const ms = inst.runtimeStats as MonsterStats;
+          inst.aggressionCountdown = ms.aggression;
+          this.addLog(`👹 ${defn.name} 伤愈，重整侵略！`, 'bad');
+        } else {
+          this.addLog(`✅ ${defn.name} 已恢复`, 'good');
+        }
       }
     }
 
