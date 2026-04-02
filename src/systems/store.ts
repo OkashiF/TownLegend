@@ -1,9 +1,9 @@
-﻿import {
+import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
-  HumanStats, MonsterStats, MagicStats, ItemStack, SaveSnapshot,
+  HumanStats, MonsterStats, MagicStats, ItemStack, SaveSnapshot, LootDef,
 } from '../types';
 import { CARD_DB, drawShopCards, LEVEL_COST } from '../data/cards';
-import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById, recipeForLoot } from '../data/items';
+import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
 
 // ── ID factory ─────────────────────────────────────────────────────────────────
 let _idCounter = 0;
@@ -12,9 +12,6 @@ export function newId(): string { return `card_${++_idCounter}`; }
 export function defById(id: string): CardDefinition {
   const d = CARD_DB.find(c => c.id === id);
   if (!d) {
-    // Return a safe sentinel rather than crashing the game loop.
-    // This should never happen with valid save data, but guards against
-    // stale references during state transitions.
     console.warn(`[defById] Unknown card id: "${id}" — returning sentinel`);
     return {
       id, name: '???', type: 'human' as any, level: 0,
@@ -48,8 +45,8 @@ export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH; // 160
 export const LEVEL_THRESHOLD = 10;
-const SHOP_SIZE = 6;
-const SAVE_KEY  = 'town_legend_save';
+const SHOP_SIZE    = 6;
+const SAVE_KEY     = 'town_legend_save';
 const SAVE_VERSION = 2;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
@@ -96,10 +93,9 @@ export class GameStore {
   shopSlots: ShopSlot[] = [];
   log: LogEntry[] = [];
 
-  // Inventory: raw loot + crafted products
   inventory: ItemStack[] = [];
 
-  // Weekly craft accumulator (diligence points)
+  // Per-tick craft accumulator (diligence points) – realtime, not weekly
   private craftPoints = 0;
 
   constructor() {
@@ -113,6 +109,11 @@ export class GameStore {
 
   get fieldCapacity() { return fieldCap(this.townLevel); }
   get levelProgress() { return countLevelProgress(this.hand, this.field, this.townLevel); }
+
+  // ── Loot def lookup (used by TownScene for emoji) ─────────────────────────────
+  getLootDef(lootId: string): LootDef | undefined {
+    return LOOT_DB.find(l => l.id === lootId);
+  }
 
   // ── Inventory helpers ─────────────────────────────────────────────────────────
 
@@ -184,7 +185,6 @@ export class GameStore {
     if (this.field.length >= this.fieldCapacity)
       return { ok: false, reason: `场上已满（${this.fieldCapacity}）` };
 
-    // Snapshot the instance BEFORE modifying it
     const inst = this.hand[idx];
     const def  = defById(inst.definitionId);
     inst.isOnField = true;
@@ -257,10 +257,8 @@ export class GameStore {
     let weekEnd  = false;
     let monthEnd = false;
 
-    if (this.tick % TICKS_PER_WEEK === 0) {
-      weekEnd = true;
-      this.resolveWeek();
-    }
+    // ── Realtime crafting (every tick) ─────────────────────────────────────────
+    this.resolveRealtimeCraft();
 
     if (this.tick >= TICKS_PER_MONTH) {
       this.tick = 0;
@@ -271,6 +269,7 @@ export class GameStore {
       this.saveToLocalStorage();
     } else {
       this.week = Math.floor(this.tick / TICKS_PER_WEEK) + 1;
+      if (this.tick % TICKS_PER_WEEK === 0) weekEnd = true;
     }
 
     const newLogs = this.log.slice(0, this.log.length - prevLen);
@@ -278,35 +277,32 @@ export class GameStore {
     return { weekEnd, monthEnd, newLogs };
   }
 
-  // ── Weekly resolution ─────────────────────────────────────────────────────────
+  // ── Realtime crafting ─────────────────────────────────────────────────────────
+  // Runs every tick; accumulates diligence and produces when threshold met.
 
-  private resolveWeek() {
-    // Accumulate diligence points
+  private resolveRealtimeCraft() {
     const craftWorkers = this.field.filter(c =>
       defById(c.definitionId).type === CardType.Human &&
       c.jobAssignment === JobType.Craft && c.isActive
     );
-    this.craftPoints += craftWorkers.reduce(
+    if (craftWorkers.length === 0) return;
+
+    // Accumulate at 1/40 rate per tick so a full month (160 tick) = 4 weeks of points
+    const diligencePerTick = craftWorkers.reduce(
       (s, c) => s + (c.runtimeStats as HumanStats).diligence, 0
-    );
+    ) / TICKS_PER_WEEK;
 
-    // Try to craft from accumulated points
-    this.tryCraft();
-  }
+    this.craftPoints += diligencePerTick;
 
-  private tryCraft() {
-    // For each recipe, try to craft as many batches as points + inventory allow
+    // Try each recipe
     let crafted = false;
     for (const recipe of RECIPE_DB) {
       if (this.craftPoints < recipe.craftCost) continue;
-
-      // Check if we have the inputs
       const canCraft = recipe.inputs.every(inp =>
         this.countItem(inp.lootId, 'loot') >= inp.qty
       );
       if (!canCraft) continue;
 
-      // Consume inputs + craft points
       recipe.inputs.forEach(inp => this.removeItem(inp.lootId, 'loot', inp.qty));
       this.craftPoints -= recipe.craftCost;
       this.addItem(recipe.outputProductId, 'product', recipe.outputQty);
@@ -318,6 +314,7 @@ export class GameStore {
   }
 
   // ── Monthly resolution ────────────────────────────────────────────────────────
+  // Only tax, upkeep, aggression countdown, shop income, and level check remain here.
 
   private resolveMonth() {
     // 1. Tax
@@ -336,14 +333,14 @@ export class GameStore {
       }
     }
 
-    // 3. Combat is now resolved tick-by-tick in TownScene.resolveHit()
-    // We still track whether monsters are attacking for passerby logic.
+    // 3. Attackers check (for passerby suppression)
     const attackers = this.field.filter(c => {
       const d = defById(c.definitionId);
       return d.type === CardType.Monster && c.aggressionCountdown === 0 && c.isActive;
     });
 
-    // 4. Shop income — requires products in inventory
+    // 4. Shop income (realtime sell via passerby interaction is visual;
+    //    actual gold settlement still happens monthly for simplicity)
     const shopWorkers = this.field.filter(c => {
       const d = defById(c.definitionId);
       return d.type === CardType.Human && c.jobAssignment === JobType.Shop && c.isActive;
@@ -353,27 +350,25 @@ export class GameStore {
       ? 0
       : 5 + this.townLevel * 3 + this.getMagicBonus('extra_passersby');
 
-    const totalProds  = this.totalProducts;
+    const totalProds = this.totalProducts;
 
     if (shopWorkers.length > 0 && totalProds > 0 && passersby > 0) {
-      // How many items can be sold this month
       const sellCapacity = Math.min(totalProds, passersby * 2);
       let remaining      = sellCapacity;
       let totalIncome    = 0;
 
-      // Sell products in inventory order; weight by shop worker intellect
       const shopPower = shopWorkers.reduce(
         (s, c) => s + (c.runtimeStats as HumanStats).intellect, 0
       );
       for (const stack of [...this.inventory].filter(s => s.kind === 'product')) {
         if (remaining <= 0) break;
-        const sell = Math.min(stack.qty, remaining);
-        const prod = productById(stack.itemId);
+        const sell   = Math.min(stack.qty, remaining);
+        const prod   = productById(stack.itemId);
         const income = Math.round(sell * prod.sellPrice * (1 + shopPower * 0.05));
         this.removeItem(stack.itemId, 'product', sell);
-        this.gold    += income;
-        totalIncome  += income;
-        remaining    -= sell;
+        this.gold   += income;
+        totalIncome += income;
+        remaining   -= sell;
         this.addLog(`💰 售出 ${prod.emoji}${prod.name}×${sell}，+${income}💰`, 'good');
       }
       if (totalIncome > 0) {
@@ -381,11 +376,8 @@ export class GameStore {
         this.emit('inventory');
       }
     } else if (shopWorkers.length > 0 && totalProds === 0 && passersby > 0) {
-      this.addLog(`🏪 商店有人但无商品可售，行人空手而归`, 'info');
+      this.addLog(`🏪 商店有人但无商品，行人空手而归`, 'info');
     }
-
-    // Reset weekly craft accumulator
-    this.craftPoints = 0;
 
     // 5. Upkeep
     const handUpkeep  = this.hand.reduce(
@@ -409,7 +401,7 @@ export class GameStore {
       let rem = deficit;
       for (const c of candidates) {
         if (rem <= 0) break;
-        c.isActive       = false;
+        c.isActive        = false;
         c.strikeMonthsLeft = 1;
         rem -= defById(c.definitionId).upkeep;
         this.addLog(`😡 ${defById(c.definitionId).name} 罢工！`, 'bad');
@@ -470,7 +462,6 @@ export class GameStore {
     }
   }
 
-  /** Returns true if a save was found and loaded */
   loadFromLocalStorage(): boolean {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -489,14 +480,12 @@ export class GameStore {
       this.inventory = snap.inventory ?? [];
       this.log       = snap.log ?? [];
 
-      // Restore shop slots
       this.shopSlots = snap.shopSlots.map(s => {
         const def = CARD_DB.find(c => c.id === s.defId);
         return def ? { def, sold: s.sold } : null;
       }).filter(Boolean) as ShopSlot[];
       if (this.shopSlots.length === 0) this.refreshShopFull();
 
-      // Sync idCounter so new instances don't clash
       const maxId = [...this.hand, ...this.field, ...this.discarded]
         .map(c => parseInt(c.instanceId.replace('card_', '')) || 0)
         .reduce((a, b) => Math.max(a, b), 0);
@@ -509,9 +498,7 @@ export class GameStore {
     }
   }
 
-  clearSave() {
-    localStorage.removeItem(SAVE_KEY);
-  }
+  clearSave() { localStorage.removeItem(SAVE_KEY); }
 
   // ── Logging ───────────────────────────────────────────────────────────────────
 

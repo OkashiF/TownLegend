@@ -24,35 +24,31 @@ export enum SpawnZone {
 
 /** A raw material dropped by a monster */
 export interface LootDef {
-  id: string;       // e.g. 'loot_rat_hide'
-  name: string;     // e.g. '鼠皮'
+  id: string;
+  name: string;
   emoji: string;
-  value: number;    // base sell value if sold directly (future use)
+  value: number;
 }
 
 /** A crafted product made from loot */
 export interface ProductDef {
-  id: string;       // e.g. 'prod_leather'
-  name: string;     // e.g. '皮革'
+  id: string;
+  name: string;
   emoji: string;
-  sellPrice: number; // gold per unit when sold to passersby
+  sellPrice: number;
 }
 
-/**
- * A crafting recipe: one or more input stacks → one output stack.
- * Currently 1-to-1 but structured for future multi-input support.
- */
 export interface Recipe {
   id: string;
   inputs: Array<{ lootId: string; qty: number }>;
   outputProductId: string;
   outputQty: number;
-  craftCost: number; // diligence points required per batch
+  craftCost: number;
 }
 
 /** Runtime stack of items in inventory */
 export interface ItemStack {
-  itemId: string;   // lootDef.id or productDef.id
+  itemId: string;
   kind: 'loot' | 'product';
   qty: number;
 }
@@ -76,7 +72,7 @@ export interface MonsterStats extends CardStats {
   rarity: number;
   aggression: number;
   strength: number;
-  lootId: string;      // which LootDef it drops
+  lootId: string;
   lootQtyMin: number;
   lootQtyMax: number;
 }

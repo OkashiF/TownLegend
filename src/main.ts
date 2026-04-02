@@ -2,8 +2,12 @@ import Phaser from 'phaser';
 import { TownScene } from './scenes/TownScene';
 import { initUI } from './ui/UIController';
 
+// ── World dimensions ───────────────────────────────────────────────────────────
+export const WORLD_WIDTH  = 3600;   // logical world width in px
+export const WORLD_HEIGHT = 600;    // will be overridden at runtime by scene height
+
 function getGameHeight(): number {
-  const panel = document.getElementById('card-panel');
+  const panel  = document.getElementById('card-panel');
   const topBar = document.getElementById('top-bar');
   const panelH = panel  ? panel.offsetHeight  : 170;
   const topH   = topBar ? topBar.offsetHeight  : 40;
@@ -12,7 +16,7 @@ function getGameHeight(): number {
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: window.innerWidth,
+  width:  window.innerWidth,
   height: getGameHeight(),
   backgroundColor: '#0a0604',
   parent: 'game-container',
@@ -20,12 +24,11 @@ const config: Phaser.Types.Core.GameConfig = {
   antialias: false,
   scene: [TownScene],
   scale: {
-    mode: Phaser.Scale.NONE,   // we handle resize manually
+    mode: Phaser.Scale.NONE,
   },
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Init DOM UI first so card-panel has its real height
   initUI();
 
   const game = new Phaser.Game(config);
@@ -49,7 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
       canvas.style.height   = `${H}px`;
     }
 
-    // Keep side-log bottom aligned with card panel top
     const sideLog = document.getElementById('side-log');
     if (sideLog) {
       sideLog.style.top    = `${topH}px`;
@@ -57,8 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Initial layout after a brief frame so DOM heights are settled
   requestAnimationFrame(() => { syncLayout(); });
-
   window.addEventListener('resize', syncLayout);
 });

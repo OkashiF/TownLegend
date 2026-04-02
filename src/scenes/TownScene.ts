@@ -4,28 +4,51 @@ import { CardType, JobType, HumanStats, MonsterStats } from '../types';
 import {
   generateAllTextures, spriteKeyForCard,
   drawTree, drawPasserby,
-  drawShopBuilding, drawCraftBuilding, drawCombatBuilding, drawRestBuilding,
+  drawShopBuilding, drawCraftBuilding, drawCombatBuilding,
 } from '../utils/sprites';
+import { WORLD_WIDTH } from '../main';
 
 // ── Timing ─────────────────────────────────────────────────────────────────────
-const MS_PER_TICK = 125;   // 160 ticks/month ≈ 20s/month
+const MS_PER_TICK = 125;
 
-// ── Zone definitions (fraction of canvas width) ───────────────────────────────
-// Layout: [LEFT_BORDER .. SHOP .. CRAFT .. TOWNHALL .. COMBAT .. BARRACKS .. RIGHT_BORDER]
-const ZONE = {
-  shop:   0.18,   // centre x of shop zone
-  craft:  0.36,
-  town:   0.54,   // town hall
-  combat: 0.72,
-  barracks: 0.86,
+// ── World zone coordinates (fixed pixel values in world space) ─────────────────
+export const ZONE = {
+  spawnLeft:   -120,    // left monster spawn (off-screen left)
+  spawnRight:  3720,    // right monster spawn (off-screen right)
+  spawnSouth:  1800,    // south spawn (world centre x, enters from top)
+
+  wallLeft:     900,    // left wall / gate x
+  wallRight:   2700,    // right wall / gate x
+
+  shop:        1100,    // shop zone centre
+  craft:       1400,    // craft zone centre
+  town:        1800,    // town hall centre (world mid)
+  barracks:    2200,    // barracks zone centre
+
+  patrolLeft:   950,    // warrior patrol left boundary (just inside left gate)
+  patrolRight: 2650,    // warrior patrol right boundary (just inside right gate)
 };
 
-// Horizontal wander radius inside each zone
-const WANDER = 30;
-// Ground Y fraction
-const GROUND_FRAC = 0.60;
+// Wander radius within a zone
+const WANDER      = 40;
+// Ground Y as fraction of scene height
+const GROUND_FRAC = 0.62;
+// Movement speed px per tick
+const HUMAN_SPEED   = 35;
+const MONSTER_SPEED = 22;
+
+// ── Combat state for warriors ─────────────────────────────────────────────────
+type WarriorState = 'patrol' | 'chase' | 'fight' | 'loot' | 'return';
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
+interface LootDrop {
+  id: string;           // unique drop id
+  worldX: number;
+  worldY: number;
+  itemId: string;
+  qty: number;
+  sprite: Phaser.GameObjects.Text;  // emoji label in world
+}
 
 interface FieldSprite {
   instanceId: string;
@@ -34,11 +57,13 @@ interface FieldSprite {
   hpBar:      Phaser.GameObjects.Graphics;
   x: number; y: number;
   targetX: number; targetY: number;
-  // combat state
-  combatTarget: string | null;   // instanceId of monster being attacked
-  attackCooldown: number;        // ticks until next hit
-  // idle bob phase
   bobPhase: number;
+  // warrior-specific
+  warriorState:   WarriorState;
+  attackCooldown: number;
+  combatTarget:   string | null;    // monster instanceId
+  lootTarget:     string | null;    // LootDrop id
+  patrolDir:      1 | -1;
 }
 
 interface PasserbySprite {
@@ -47,30 +72,35 @@ interface PasserbySprite {
 }
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
-
 export class TownScene extends Phaser.Scene {
   private bgLayer!:     Phaser.GameObjects.Container;
-  private bldgLayer!:   Phaser.GameObjects.Container;  // zone buildings
+  private bldgLayer!:   Phaser.GameObjects.Container;
   private entityLayer!: Phaser.GameObjects.Container;
   private fxLayer!:     Phaser.GameObjects.Container;
   private labelLayer!:  Phaser.GameObjects.Container;
 
-  private sprites: Map<string, FieldSprite> = new Map();
+  private sprites:      Map<string, FieldSprite> = new Map();
+  private lootDrops:    Map<string, LootDrop>    = new Map();
   private passerbyList: PasserbySprite[] = [];
-  private sideLogEl!: HTMLElement;
+  private sideLogEl!:   HTMLElement;
 
   private groundY = 0;
-  private W = 0;
+  private sceneH  = 0;
 
-  private tickAccum = 0;
+  private isDragging  = false;
+  private dragStartX  = 0;
+  private dragCamX    = 0;
+
+  private tickAccum   = 0;
+  private lootDropSeq = 0;
 
   constructor() { super({ key: 'TownScene' }); }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   create() {
-    this.W       = this.scale.width;
-    this.groundY = this.scale.height * GROUND_FRAC;
+    this.sceneH  = this.scale.height;
+    this.groundY = this.sceneH * GROUND_FRAC;
 
     generateAllTextures(this);
 
@@ -79,6 +109,13 @@ export class TownScene extends Phaser.Scene {
     this.entityLayer = this.add.container(0, 0);
     this.fxLayer     = this.add.container(0, 0);
     this.labelLayer  = this.add.container(0, 0);
+
+    // ── Camera setup ──────────────────────────────────────────────────────────
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, this.sceneH);
+    this.cameras.main.centerOn(ZONE.town, this.sceneH / 2);
+    this.cameras.main.setZoom(1.0);
+
+    this.setupCameraControls();
 
     this.buildBackground();
     this.buildZoneBuildings();
@@ -102,6 +139,39 @@ export class TownScene extends Phaser.Scene {
     this.updatePasserby(delta / 1000);
   }
 
+  // ── Camera controls ────────────────────────────────────────────────────────
+
+  private setupCameraControls() {
+    const cam = this.cameras.main;
+
+    // Left-click drag to pan
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.isDragging = true;
+      this.dragStartX = p.x;
+      this.dragCamX   = cam.scrollX;
+    });
+
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.isDragging) return;
+      const dx = (p.x - this.dragStartX) / cam.zoom;
+      cam.scrollX = Phaser.Math.Clamp(
+        this.dragCamX - dx,
+        0,
+        WORLD_WIDTH - cam.width / cam.zoom
+      );
+    });
+
+    this.input.on('pointerup', () => { this.isDragging = false; });
+
+    // Mouse wheel to zoom
+    this.input.on('wheel',
+      (_p: Phaser.Input.Pointer, _gos: unknown, _dx: number, _dy: number, dy: number) => {
+        const newZoom = Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.75, 1.5);
+        cam.setZoom(newZoom);
+      }
+    );
+  }
+
   // ── Tick ──────────────────────────────────────────────────────────────────────
 
   private doTick() {
@@ -110,7 +180,7 @@ export class TownScene extends Phaser.Scene {
       const { newLogs } = store.advanceTick();
       if (newLogs.length > 0) {
         for (const e of [...newLogs].reverse()) this.pushLogEntry(e);
-        this.syncSprites();   // refresh on log events (week/month changes)
+        this.syncSprites();
       }
       if (store.tick % 24 === 0) this.maybeSpawnPasserby();
     } catch (e) {
@@ -121,15 +191,13 @@ export class TownScene extends Phaser.Scene {
   // ── AI ────────────────────────────────────────────────────────────────────────
 
   private runAI() {
-    const W = this.W, gy = this.groundY;
+    const gy = this.groundY;
 
-    // Build monster snapshot
-    const monsterSprites = store.field
-      .filter(c => c.definitionId && defById(c.definitionId).type === CardType.Monster)
-      .map(c => ({ inst: c, sp: this.sprites.get(c.instanceId) }))
-      .filter(m => m.sp) as { inst: typeof store.field[0]; sp: FieldSprite }[];
-
-    const anyAttacking = monsterSprites.some(m => m.inst.aggressionCountdown === 0 && m.inst.isActive);
+    // Snapshot monsters
+    const monsterInsts = store.field.filter(c => {
+      if (!c.definitionId) return false;
+      return defById(c.definitionId).type === CardType.Monster && c.isActive;
+    });
 
     for (const inst of store.field) {
       if (!inst?.definitionId) continue;
@@ -141,55 +209,29 @@ export class TownScene extends Phaser.Scene {
       // ── Human AI ────────────────────────────────────────────────────────────
       if (def.type === CardType.Human) {
         if (!inst.isActive) {
-          // Resting: drift to town hall
-          sp.targetX = W * ZONE.town + (Math.random() - 0.5) * WANDER;
+          sp.targetX = ZONE.town + (Math.random() - 0.5) * WANDER;
           sp.targetY = gy;
-          sp.combatTarget = null;
+          sp.warriorState  = 'patrol';
+          sp.combatTarget  = null;
+          sp.lootTarget    = null;
           continue;
         }
 
         const job = inst.jobAssignment ?? JobType.Idle;
 
         if (job === JobType.Combat) {
-          if (anyAttacking) {
-            // Find nearest attacking monster
-            let nearestSp: FieldSprite | null = null;
-            let nearestDist = Infinity;
-            for (const m of monsterSprites) {
-              if (m.inst.aggressionCountdown !== 0 || !m.inst.isActive) continue;
-              const d = Math.hypot(m.sp.x - sp.x, m.sp.y - sp.y);
-              if (d < nearestDist) { nearestDist = d; nearestSp = m.sp; sp.combatTarget = m.inst.instanceId; }
-            }
-            if (nearestSp) {
-              sp.targetX = nearestSp.x;
-              sp.targetY = nearestSp.y;
-
-              // Close enough to fight?
-              if (nearestDist < 36) {
-                sp.attackCooldown--;
-                if (sp.attackCooldown <= 0) {
-                  sp.attackCooldown = 2;  // hit every 2 ticks
-                  this.resolveHit(inst, store.field.find(c => c.instanceId === sp.combatTarget)!);
-                }
-              }
-            }
-          } else {
-            // No attackers – return to barracks zone
-            sp.combatTarget = null;
-            sp.targetX = W * ZONE.barracks + (Math.random() - 0.5) * WANDER;
-            sp.targetY = gy;
-          }
+          this.runWarriorAI(inst, sp, monsterInsts, gy);
         } else {
-          // Non-combat jobs stay in their zone
-          const zoneX = job === JobType.Shop  ? W * ZONE.shop
-                      : job === JobType.Craft ? W * ZONE.craft
-                      : W * ZONE.town;
-          // Idle drift within zone
+          // Non-combat: stay in zone, gentle wander
+          const zoneX = job === JobType.Shop  ? ZONE.shop
+                      : job === JobType.Craft ? ZONE.craft
+                      : ZONE.town;
           if (Math.abs(sp.x - zoneX) > WANDER * 1.5 || Math.random() < 0.02) {
             sp.targetX = zoneX + (Math.random() - 0.5) * WANDER;
-            sp.targetY = gy + (Math.random() - 0.5) * 8;
+            sp.targetY = gy + (Math.random() - 0.5) * 6;
           }
           sp.combatTarget = null;
+          sp.lootTarget   = null;
         }
       }
 
@@ -198,22 +240,126 @@ export class TownScene extends Phaser.Scene {
         if (!inst.isActive) continue;
 
         if (inst.aggressionCountdown > 0) {
-          // Waiting at spawn – gentle idle wander
+          // Waiting – idle wander near spawn
           const spawnX = this.monsterSpawnX(inst);
           if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
             sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
-            sp.targetY = gy - 10 + (Math.random() - 0.5) * 8;
+            sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
           }
         } else {
-          // Marching toward town
-          sp.targetX = W * ZONE.town + (Math.random() - 0.5) * 20;
+          // March toward town hall
+          sp.targetX = ZONE.town + (Math.random() - 0.5) * 20;
           sp.targetY = gy;
         }
       }
     }
   }
 
-  /** Pixel-level combat: one attacker hits one defender */
+  // ── Warrior state machine ─────────────────────────────────────────────────────
+
+  private runWarriorAI(
+    inst: typeof store.field[0],
+    sp: FieldSprite,
+    monsters: typeof store.field,
+    gy: number
+  ) {
+    // Priority 1: pick up loot if already assigned
+    if (sp.lootTarget) {
+      const drop = this.lootDrops.get(sp.lootTarget);
+      if (!drop) {
+        sp.lootTarget  = null;
+        sp.warriorState = 'return';
+      } else {
+        sp.warriorState = 'loot';
+        sp.targetX = drop.worldX;
+        sp.targetY = drop.worldY;
+        const dist = Math.hypot(sp.x - drop.worldX, sp.y - drop.worldY);
+        if (dist < 24) {
+          // Pick up
+          store.addItem(drop.itemId, 'loot', drop.qty);
+          store.emit('inventory');
+          drop.sprite.destroy();
+          this.lootDrops.delete(sp.lootTarget);
+          sp.lootTarget   = null;
+          sp.warriorState = 'return';
+          store.addLog(`🎒 战士捡起了战利品`, 'good');
+        }
+      }
+      return;
+    }
+
+    // Priority 2: return to barracks after looting
+    if (sp.warriorState === 'return') {
+      sp.targetX = ZONE.barracks + (Math.random() - 0.5) * WANDER;
+      sp.targetY = gy;
+      const dist = Math.hypot(sp.x - ZONE.barracks, sp.y - gy);
+      if (dist < 60) sp.warriorState = 'patrol';
+      return;
+    }
+
+    // Priority 3: engage nearest monster (any monster on field, not just attacking)
+    if (monsters.length > 0) {
+      let nearestInst: typeof store.field[0] | null = null;
+      let nearestSp:   FieldSprite | null = null;
+      let nearestDist  = Infinity;
+
+      for (const m of monsters) {
+        const mSp = this.sprites.get(m.instanceId);
+        if (!mSp) continue;
+        const d = Math.hypot(mSp.x - sp.x, mSp.y - sp.y);
+        if (d < nearestDist) { nearestDist = d; nearestInst = m; nearestSp = mSp; }
+      }
+
+      if (nearestInst && nearestSp) {
+        sp.combatTarget = nearestInst.instanceId;
+        sp.warriorState = nearestDist < 200 ? 'fight' : 'chase';
+        sp.targetX = nearestSp.x;
+        sp.targetY = nearestSp.y;
+
+        if (nearestDist < 36) {
+          sp.attackCooldown--;
+          if (sp.attackCooldown <= 0) {
+            sp.attackCooldown = 2;
+            this.resolveHit(inst, nearestInst);
+          }
+        }
+        return;
+      }
+    }
+
+    // Priority 4: unclaimed loot drops nearby – go fetch
+    if (this.lootDrops.size > 0) {
+      const alreadyClaimed = new Set<string>();
+      for (const other of this.sprites.values()) {
+        if (other.lootTarget) alreadyClaimed.add(other.lootTarget);
+      }
+      let nearestDrop: LootDrop | null = null;
+      let nearestDist = Infinity;
+      for (const drop of this.lootDrops.values()) {
+        if (alreadyClaimed.has(drop.id)) continue;
+        const d = Math.hypot(drop.worldX - sp.x, drop.worldY - sp.y);
+        if (d < nearestDist) { nearestDist = d; nearestDrop = drop; }
+      }
+      if (nearestDrop) {
+        sp.lootTarget   = nearestDrop.id;
+        sp.warriorState = 'loot';
+        return;
+      }
+    }
+
+    // Priority 5: patrol between gates
+    sp.warriorState = 'patrol';
+    sp.combatTarget = null;
+    const atLeft  = sp.x <= ZONE.patrolLeft  + 20;
+    const atRight = sp.x >= ZONE.patrolRight - 20;
+    if (atLeft)  sp.patrolDir =  1;
+    if (atRight) sp.patrolDir = -1;
+    sp.targetX = sp.patrolDir === 1 ? ZONE.patrolRight : ZONE.patrolLeft;
+    sp.targetY = gy;
+  }
+
+  // ── Combat resolution ──────────────────────────────────────────────────────
+
   private resolveHit(attacker: typeof store.field[0], defender: typeof store.field[0]) {
     if (!attacker || !defender) return;
     const as = attacker.runtimeStats as HumanStats;
@@ -231,48 +377,46 @@ export class TownScene extends Phaser.Scene {
     const hSp = this.sprites.get(attacker.instanceId);
     if (mSp && hSp) this.spawnCombatFX((mSp.x + hSp.x) / 2, (mSp.y + hSp.y) / 2);
 
-    // Monster defeated visually – store resolveMonth will handle loot on month end
     if (ds.hp <= 0) {
       ds.hp = ds.maxHp;
       defender.aggressionCountdown = ds.aggression;
+
+      // Spawn loot drop at monster's current position
+      this.spawnLootDrop(defender, mSp?.x ?? ZONE.town, mSp?.y ?? this.groundY);
+
       // Fly monster back to spawn
-      const mSpr = this.sprites.get(defender.instanceId);
-      if (mSpr) {
-        mSpr.targetX = this.monsterSpawnX(defender);
-        mSpr.targetY = this.groundY - 10;
-        store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击退了 ${defById(defender.definitionId).name}！`, 'good');
+      if (mSp) {
+        mSp.targetX = this.monsterSpawnX(defender);
+        mSp.targetY = this.groundY - 10;
       }
-      this.grantLoot(defender);
+      store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击败了 ${defById(defender.definitionId).name}！`, 'good');
     }
+
     if (as.hp <= 0) {
       as.hp = as.maxHp;
-      attacker.isActive = false;
+      attacker.isActive       = false;
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
-      const hSpr = this.sprites.get(attacker.instanceId);
-      if (hSpr) {
-        // Fly back toward town hall
-        hSpr.targetX = this.W * ZONE.town;
-        hSpr.targetY = this.groundY;
-      }
+      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
     }
   }
 
-  /** Grant loot from a monster when defeated in combat */
-  private grantLoot(monster: typeof store.field[0]) {
+  // ── Loot drop ─────────────────────────────────────────────────────────────
+
+  private spawnLootDrop(monster: typeof store.field[0], wx: number, wy: number) {
     const ms = monster.runtimeStats as MonsterStats;
     if (!ms.lootId) return;
     const qty = ms.lootQtyMin + Math.floor(Math.random() * (ms.lootQtyMax - ms.lootQtyMin + 1));
-    store.addItem(ms.lootId, 'loot', qty);
-    store.emit('inventory');
-  }
 
-  /** X position where a monster spawns, based on spawnZone */
-  private monsterSpawnX(inst: typeof store.field[0]): number {
-    const zone = inst.spawnZone ?? 'north';
-    if (zone === 'east')  return this.W + 60;
-    if (zone === 'south') return this.W * 0.5;
-    return -60;   // north = left side
+    // Find loot emoji from store data
+    const lootDef = store.getLootDef(ms.lootId);
+    const emoji   = lootDef?.emoji ?? '📦';
+
+    const dropId = `drop_${++this.lootDropSeq}`;
+    const sprite = this.add.text(wx, wy - 8, emoji, { fontSize: '16px' }).setOrigin(0.5);
+    this.entityLayer.add(sprite);
+
+    this.lootDrops.set(dropId, { id: dropId, worldX: wx, worldY: wy, itemId: ms.lootId, qty, sprite });
   }
 
   // ── Sprite sync ───────────────────────────────────────────────────────────────
@@ -280,7 +424,6 @@ export class TownScene extends Phaser.Scene {
   private syncSprites() {
     const fieldIds = new Set(store.field.map(c => c.instanceId));
 
-    // Remove gone sprites
     for (const [id, sp] of this.sprites) {
       if (!fieldIds.has(id)) {
         sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy();
@@ -288,7 +431,6 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
-    // Update textures for existing (job may have changed)
     for (const inst of store.field) {
       const sp = this.sprites.get(inst.instanceId);
       if (!sp) continue;
@@ -299,13 +441,12 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
-    // Add new sprites
     for (const inst of store.field) {
       if (this.sprites.has(inst.instanceId)) continue;
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
 
-      const key = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
+      const key    = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       const sprite = this.add.image(0, 0, key);
       (sprite as any).__texKey = key;
       this.entityLayer.add(sprite);
@@ -321,16 +462,16 @@ export class TownScene extends Phaser.Scene {
       this.labelLayer.add(hpBar);
 
       // Initial position
-      let sx = this.W * ZONE.town, sy = this.groundY;
+      let sx = ZONE.town, sy = this.groundY;
       if (def.type === CardType.Monster) {
         sx = this.monsterSpawnX(inst);
         sy = this.groundY - 10;
       } else if (def.type === CardType.Human) {
         const job = inst.jobAssignment ?? JobType.Idle;
-        sx = job === JobType.Shop   ? this.W * ZONE.shop
-           : job === JobType.Craft  ? this.W * ZONE.craft
-           : job === JobType.Combat ? this.W * ZONE.barracks
-           : this.W * ZONE.town;
+        sx = job === JobType.Shop   ? ZONE.shop
+           : job === JobType.Craft  ? ZONE.craft
+           : job === JobType.Combat ? ZONE.barracks
+           : ZONE.town;
         sy = this.groundY;
       }
 
@@ -341,40 +482,43 @@ export class TownScene extends Phaser.Scene {
         sprite, label, hpBar,
         x: sx, y: sy,
         targetX: sx, targetY: sy,
-        combatTarget: null,
-        attackCooldown: 0,
         bobPhase: Math.random() * Math.PI * 2,
+        warriorState:   'patrol',
+        attackCooldown: 0,
+        combatTarget:   null,
+        lootTarget:     null,
+        patrolDir:      1,
       });
     }
   }
 
-  // ── Visual interpolation ──────────────────────────────────────────────────────
+  // ── Interpolation ─────────────────────────────────────────────────────────────
 
   private interpolate(dt: number) {
-    const SPEED = 80; // px per tick
-
     for (const [id, sp] of this.sprites) {
       const inst = store.field.find(c => c.instanceId === id);
       if (!inst?.definitionId) continue;
+      const def = defById(inst.definitionId);
 
       sp.bobPhase += 0.06;
 
+      const isMonster = def.type === CardType.Monster;
+      const speed     = isMonster ? MONSTER_SPEED : HUMAN_SPEED;
+
       if (!inst.isActive) {
         sp.sprite.setAlpha(0.45);
-        // gentle bob in place
         sp.sprite.setPosition(sp.x, sp.y + Math.sin(sp.bobPhase) * 1.5);
       } else {
         sp.sprite.setAlpha(1);
-        const dx = sp.targetX - sp.x;
-        const dy = sp.targetY - sp.y;
+        const dx   = sp.targetX - sp.x;
+        const dy   = sp.targetY - sp.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > 1) {
-          const step = Math.min(SPEED * dt, dist);
+          const step = Math.min(speed * dt, dist);
           sp.x += (dx / dist) * step;
           sp.y += (dy / dist) * step;
           sp.sprite.setFlipX(dx < 0);
         } else {
-          // Idle bob when standing still
           sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
         }
         sp.sprite.setPosition(sp.x, sp.y);
@@ -397,71 +541,181 @@ export class TownScene extends Phaser.Scene {
     sp.hpBar.fillRect(bx, by, Math.round(w * pct), h);
   }
 
-  // ── Background ───────────────────────────────────────────────────────────────
+  // ── Spawn point ───────────────────────────────────────────────────────────────
+
+  private monsterSpawnX(inst: typeof store.field[0]): number {
+    const zone = inst.spawnZone ?? 'north';
+    if (zone === 'east')  return ZONE.spawnRight;
+    if (zone === 'south') return ZONE.spawnSouth;
+    return ZONE.spawnLeft;
+  }
+
+  // ── Background (world-space) ──────────────────────────────────────────────────
 
   private buildBackground() {
-    const W = this.W, H = this.scale.height, gy = this.groundY;
-    const g = this.add.graphics();
+    const W  = WORLD_WIDTH;
+    const H  = this.sceneH;
+    const gy = this.groundY;
+    const g  = this.add.graphics();
     this.bgLayer.add(g);
 
     // Sky gradient
     for (let i = 0; i < gy; i++) {
       const t  = i / gy;
-      const r  = (Phaser.Math.Linear(0x1a, 0x6a, t)) | 0;
-      const gr = (Phaser.Math.Linear(0x28, 0x9a, t)) | 0;
-      const b  = (Phaser.Math.Linear(0x4a, 0xcc, t)) | 0;
+      const r  = Phaser.Math.Linear(0x1a, 0x5a, t) | 0;
+      const gr = Phaser.Math.Linear(0x28, 0x8a, t) | 0;
+      const b  = Phaser.Math.Linear(0x4a, 0xbb, t) | 0;
       g.fillStyle((r << 16) | (gr << 8) | b, 1);
       g.fillRect(0, i, W, 1);
     }
 
-    // Ground
-    g.fillStyle(0x4a7a3a); g.fillRect(0, gy, W, H - gy);
+    // Ground base
+    g.fillStyle(0x4a7a3a); g.fillRect(0, gy,     W, H - gy);
     g.fillStyle(0x3a6a2a); g.fillRect(0, gy + 6, W, H - gy - 6);
 
-    // Road (horizontal strip)
-    g.fillStyle(0x7a6a5a); g.fillRect(0, gy + 1, W, 10);
+    // Road strip (runs through the town area only, between walls)
+    g.fillStyle(0x7a6a5a);
+    g.fillRect(ZONE.wallLeft, gy + 1, ZONE.wallRight - ZONE.wallLeft, 10);
     g.fillStyle(0x9a8a7a);
-    for (let rx = 0; rx < W; rx += 60) g.fillRect(rx + 8, gy + 5, 28, 2);
+    for (let rx = ZONE.wallLeft + 10; rx < ZONE.wallRight; rx += 60) {
+      g.fillRect(rx, gy + 5, 28, 2);
+    }
 
-    // Clouds
-    [[80,0.08],[260,0.04],[480,0.11],[700,0.06]].forEach(([cx, ty]) => {
-      g.fillStyle(0xe8f0ff, 0.85);
-      g.fillRect(cx as number, (H * ty) as number, 28, 8);
-      g.fillRect((cx as number)+4, (H * ty) as number - 4, 20, 8);
-    });
+    // Dirt path outside walls (leading to gates)
+    g.fillStyle(0x8a7060);
+    g.fillRect(0,              gy + 2, ZONE.wallLeft,          6);
+    g.fillRect(ZONE.wallRight, gy + 2, W - ZONE.wallRight,     6);
 
     // Sun
-    g.fillStyle(0xffd040); g.fillRect(W - 72, 16, 18, 18);
+    g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
-    [[W-80,20,4,10],[W-58,20,4,10],[W-68,12,10,4],[W-68,36,10,4]].forEach(
+    [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
       ([x,y,w,h]) => g.fillRect(x as number, y as number, w as number, h as number)
     );
 
-    // Trees at edges
-    ['tree_L1','tree_L2','tree_R1','tree_R2'].forEach((key, i) => {
-      const tx = i < 2 ? 30 + i * 55 : W - 80 + (i - 2) * 55;
+    // Clouds (scattered across world)
+    [[200,0.08],[600,0.05],[1100,0.10],[1700,0.06],[2300,0.09],[2900,0.07],[3400,0.05]].forEach(
+      ([cx, ty]) => {
+        g.fillStyle(0xe8f0ff, 0.8);
+        g.fillRect(cx as number, (H * ty) as number, 36, 10);
+        g.fillRect((cx as number) + 5, (H * ty) as number - 5, 26, 10);
+      }
+    );
+
+    // Trees – scattered outside the walls
+    const treePositions = [
+      60, 180, 320, 450, 550, 700, 780,       // left wilderness
+      2780, 2880, 2980, 3100, 3250, 3400, 3520 // right wilderness
+    ];
+    for (const tx of treePositions) {
+      const key = `tree_w_${tx}`;
       if (!this.textures.exists(key)) {
         const tg = this.add.graphics();
         drawTree(tg, 0, 0, 4);
         tg.generateTexture(key, 32, 40);
         tg.destroy();
       }
-      const t = this.add.image(tx, gy - 16, key);
+      const t = this.add.image(tx, gy - 18, key);
       this.bgLayer.add(t);
-    });
+    }
+
+    // ── Walls ──────────────────────────────────────────────────────────────────
+    this.buildWalls(g, gy, H);
+  }
+
+  // ── Wall drawing ──────────────────────────────────────────────────────────────
+
+  private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number) {
+    const wallH    = 70;     // wall height above ground
+    const wallW    = 28;     // wall thickness
+    const gateW    = 36;     // gate opening width
+    const crenH    = 10;     // crenellation height
+    const crenW    = 10;     // crenellation width
+    const crenGap  = 8;
+
+    const stoneLight = 0xa09070;
+    const stoneMid   = 0x806850;
+    const stoneDark  = 0x604830;
+    const gateColor  = 0x3a2010;
+    const gateHigh   = 0x5a3820;
+
+    for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
+      const wx = wallX - wallW / 2;
+
+      // Left wing of wall (before gate)
+      const wingL = wx - 80;
+      g.fillStyle(stoneMid);
+      g.fillRect(wingL, gy - wallH, 80, wallH);
+      g.fillStyle(stoneLight);
+      g.fillRect(wingL, gy - wallH, 80, 6);
+      g.fillStyle(stoneDark);
+      g.fillRect(wingL, gy - wallH + 6, 80, 3);
+
+      // Right wing
+      const wingR = wx + wallW + gateW;
+      g.fillStyle(stoneMid);
+      g.fillRect(wingR, gy - wallH, 80, wallH);
+      g.fillStyle(stoneLight);
+      g.fillRect(wingR, gy - wallH, 80, 6);
+      g.fillStyle(stoneDark);
+      g.fillRect(wingR, gy - wallH + 6, 80, 3);
+
+      // Gate towers (left and right of gate opening)
+      const towerW = wallW + 8;
+      for (const tx of [wx - 8, wx + wallW + gateW - wallW]) {
+        g.fillStyle(stoneMid);
+        g.fillRect(tx, gy - wallH - 20, towerW, wallH + 20);
+        g.fillStyle(stoneLight);
+        g.fillRect(tx, gy - wallH - 20, towerW, 6);
+        g.fillStyle(stoneDark);
+        g.fillRect(tx, gy - wallH - 14, towerW, 3);
+
+        // Tower crenellations
+        for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
+          g.fillStyle(stoneLight);
+          g.fillRect(cx, gy - wallH - 20 - crenH, crenW, crenH);
+          g.fillStyle(stoneDark);
+          g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
+        }
+
+        // Arrow slit
+        g.fillStyle(stoneDark);
+        g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - wallH - 10, 3, 8);
+      }
+
+      // Gate arch
+      g.fillStyle(gateColor);
+      g.fillRect(wx + wallW, gy - 44, gateW, 44);
+      g.fillStyle(gateHigh);
+      g.fillRect(wx + wallW + 2, gy - 42, gateW - 4, 5);
+      // Gate arch top (rounded with rectangles)
+      g.fillStyle(gateColor);
+      g.fillRect(wx + wallW + 4, gy - 50, gateW - 8, 8);
+      g.fillRect(wx + wallW + 2, gy - 48, gateW - 4, 4);
+
+      // Portcullis bars
+      g.fillStyle(0x484030);
+      for (let bar = 0; bar < 4; bar++) {
+        g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
+      }
+
+      // Ground shadow under gate
+      g.fillStyle(0x201000, 0.4);
+      g.fillRect(wx + wallW, gy, gateW, 8);
+    }
   }
 
   // ── Zone buildings ────────────────────────────────────────────────────────────
 
   private buildZoneBuildings() {
-    const W = this.W, gy = this.groundY;
+    const gy    = this.groundY;
     const scale = 3;
 
-    const zones: [string, (g: Phaser.GameObjects.Graphics, x:number, y:number, s:number)=>void, number][] = [
-      ['bldg_shop',    drawShopBuilding,    W * ZONE.shop],
-      ['bldg_craft',   drawCraftBuilding,   W * ZONE.craft],
-      ['bldg_townhall',drawTownHall,        W * ZONE.town],
-      ['bldg_barracks',drawCombatBuilding,  W * ZONE.barracks],
+    const zones: [string, (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void, number][] = [
+      ['bldg_shop',     drawShopBuilding,   ZONE.shop],
+      ['bldg_craft',    drawCraftBuilding,  ZONE.craft],
+      ['bldg_townhall', drawTownHall,       ZONE.town],
+      ['bldg_barracks', drawCombatBuilding, ZONE.barracks],
     ];
 
     for (const [key, fn, cx] of zones) {
@@ -475,35 +729,29 @@ export class TownScene extends Phaser.Scene {
       this.bldgLayer.add(img);
     }
 
-    // Zone labels
     const labelStyle = {
-      fontFamily: '"Silkscreen", monospace', fontSize: '8px',
-      color: '#9a8a70', stroke: '#000', strokeThickness: 2,
+      fontFamily: '"Silkscreen", monospace', fontSize: '9px',
+      color: '#c8b890', stroke: '#000', strokeThickness: 2,
     };
-    [
-      [W * ZONE.shop,    '商店'],
-      [W * ZONE.craft,   '制造'],
-      [W * ZONE.town,    ''],
-      [W * ZONE.barracks,'兵营'],
-    ].forEach(([x, txt]) => {
-      if (!txt) return;
-      const t = this.add.text(x as number, gy - 52, txt as string, labelStyle).setOrigin(0.5, 1);
+    ([
+      [ZONE.shop,    '商店'],
+      [ZONE.craft,   '制造'],
+      [ZONE.town,    '大厅'],
+      [ZONE.barracks,'兵营'],
+    ] as [number, string][]).forEach(([x, txt]) => {
+      const t = this.add.text(x, gy - 58, txt, labelStyle).setOrigin(0.5, 1);
       this.bldgLayer.add(t);
     });
   }
-
-  // ── Town Hall (inline draw fn, not exported) ──────────────────────────────────
-  // Called in buildZoneBuildings to generate the centre building texture
 
   // ── Passerby ─────────────────────────────────────────────────────────────────
 
   private maybeSpawnPasserby() {
     const underAttack = store.field.some(c => {
       if (!c.definitionId) return false;
-      const d = defById(c.definitionId);
-      return d.type === CardType.Monster && c.aggressionCountdown === 0;
+      return defById(c.definitionId).type === CardType.Monster && c.aggressionCountdown === 0;
     });
-    if (underAttack || this.passerbyList.length >= 5) return;
+    if (underAttack || this.passerbyList.length >= 6) return;
 
     if (!this.textures.exists('passerby_tex')) {
       const g = this.add.graphics();
@@ -512,14 +760,17 @@ export class TownScene extends Phaser.Scene {
       g.destroy();
     }
 
-    const fromLeft = Math.random() > 0.5;
-    const img = this.add.image(fromLeft ? -20 : this.W + 20, this.groundY + 8, 'passerby_tex');
+    // Passerby enters through a gate
+    const fromLeft  = Math.random() > 0.5;
+    const startX    = fromLeft ? ZONE.wallLeft + 10 : ZONE.wallRight - 10;
+    const endX      = fromLeft ? ZONE.wallRight - 10 : ZONE.wallLeft + 10;
+    const img       = this.add.image(startX, this.groundY + 8, 'passerby_tex');
     img.setFlipX(!fromLeft);
     this.entityLayer.add(img);
 
     this.passerbyList.push({
-      img, x: fromLeft ? -20 : this.W + 20,
-      speed: (fromLeft ? 1 : -1) * (26 + Math.random() * 18),
+      img, x: startX,
+      speed: (fromLeft ? 1 : -1) * (20 + Math.random() * 14),
       groundY: this.groundY + 8,
     });
   }
@@ -528,8 +779,10 @@ export class TownScene extends Phaser.Scene {
     for (let i = this.passerbyList.length - 1; i >= 0; i--) {
       const p = this.passerbyList[i];
       p.x += p.speed * dt;
-      p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.08) * 1.5);
-      if (p.x < -60 || p.x > this.W + 60) {
+      p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
+
+      // Leave through opposite gate
+      if (p.x < ZONE.wallLeft - 20 || p.x > ZONE.wallRight + 20) {
         p.img.destroy();
         this.passerbyList.splice(i, 1);
       }
@@ -560,8 +813,8 @@ export class TownScene extends Phaser.Scene {
   // ── Side log ──────────────────────────────────────────────────────────────────
 
   private buildSideLog() {
-    const el = document.getElementById('side-log');
-    if (el) { this.sideLogEl = el; return; }
+    const existing = document.getElementById('side-log');
+    if (existing) { this.sideLogEl = existing; return; }
 
     const panel = document.createElement('div');
     panel.id = 'side-log';
@@ -579,8 +832,10 @@ export class TownScene extends Phaser.Scene {
 
   private pushLogEntry(entry: LogEntry) {
     if (!this.sideLogEl) return;
-    const el = document.createElement('div');
-    const col = entry.kind === 'good' ? '#60cc60' : entry.kind === 'bad' ? '#cc6060' : '#9a8a70';
+    const el  = document.createElement('div');
+    const col = entry.kind === 'good' ? '#60cc60'
+              : entry.kind === 'bad'  ? '#cc6060'
+              : '#9a8a70';
     el.style.cssText = `font-family:'Silkscreen',monospace;font-size:9px;
       color:${col};padding:3px 10px;border-bottom:1px solid #2a1a0a;
       line-height:1.5;opacity:0;transition:opacity 0.3s;`;
@@ -592,7 +847,7 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-// ── Town-hall draw fn (used only for texture generation) ──────────────────────
+// ── Town Hall draw fn ─────────────────────────────────────────────────────────
 function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
   function px(c: number, px2: number, py: number, w: number, h: number) {
     g.fillStyle(c, 1); g.fillRect(px2 * s, py * s, w * s, h * s);
@@ -606,6 +861,6 @@ function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: n
   px(0x8a5020, x+4,  y+8,   1, 1);
   px(0xd0c090, x+2,  y+5,   2, 2);
   px(0xd0c090, x+8,  y+5,   2, 2);
-  px(0xd4a017, x+5,  y+1,   2, 3);  // flag
+  px(0xd4a017, x+5,  y+1,   2, 3);
   px(0xcc3030, x+6,  y+1,   3, 2);
 }
