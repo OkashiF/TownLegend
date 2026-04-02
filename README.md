@@ -237,7 +237,8 @@ x=200          x=900   1100  1400  1800  2200   x=2700   x=3400
 |---|---|
 | 等待（aggressionCountdown > 0）| 在出生点附近小范围漫步 |
 | 进攻（aggressionCountdown = 0）| 向城镇大厅（x=1800）行进 |
-| 被击败 | 飞回出生点，重置 aggressionCountdown |
+| 受伤（isActive = false）| 红色半透明（tint 0xff5555，alpha 0.55），缓慢飘向出生点，持续 3 个月 |
+| 伤愈恢复 | 重置 aggressionCountdown，重新进入「等待」状态开始全新倒计时 |
 
 ### 移动速度
 
@@ -283,17 +284,22 @@ x=200          x=900   1100  1400  1800  2200   x=2700   x=3400
 
 - `attackCooldown` 每 tick 减 1，归零时触发互相攻击，重置为 **2**（每 2 tick 打一次）。
 - 命中时触发火花粒子特效。
+- **受击红闪**：命中时双方精灵短暂变红（`hitFlashTimer = 3 tick`）：怪物受击闪 `0xff3333`，人物受击闪 `0xff9966`，增强打击感。
 
 伤害计算：
 
 ```
-dmgToMonster = max(1, (human.atk + buff_human_atk) - monster.def)
+dmgToMonster = max(1, (human.atk + buff_human_atk + barracksBonus) - monster.def)
 dmgToHuman   = max(0, (monster.atk - debuff_monster_atk) - (human.def + buff_human_def))
 ```
 
 ### 战斗结果
 
-**怪物 HP ≤ 0**：HP 重置，`aggressionCountdown` 重置，在怪物位置生成战利品包，怪物精灵飞回出生点。
+**怪物 HP ≤ 0**：
+- HP 重置，`isActive = false`，`restMonthsLeft = 3`
+- 精灵变红色半透明，缓慢飘回出生点
+- 在怪物当前位置生成战利品包
+- 3 个月后月末恢复时：`isActive = true`，`aggressionCountdown` 重置为初始值，怪物重新从出生点开始倒计时巡逻
 
 **人物 HP ≤ 0**：HP 重置，`isActive = false`，`restMonthsLeft = townLevel`，精灵飞回城镇大厅，半透明显示。
 
@@ -312,14 +318,27 @@ dmgToHuman   = max(0, (monster.atk - debuff_monster_atk) - (human.def + buff_hum
        ↓
 战士走去捡取 → 带回城镇 → 加入库存（战利品）
        ↓
-制造人员每 tick 积累勤劳点 → 满足配方条件时自动合成 → 成品加入库存
+制造人员每 tick 积累勤劳点（头顶琥珀色进度条）→ 满足配方时自动合成（弹出产品 emoji 气泡）→ 成品加入库存
        ↓
-月末：商店人员 × 行人数 → 售出成品 → 获得金币
+行人经过商店区 → 商店工人走向行人（金币 emoji）→ 月末批量结算售出收入
 ```
+
+### 商店交互视觉
+
+行人每 24 tick 尝试生成（无怪物进攻、场上行人 < 6 时）。当行人进入商店区（x ≈ 1100）且尚未触发交易时：
+- 最近的空闲商店工人**走向行人**，停留约 28 tick 模拟交易。
+- 行人头顶弹出**金币 emoji**。
+- 每名行人只触发一次交易，触发后继续向右行走直至离开世界。
+
+商店收入仍在月末批量结算，视觉演出与月末公式同步（见[月末商店结算](#月末商店结算)）。
 
 ### 实时制造
 
-每 tick，活跃的制造岗位人物以 `diligence / TICKS_PER_WEEK` 的速率积累勤劳点（`craftPoints`）。满足配方所需工时后立即产出，无需等待周末。月末**不重置** craftPoints（跨月积累）。
+每 tick，活跃的制造岗位人物以 `diligence / TICKS_PER_WEEK` 的速率积累勤劳点（`craftPoints`），同时受场上工坊建筑加成（见[建筑卡效果](#建筑卡效果)）。满足配方所需工时后立即产出，无需等待周末。月末**不重置** craftPoints（跨月积累）。
+
+**制造视觉反馈**：
+- 制造岗位工人头顶显示**琥珀色（`0xe0a020`）进度条**（32×2 px），随 `craftPoints / recipe.craftCost` 实时更新。
+- 制造完成时，工人头顶弹出**产品 emoji 气泡**，持续约 1 秒后消失。
 
 ### 配方
 
@@ -334,10 +353,12 @@ dmgToHuman   = max(0, (monster.atk - debuff_monster_atk) - (human.def + buff_hum
 ### 月末商店结算
 
 ```
-passersby = 5 + townLevel × 3 + getMagicBonus('extra_passersby')
+innBonus    = sum(capacity of active 旅馆 buildings)
+passersby   = 5 + townLevel × 3 + getMagicBonus('extra_passersby') + innBonus
 sellCapacity = min(totalProducts, passersby × 2)
 shopPower = sum(shopWorker.intellect)
-income per item = product.sellPrice × (1 + shopPower × 0.05)
+stallMult = 1 + sum((bonus - 1) of active 小摊位 buildings)   // 1 stall → 1.2; 2 stalls → 1.4
+income per item = product.sellPrice × (1 + shopPower × 0.05) × stallMult
 ```
 
 怪物进攻期间行人归 0，商店无收入。
@@ -350,9 +371,9 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 
 1. **税收**：`gold += monthlyTax(townLevel)`
 2. **怪物侵略倒计时**：每只活跃怪物 `aggressionCountdown -= 1`
-3. **商店收入**（详见上节）
+3. **商店收入**（详见上节，包含旅馆行人加成和小摊位售价加成）
 4. **维护费**：场上非怪物牌全额扣除，手牌 ×0.5 上取整；金币不足时从场上倒序标记罢工
-5. **恢复**：休息 / 罢工计时器各减 1，同时归零时恢复活跃
+5. **恢复**：休息 / 罢工计时器各减 1，同时归零时恢复活跃；怪物伤愈时额外重置 `aggressionCountdown`
 6. **城镇升级检查**：符合条件时升级
 
 ---
@@ -415,12 +436,21 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 
 ### 建筑卡
 
-| 名称 | 等级 | capacity | bonus |
-|---|---|---|---|
-| 小摊位 | 0 | 1 | 1.2 |
-| 工坊 | 0 | 2 | 1.3 |
-| 旅馆 | 1 | 3 | 1.5 |
-| 兵营 | 1 | 4 | 1.4 |
+| 名称 | 等级 | capacity | bonus | 结算效果 |
+|---|---|---|---|---|
+| 小摊位 | 0 | 1 | 1.2 | 月末售价 ×(1 + 0.2 × 场上数量) |
+| 工坊 | 0 | 2 | 1.3 | 制造速率 ×(1 + 0.3 × 场上数量) |
+| 旅馆 | 1 | 3 | 1.5 | 月末行人数 +capacity（每个旅馆 +3）|
+| 兵营 | 1 | 4 | 1.4 | 战士 ATK +capacity（每个兵营 +4）|
+
+### 建筑卡效果
+
+建筑卡打出到场上后**自动生效**，无需指定岗位：
+
+- **旅馆**（`building_inn`）：`innBonus = sum(capacity)` 叠加到月末行人公式。
+- **工坊**（`building_workshop`）：`craftMultiplier = 1 + sum(bonus - 1) = 1 + 0.3 × n`，乘以每 tick 的勤劳点积累。
+- **兵营**（`building_barracks`）：`barracksBuff = sum(capacity)`，在战斗伤害计算中加入 `human.atk`。
+- **小摊位**（`building_stall`）：`stallMult = 1 + sum(bonus - 1) = 1 + 0.2 × n`，乘以月末每件商品售价。
 
 ### 魔法卡
 
@@ -441,17 +471,15 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 
 ### 高优先级
 
-#### 制造与商店的视觉反馈
-放置游戏的核心满足感来自"看到系统自动运转"，目前制造和交易完全没有视觉反馈，玩家感知不到人物在干什么。
+#### ~~制造与商店的视觉反馈~~ ✅ 已实现
+- ✅ 制造岗位工人头顶显示琥珀色像素进度条（32×2 px，随 `craftPoints` 实时更新）
+- ✅ 制造完成时头顶弹出产品 emoji 气泡，持续约 1 秒后消失
+- ✅ 行人经过商店区时，最近的空闲商店工人走向行人短暂停留（约 28 tick），模拟交易
+- ✅ 交易触发时行人头顶弹出金币 emoji
 
-- 铁匠制造时头顶显示像素进度条（用 Phaser Graphics 绘制，随 craftPoints 更新）
-- 制造完成时头顶弹出产品 emoji，持续约 1 秒后消失
-- 行人经过商店区域时，最近的商店人员走向行人短暂停留，模拟交易
-- 交易完成时行人头顶弹出金币 emoji
-
-#### 怪物击败冷却状态
-- 怪物被击败后进入「受伤」状态（半透明红色叠加），持续约 3 个月月末倒计时后才恢复
-- 当前版本被击败后立即重置 aggressionCountdown，节奏感较差，玩家看不出"有没有打赢"
+#### ~~怪物击败冷却状态~~ ✅ 已实现
+- ✅ 怪物被击败后进入「受伤」状态（`isActive = false`，红色半透明：tint `0xff5555`，alpha `0.55`），持续 3 个月
+- ✅ 伤愈恢复时重置 `aggressionCountdown`，怪物重新从初始侵略倒计时开始巡逻
 
 #### 商店收入实时化
 - 当前商店收入仍为月末批量结算，与"行人走过商店"的视觉演出脱节
@@ -462,18 +490,19 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 
 ### 中优先级
 
-#### 建筑卡接入结算
-- 当前 `bonus` 与 `capacity` 字段已定义但未接入公式
-- 计划：旅馆 → 每月行人数 +N；工坊 → 制造效率 +N%；兵营 → 战士攻防加成
-- 建筑卡需要在对应区域内才生效（位置绑定）
+#### ~~建筑卡接入结算~~ ✅ 已实现
+- ✅ 旅馆 → 月末行人数 +capacity（每个旅馆 +3）
+- ✅ 工坊 → 制造速率 ×(1 + 0.3 × 场上数量)
+- ✅ 兵营 → 战士 ATK +capacity（每个兵营 +4）
+- ✅ 小摊位 → 月末售价 ×(1 + 0.2 × 场上数量)
 
 #### 战士巡逻动画优化
 - 当前巡逻为线性来回，缺少生命感
 - 加入短暂驻足（随机停 1~2 秒）、左右环顾（翻转 sprite）动作
 - 多名战士错开巡逻相位，避免同步行走
 
-#### 战斗视觉强化
-- 命中时被攻击方 sprite 短暂闪红（tween alpha 或 tint 效果），增强打击感
+#### ~~战斗视觉强化~~ ✅ 已实现（部分）
+- ✅ 命中时被攻击方 sprite 短暂闪红（`hitFlashTimer = 3 tick`）：怪物闪 `0xff3333`，人物闪 `0xff9966`
 - 加大粒子数量和扩散半径，当前 5 个 4×4 方块视觉冲击偏弱
 - 怪物被击败时播放短暂的震动/弹跳动画后飞回出生点
 
@@ -515,4 +544,4 @@ income per item = product.sellPrice × (1 + shopPower × 0.05)
 
 ---
 
-*文档版本：v0.4 · 最后更新：界面修复 + 开发计划更新*
+*文档版本：v0.5 · 最后更新：怪物受伤冷却 + 制造/商店视觉反馈 + 建筑卡结算接入 + 战斗受击红闪*
