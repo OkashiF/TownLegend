@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { store, LogEntry, defById } from '../systems/store';
-import { CardType, JobType, HumanStats, MonsterStats } from '../types';
+import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats } from '../types';
 import {
   generateAllTextures, spriteKeyForCard,
   drawTree, drawPasserby,
@@ -61,6 +61,7 @@ interface FieldSprite {
   sprite:     Phaser.GameObjects.Image;
   label:      Phaser.GameObjects.Text;
   hpBar:      Phaser.GameObjects.Graphics;
+  craftBar:   Phaser.GameObjects.Graphics;   // craft progress bar (craft workers only)
   x: number; y: number;
   targetX: number; targetY: number;
   bobPhase: number;
@@ -69,11 +70,14 @@ interface FieldSprite {
   combatTarget:   string | null;
   lootTarget:     string | null;
   patrolDir:      1 | -1;
+  hitFlashTimer:  number;                    // ticks remaining for hit-flash tint
+  shopServeTarget: { x: number; timer: number } | null; // shop worker serving a passerby
 }
 
 interface PasserbySprite {
   img: Phaser.GameObjects.Image;
   x: number; speed: number; groundY: number;
+  hasTraded: boolean;  // true after a shop interaction has been triggered
 }
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
@@ -180,12 +184,35 @@ export class TownScene extends Phaser.Scene {
 
   private doTick() {
     try {
+      // Decrement hit-flash timers before running AI
+      for (const sp of this.sprites.values()) {
+        if (sp.hitFlashTimer > 0) sp.hitFlashTimer--;
+        if (sp.shopServeTarget) {
+          sp.shopServeTarget.timer--;
+          if (sp.shopServeTarget.timer <= 0) sp.shopServeTarget = null;
+        }
+      }
+
       this.runAI();
       const { newLogs } = store.advanceTick();
       if (newLogs.length > 0) {
         for (const e of [...newLogs].reverse()) this.pushLogEntry(e);
         this.syncSprites();
       }
+
+      // Craft completion bubble – pop above a random active craft worker
+      const craftedEmoji = store.takeCraftedEmoji();
+      if (craftedEmoji) {
+        const craftWorker = store.field.find(c => {
+          const d = defById(c.definitionId);
+          return d.type === CardType.Human && c.jobAssignment === JobType.Craft && c.isActive;
+        });
+        if (craftWorker) {
+          const sp = this.sprites.get(craftWorker.instanceId);
+          if (sp) this.spawnBubble(sp.x, sp.y, craftedEmoji);
+        }
+      }
+
       if (store.tick % 24 === 0) this.maybeSpawnPasserby();
     } catch (e) {
       console.error('[doTick]', e);
@@ -227,7 +254,11 @@ export class TownScene extends Phaser.Scene {
           const zoneX = job === JobType.Shop  ? ZONE.shop
                       : job === JobType.Craft ? ZONE.craft
                       : ZONE.town;
-          if (Math.abs(sp.x - zoneX) > WANDER * 1.5 || Math.random() < 0.02) {
+          // Shop workers briefly walk toward a passerby when serving
+          if (job === JobType.Shop && sp.shopServeTarget) {
+            sp.targetX = sp.shopServeTarget.x;
+            sp.targetY = gy;
+          } else if (Math.abs(sp.x - zoneX) > WANDER * 1.5 || Math.random() < 0.02) {
             sp.targetX = zoneX + (Math.random() - 0.5) * WANDER;
             sp.targetY = gy + (Math.random() - 0.5) * 6;
           }
@@ -298,6 +329,7 @@ export class TownScene extends Phaser.Scene {
       let nearestDist  = Infinity;
 
       for (const m of monsters) {
+        if (!m.isActive) continue;   // skip injured monsters
         const mSp = this.sprites.get(m.instanceId);
         if (!mSp) continue;
         const d = Math.hypot(mSp.x - sp.x, mSp.y - sp.y);
@@ -356,11 +388,12 @@ export class TownScene extends Phaser.Scene {
     if (!attacker || !defender) return;
     const as = attacker.runtimeStats as HumanStats;
     const ds = defender.runtimeStats as MonsterStats;
-    const atkBuff   = store.getMagicBonus('buff_human_atk');
-    const defBuff   = store.getMagicBonus('buff_human_def');
-    const monDebuff = store.getMagicBonus('debuff_monster_atk');
+    const atkBuff     = store.getMagicBonus('buff_human_atk');
+    const defBuff     = store.getMagicBonus('buff_human_def');
+    const monDebuff   = store.getMagicBonus('debuff_monster_atk');
+    const barracksBuff = store.getBarracksAtkBonus();
 
-    const dmgToMon  = Math.max(1, (as.atk + atkBuff) - ds.def);
+    const dmgToMon  = Math.max(1, (as.atk + atkBuff + barracksBuff) - ds.def);
     const dmgToHero = Math.max(0, (ds.atk - monDebuff) - (as.def + defBuff));
     ds.hp -= dmgToMon;
     as.hp -= dmgToHero;
@@ -369,9 +402,15 @@ export class TownScene extends Phaser.Scene {
     const hSp = this.sprites.get(attacker.instanceId);
     if (mSp && hSp) this.spawnCombatFX((mSp.x + hSp.x) / 2, (mSp.y + hSp.y) / 2);
 
+    // Hit-flash: briefly tint both sprites
+    if (mSp) mSp.hitFlashTimer = 3;
+    if (hSp && dmgToHero > 0) hSp.hitFlashTimer = 3;
+
     if (ds.hp <= 0) {
       ds.hp = ds.maxHp;
-      defender.aggressionCountdown = ds.aggression;
+      // Enter injured state: 3 months recovery, aggressionCountdown reset on recover (in store)
+      defender.isActive      = false;
+      defender.restMonthsLeft = 3;
       this.spawnLootDrop(defender, mSp?.x ?? ZONE.town, mSp?.y ?? this.groundY);
       if (mSp) {
         mSp.targetX = this.monsterSpawnX(defender);
@@ -413,7 +452,7 @@ export class TownScene extends Phaser.Scene {
 
     for (const [id, sp] of this.sprites) {
       if (!fieldIds.has(id)) {
-        sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy();
+        sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy(); sp.craftBar.destroy();
         this.sprites.delete(id);
       }
     }
@@ -455,6 +494,9 @@ export class TownScene extends Phaser.Scene {
       const hpBar = this.add.graphics();
       this.labelLayer.add(hpBar);
 
+      const craftBar = this.add.graphics();
+      this.labelLayer.add(craftBar);
+
       let sx = ZONE.town, sy = this.groundY;
       if (def.type === CardType.Monster) {
         sx = this.monsterSpawnX(inst);
@@ -472,15 +514,17 @@ export class TownScene extends Phaser.Scene {
 
       this.sprites.set(inst.instanceId, {
         instanceId: inst.instanceId,
-        sprite, label, hpBar,
+        sprite, label, hpBar, craftBar,
         x: sx, y: sy,
         targetX: sx, targetY: sy,
         bobPhase: Math.random() * Math.PI * 2,
-        warriorState:   'patrol',
-        attackCooldown: 0,
-        combatTarget:   null,
-        lootTarget:     null,
-        patrolDir:      1,
+        warriorState:    'patrol',
+        attackCooldown:  0,
+        combatTarget:    null,
+        lootTarget:      null,
+        patrolDir:       1,
+        hitFlashTimer:   0,
+        shopServeTarget: null,
       });
     }
   }
@@ -499,11 +543,25 @@ export class TownScene extends Phaser.Scene {
       const speed     = isMonster ? MONSTER_SPEED : HUMAN_SPEED;
 
       if (!inst.isActive) {
-        sp.sprite.setAlpha(0.45);
-        // origin=(0.5,1) 时，sprite.y 是脚的位置，bob 直接加到 y 即可
+        if (isMonster) {
+          // Injured monster: red tint, slightly transparent, drifts toward spawn
+          sp.sprite.setAlpha(0.55);
+          sp.sprite.setTint(0xff5555);
+        } else {
+          sp.sprite.setAlpha(0.45);
+          sp.sprite.clearTint();
+        }
         sp.sprite.setPosition(sp.x, sp.y + Math.sin(sp.bobPhase) * 1.5);
       } else {
-        sp.sprite.setAlpha(1);
+        // Hit-flash overrides normal tint
+        if (sp.hitFlashTimer > 0) {
+          sp.sprite.setTint(isMonster ? 0xff3333 : 0xff9966);
+          sp.sprite.setAlpha(0.8);
+        } else {
+          sp.sprite.setAlpha(1);
+          sp.sprite.clearTint();
+        }
+
         const dx   = sp.targetX - sp.x;
         const dy   = sp.targetY - sp.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -513,7 +571,6 @@ export class TownScene extends Phaser.Scene {
           sp.y += (dy / dist) * step;
           sp.sprite.setFlipX(dx < 0);
         } else {
-          // 站立时轻微上下浮动
           sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
         }
         sp.sprite.setPosition(sp.x, sp.y);
@@ -522,6 +579,7 @@ export class TownScene extends Phaser.Scene {
       // origin=(0.5,1) → 名牌在头顶上方
       sp.label.setPosition(sp.x, sp.y - 30);
       this.drawHpBar(sp, inst);
+      this.drawCraftBar(sp, inst, def);
     }
   }
 
@@ -537,6 +595,20 @@ export class TownScene extends Phaser.Scene {
     const col = pct > 0.5 ? 0x40cc40 : pct > 0.25 ? 0xcccc40 : 0xcc4040;
     sp.hpBar.fillStyle(col);
     sp.hpBar.fillRect(bx, by, Math.round(w * pct), h);
+  }
+
+  private drawCraftBar(sp: FieldSprite, inst: CardInstance, def: CardDefinition) {
+    sp.craftBar.clear();
+    if (def.type !== CardType.Human || inst.jobAssignment !== JobType.Craft || !inst.isActive) return;
+    const { points, maxPoints } = store.getCraftProgressInfo();
+    const pct = maxPoints > 0 ? Math.min(1, points / maxPoints) : 0;
+    const w = 32, h = 2;
+    const bx = sp.x - w / 2, by = sp.y - 22;   // just below HP bar
+    sp.craftBar.fillStyle(0x1a1a0a); sp.craftBar.fillRect(bx, by, w, h);
+    if (pct > 0) {
+      sp.craftBar.fillStyle(0xe0a020);  // amber
+      sp.craftBar.fillRect(bx, by, Math.round(w * pct), h);
+    }
   }
 
   // ── Spawn point ───────────────────────────────────────────────────────────────
@@ -761,6 +833,7 @@ export class TownScene extends Phaser.Scene {
       img, x: startX,
       speed: (fromLeft ? 1 : -1) * (20 + Math.random() * 14),
       groundY: this.groundY,
+      hasTraded: false,
     });
   }
 
@@ -771,11 +844,49 @@ export class TownScene extends Phaser.Scene {
       // origin=(0.5,1) → y 直接是地面
       p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
 
+      // Shop interaction: when passerby enters shop zone and hasn't traded yet
+      if (!p.hasTraded && store.totalProducts > 0) {
+        const inShopZone = Math.abs(p.x - ZONE.shop) < 55;
+        if (inShopZone) {
+          // Find nearest free shop worker
+          let nearestWorkerSp: FieldSprite | null = null;
+          let nearestDist = Infinity;
+          for (const c of store.field) {
+            const d = defById(c.definitionId);
+            if (d.type !== CardType.Human || c.jobAssignment !== JobType.Shop || !c.isActive) continue;
+            const wSp = this.sprites.get(c.instanceId);
+            if (!wSp || wSp.shopServeTarget) continue;
+            const dist = Math.abs(wSp.x - p.x);
+            if (dist < nearestDist) { nearestDist = dist; nearestWorkerSp = wSp; }
+          }
+          if (nearestWorkerSp) {
+            nearestWorkerSp.shopServeTarget = { x: p.x, timer: 28 };
+            p.hasTraded = true;
+            this.spawnBubble(p.x, p.groundY, '💰');
+          }
+        }
+      }
+
       if (p.x < ZONE.wallLeft - 20 || p.x > ZONE.wallRight + 20) {
         p.img.destroy();
         this.passerbyList.splice(i, 1);
       }
     }
+  }
+
+  // ── Floating bubble (emoji popup above a position) ───────────────────────────
+
+  private spawnBubble(x: number, y: number, text: string) {
+    const bubble = this.add.text(x, y - 20, text, { fontSize: '16px' }).setOrigin(0.5, 1);
+    this.fxLayer.add(bubble);
+    this.tweens.add({
+      targets: bubble,
+      y: y - 54,
+      alpha: 0,
+      duration: 1100,
+      ease: 'Quad.Out',
+      onComplete: () => bubble.destroy(),
+    });
   }
 
   // ── Combat FX ─────────────────────────────────────────────────────────────────
