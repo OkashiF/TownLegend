@@ -14,10 +14,15 @@ export enum JobType {
   Idle   = 'idle',
 }
 
+// SpawnZone 不再由玩家选择，改为按上场顺序自动分配
+// 保留枚举供内部使用
 export enum SpawnZone {
-  North = 'north',
-  East  = 'east',
-  South = 'south',
+  Left0  = 'left0',   // 左近位 x≈700
+  Left1  = 'left1',   // 左中位 x≈450
+  Left2  = 'left2',   // 左远位 x≈200
+  Right0 = 'right0',  // 右近位 x≈2300（场上第4只）
+  Right1 = 'right1',  // 右中位 x≈2550
+  Right2 = 'right2',  // 右远位 x≈3400
 }
 
 // ─── Item system ──────────────────────────────────────────────────────────────
@@ -99,6 +104,8 @@ export interface CardDefinition {
   emoji: string;
   description: string;
   stats: HumanStats | MonsterStats | BuildingStats | MagicStats;
+  /** 升级目标卡牌ID（3张合1张更高级卡）*/
+  upgradeTargetId?: string;
 }
 
 export interface CardInstance {
@@ -109,11 +116,15 @@ export interface CardInstance {
   isOnField: boolean;
   isActive: boolean;
   jobAssignment?: JobType;
-  spawnZone?: SpawnZone;
+  spawnZone?: SpawnZone;    // 自动分配，不由玩家选择
   strikeMonthsLeft: number;
   restMonthsLeft: number;
   aggressionCountdown: number;
   runtimeStats: HumanStats | MonsterStats | BuildingStats | MagicStats;
+  /** 怪物是否正在攻城（aggressionCountdown=0 且 isActive） */
+  isAttacking?: boolean;
+  /** 怪物休息进度（0~restMonthsLeft，用于巢穴动画） */
+  restProgress?: number;
 }
 
 // ─── Saveable snapshot ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-import { store, defById, monthlyTax, LogEntry } from '../systems/store';
-import { CardInstance, CardDefinition, CardType, JobType, SpawnZone } from '../types';
+import { store, defById, monthlyTax, shopRefreshCost } from '../systems/store';
+import { CardInstance, CardDefinition, CardType, JobType } from '../types';
 import { CARD_DB } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
 
@@ -36,8 +36,13 @@ function cardInfoHTML(def: CardDefinition, inst?: CardInstance): string {
     statRow('类型',  { human:'人物', monster:'怪物', building:'建筑', magic:'魔法' }[def.type] ?? def.type),
     statRow('等级',  `Lv.${inst?.level ?? def.level}`),
     statRow('购买',  `${def.cost} 💰`),
+    statRow('售出',  `${Math.max(1, Math.floor(def.cost * 0.1))} 💰（10%回收）`),
     statRow('维护',  def.upkeep ? `${def.upkeep}/月` : '免费'),
   ];
+  if (def.upgradeTargetId) {
+    const target = CARD_DB.find(c => c.id === def.upgradeTargetId);
+    if (target) rows.push(statRow('升级→', `3张合1张 ${target.emoji}${target.name}`));
+  }
   if ('hp'         in rs) rows.push(statRow('体力',        `${rs.hp}/${rs.maxHp}`));
   if ('atk'        in rs) rows.push(statRow('攻击',        rs.atk));
   if ('def'        in rs) rows.push(statRow('防御',        rs.def));
@@ -46,7 +51,7 @@ function cardInfoHTML(def: CardDefinition, inst?: CardInstance): string {
   if ('strength'   in rs && def.type !== CardType.Monster)
                           rows.push(statRow('力量（战斗）', rs.strength));
   if ('rarity'     in rs) rows.push(statRow('稀有',        rs.rarity));
-  if ('aggression' in rs) rows.push(statRow('侵略倒计时',   rs.aggression));
+  if ('aggression' in rs) rows.push(statRow('侵略倒计时',   `${rs.aggression}月`));
   if ('lootId'     in rs) {
     try { const l = lootById(rs.lootId); rows.push(statRow('战利品', `${l.emoji}${l.name}`)); } catch {}
   }
@@ -54,11 +59,10 @@ function cardInfoHTML(def: CardDefinition, inst?: CardInstance): string {
   if ('power'      in rs) rows.push(statRow('能量',        rs.power));
   if ('bonus'      in rs) rows.push(statRow('加成',        `×${rs.bonus}`));
   if (inst?.isOnField && inst.jobAssignment) rows.push(statRow('岗位', inst.jobAssignment));
-  if (inst?.isOnField && inst.spawnZone)     rows.push(statRow('出生点', inst.spawnZone));
+  if (inst?.spawnZone)  rows.push(statRow('出生点', inst.spawnZone));
   if (inst && !inst.isActive) {
     rows.push(statRow('状态', `⚠️ 休息中（${inst.restMonthsLeft + inst.strikeMonthsLeft}月）`));
   }
-  if (inst?.upgrades) rows.push(statRow('已升级', inst.upgrades + '次'));
 
   return `<div style="font-style:italic;color:#9a7a50;margin-bottom:10px">${def.description}</div>
     <div>${rows.join('')}</div>`;
@@ -74,11 +78,11 @@ function makeCardEl(def: CardDefinition, inst?: CardInstance): HTMLElement {
   const el = document.createElement('div');
   el.className = `card card-${def.type}`;
   if (inst && !inst.isActive) el.style.opacity = '0.5';
-  const badge   = (inst?.upgrades ?? 0) > 0 ? `<div class="card-level-badge">+${inst!.upgrades}</div>` : '';
-  const footer  = inst
+
+  const footer = inst
     ? `<div class="card-cost">${def.upkeep ? `维护:${def.upkeep}` : '免费'}</div>`
     : `<div class="card-cost">💰 ${def.cost}</div>`;
-  el.innerHTML  = `${badge}
+  el.innerHTML = `
     <div class="card-header">${typeLabel(def.type)}</div>
     <div class="card-pixel-art">${def.emoji}</div>
     <div class="card-footer"><div class="card-name">${def.name}</div>${footer}</div>`;
@@ -87,13 +91,11 @@ function makeCardEl(def: CardDefinition, inst?: CardInstance): HTMLElement {
 
 // ── Action menu ────────────────────────────────────────────────────────────────
 
-// FIX: capture copies at open time, not closed-over mutable vars
 let _menuInst: CardInstance | null = null;
 let _menuDef:  CardDefinition | null = null;
 let menuOpen   = false;
 
 function openActionMenu(inst: CardInstance, def: CardDefinition, anchor: HTMLElement) {
-  // Capture copies before any async/event gap
   _menuInst = inst;
   _menuDef  = def;
 
@@ -101,68 +103,61 @@ function openActionMenu(inst: CardInstance, def: CardDefinition, anchor: HTMLEle
   const playBtn    = $('cam-play')    as HTMLButtonElement;
   const assignBtn  = $('cam-assign')  as HTMLButtonElement;
   const upgradeBtn = $('cam-upgrade') as HTMLButtonElement;
+  const sellBtn    = $('cam-sell')    as HTMLButtonElement;
 
-  playBtn.disabled    = inst.isOnField;
-  assignBtn.disabled  = !inst.isOnField || (def.type !== CardType.Human && def.type !== CardType.Monster);
+  playBtn.disabled   = inst.isOnField;
+  assignBtn.disabled = !inst.isOnField || def.type !== CardType.Human;
+
   const count = [...store.hand, ...store.field].filter(c => c.definitionId === def.id).length;
-  upgradeBtn.disabled   = count < 3;
+  const canUpgrade = count >= 3 && !!def.upgradeTargetId;
+  upgradeBtn.disabled    = !canUpgrade;
   upgradeBtn.textContent = `⬆ 升级（${count}/3）`;
 
+  const sellRefund = Math.max(1, Math.floor(def.cost * 0.1));
+  const isSiegedMonster = inst.isOnField && def.type === CardType.Monster &&
+                          inst.isActive && inst.aggressionCountdown === 0;
+  sellBtn.disabled    = isSiegedMonster;
+  sellBtn.textContent = isSiegedMonster ? `💸 攻城中无法出售` : `💸 出售（${sellRefund}💰）`;
+
   const rect = anchor.getBoundingClientRect();
-  menu.style.left = `${Math.min(rect.left, window.innerWidth - 165)}px`;
-  menu.style.top  = `${Math.max(4, rect.top - 172)}px`;
+  menu.style.left = `${Math.min(rect.left, window.innerWidth - 175)}px`;
+  menu.style.top  = `${Math.max(4, rect.top - 200)}px`;
   menu.classList.add('open');
   menuOpen = true;
 }
 
 function closeMenu() {
   $('card-action-menu').classList.remove('open');
-  menuOpen   = false;
-  _menuInst  = null;
-  _menuDef   = null;
+  menuOpen  = false;
+  _menuInst = null;
+  _menuDef  = null;
 }
 
-// ── Assign modal ───────────────────────────────────────────────────────────────
+// ── Assign modal（移除怪物出生点选择，只保留人物岗位）─────────────────────────
 
 function openAssignModal(inst: CardInstance, def: CardDefinition) {
   const opts = $('assign-options');
-  $('assign-title').textContent = `分配：${def.name}`;
+  $('assign-title').textContent = `分配岗位：${def.name}`;
   opts.innerHTML = '';
 
-  if (def.type === CardType.Human) {
-    const rs = inst.runtimeStats as any;
-    [
-      { job: JobType.Shop,   label: '🏪 商店', stat: `智力 ${rs.intellect}` },
-      { job: JobType.Craft,  label: '⚒️ 制造', stat: `勤劳 ${rs.diligence}` },
-      { job: JobType.Combat, label: '⚔️ 战斗', stat: `力量 ${rs.strength}` },
-    ].forEach(j => {
-      const el = document.createElement('div');
-      el.className = 'assign-option';
-      el.innerHTML = `<span class="opt-name">${j.label}</span><span class="opt-stat">${j.stat}</span>`;
-      el.onclick   = () => {
-        store.assignJob(inst.instanceId, j.job);
-        notify(`${def.name} → ${j.label}`, 'success');
-        $('assign-modal').classList.remove('open');
-      };
-      opts.appendChild(el);
-    });
-  } else {
-    [
-      { zone: SpawnZone.North, label: '⬅ 左侧出生' },
-      { zone: SpawnZone.East,  label: '➡ 右侧出生' },
-      { zone: SpawnZone.South, label: '⬆ 顶部出生' },
-    ].forEach(z => {
-      const el = document.createElement('div');
-      el.className = 'assign-option';
-      el.innerHTML = `<span class="opt-name">${z.label}</span>`;
-      el.onclick   = () => {
-        store.assignSpawnZone(inst.instanceId, z.zone);
-        notify(`${def.name} → ${z.label}`, 'success');
-        $('assign-modal').classList.remove('open');
-      };
-      opts.appendChild(el);
-    });
-  }
+  if (def.type !== CardType.Human) return; // 怪物不再手动选出生点
+
+  const rs = inst.runtimeStats as any;
+  [
+    { job: JobType.Shop,   label: '🏪 商店', stat: `智力 ${rs.intellect}` },
+    { job: JobType.Craft,  label: '⚒️ 制造', stat: `勤劳 ${rs.diligence}` },
+    { job: JobType.Combat, label: '⚔️ 战斗', stat: `力量 ${rs.strength}` },
+  ].forEach(j => {
+    const el = document.createElement('div');
+    el.className = 'assign-option';
+    el.innerHTML = `<span class="opt-name">${j.label}</span><span class="opt-stat">${j.stat}</span>`;
+    el.onclick = () => {
+      store.assignJob(inst.instanceId, j.job);
+      notify(`${def.name} → ${j.label}`, 'success');
+      $('assign-modal').classList.remove('open');
+    };
+    opts.appendChild(el);
+  });
 
   $('assign-modal').classList.add('open');
 }
@@ -213,10 +208,11 @@ function renderShop() {
   const c = $('shop-container');
   c.innerHTML = '';
 
+  const refCost = shopRefreshCost(store.townLevel);
   const btn = document.createElement('button');
   btn.id    = 'shop-refresh-btn';
-  btn.innerHTML = '🔄 刷新<br><span style="font-size:8px">(5💰)</span>';
-  btn.onclick   = () => {
+  btn.innerHTML = `🔄 刷新<br><span style="font-size:8px">(${refCost}💰)</span>`;
+  btn.onclick = () => {
     const r = store.manualRefreshShop();
     if (!r.ok) notify(r.reason ?? '刷新失败', 'danger');
     else { renderShop(); updateHUD(); }
@@ -233,7 +229,7 @@ function renderShop() {
       c.appendChild(ph);
     } else {
       const el = makeCardEl(slot.def);
-      const slotIdx = i; // capture
+      const slotIdx = i;
       el.onclick = () => {
         const r = store.buyCard(slotIdx);
         if (!r.ok) notify(r.reason ?? '购买失败', 'danger');
@@ -267,7 +263,6 @@ function renderInventory() {
   const panel = $('inventory-panel');
   panel.innerHTML = '';
 
-  // Section: loot
   const lootStacks = store.inventory.filter(s => s.kind === 'loot');
   const prodStacks = store.inventory.filter(s => s.kind === 'product');
 
@@ -288,11 +283,9 @@ function renderInventory() {
       try {
         const loot = lootById(stack.itemId);
         const chip = document.createElement('div');
-        chip.style.cssText = `
-          background:#1a0e05;border:1px solid #5a3a1a;border-radius:3px;
+        chip.style.cssText = `background:#1a0e05;border:1px solid #5a3a1a;border-radius:3px;
           padding:4px 8px;display:flex;align-items:center;gap:4px;
-          font-family:Silkscreen,monospace;font-size:10px;color:#f5e6c8;
-        `;
+          font-family:Silkscreen,monospace;font-size:10px;color:#f5e6c8;`;
         chip.innerHTML = `${loot.emoji} <span style="color:#9a7a50">${loot.name}</span>
           <span style="color:#f0c040;margin-left:4px">×${stack.qty}</span>`;
         row.appendChild(chip);
@@ -301,7 +294,6 @@ function renderInventory() {
     panel.appendChild(row);
   }
 
-  // Section: products
   const prodHdr = document.createElement('div');
   prodHdr.style.cssText = 'font-family:Silkscreen,monospace;font-size:10px;color:#9a7a50;padding:6px 8px 2px;';
   prodHdr.textContent = '🔨 商品（可出售）';
@@ -319,11 +311,9 @@ function renderInventory() {
       try {
         const prod = productById(stack.itemId);
         const chip = document.createElement('div');
-        chip.style.cssText = `
-          background:#1a0e05;border:1px solid #3a5a1a;border-radius:3px;
+        chip.style.cssText = `background:#1a0e05;border:1px solid #3a5a1a;border-radius:3px;
           padding:4px 8px;display:flex;align-items:center;gap:4px;
-          font-family:Silkscreen,monospace;font-size:10px;color:#f5e6c8;
-        `;
+          font-family:Silkscreen,monospace;font-size:10px;color:#f5e6c8;`;
         chip.innerHTML = `${prod.emoji} <span style="color:#9a7a50">${prod.name}</span>
           <span style="color:#f0c040;margin-left:4px">×${stack.qty}</span>
           <span style="color:#60cc60;margin-left:4px">${prod.sellPrice}💰</span>`;
@@ -333,7 +323,6 @@ function renderInventory() {
     panel.appendChild(row);
   }
 
-  // Recipes hint
   const recipeHdr = document.createElement('div');
   recipeHdr.style.cssText = 'font-family:Silkscreen,monospace;font-size:10px;color:#9a7a50;padding:6px 8px 2px;';
   recipeHdr.textContent = '📜 制造配方';
@@ -350,9 +339,8 @@ function renderInventory() {
       }).join(' + ');
       const have = recipe.inputs.every(inp => store.countItem(inp.lootId, 'loot') >= inp.qty);
       const r = document.createElement('div');
-      r.style.cssText = `font-family:Silkscreen,monospace;font-size:9px;
-        color:${have ? '#80cc80' : '#555'};`;
-      r.textContent = `${inputs} → ${prod.emoji}${prod.name}（需工时${recipe.craftCost}）`;
+      r.style.cssText = `font-family:Silkscreen,monospace;font-size:9px;color:${have ? '#80cc80' : '#555'};`;
+      r.textContent = `${inputs} → ${prod.emoji}${prod.name}（工时${recipe.craftCost}）`;
       recipeRow.appendChild(r);
     } catch {}
   }
@@ -371,6 +359,13 @@ function updateHUD() {
   ($('stat-field')    as HTMLElement).textContent = `${store.field.length}/${store.fieldCapacity}`;
   ($('stat-tax')      as HTMLElement).textContent = `🏛 ${monthlyTax(store.townLevel)}/月`;
 
+  // 攻城中：顶栏变红提示
+  const topBar = document.getElementById('top-bar');
+  if (topBar) {
+    topBar.style.borderBottomColor = store.isUnderSiege ? '#cc2020' : '';
+    topBar.style.background = store.isUnderSiege ? 'rgba(60,10,5,0.95)' : '';
+  }
+
   const bar = document.getElementById('month-progress-bar');
   if (bar) bar.style.width = `${(store.tick / 160) * 100}%`;
 }
@@ -378,22 +373,19 @@ function updateHUD() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 export function initUI() {
-  // ── Save/load prompt ────────────────────────────────────────────────────────
   const hasSave = store.loadFromLocalStorage();
   if (hasSave) {
     store.addLog('📂 已载入上次存档', 'good');
     notify('已自动载入存档！', 'success');
   }
 
-  // ── Tabs ────────────────────────────────────────────────────────────────────
   document.querySelectorAll('.card-tab').forEach(btn => {
     btn.addEventListener('click', () => setTab(btn.getAttribute('data-tab') as Tab));
   });
 
-  // ── Action menu buttons ──────────────────────────────────────────────────────
+  // ── Action menu buttons ────────────────────────────────────────────────────
 
   $('cam-play').addEventListener('click', () => {
-    // FIX: copy refs before closing menu (closeMenu nulls them)
     const inst = _menuInst;
     const def  = _menuDef;
     if (!inst || !def) return;
@@ -405,12 +397,12 @@ export function initUI() {
     }
 
     const r = store.playCard(inst.instanceId);
-    closeMenu(); // close AFTER capturing refs, BEFORE using field lookup
+    closeMenu();
 
     if (r.ok) {
       notify(`打出了 ${def.name}`, 'success');
-      // Now safely look up in field using the instanceId we captured
-      if (def.type === CardType.Human || def.type === CardType.Monster) {
+      // 人物需要分配岗位，怪物自动分配出生点
+      if (def.type === CardType.Human) {
         const fieldInst = store.field.find(c => c.instanceId === inst.instanceId);
         if (fieldInst) openAssignModal(fieldInst, def);
       }
@@ -427,15 +419,27 @@ export function initUI() {
     const def  = _menuDef;
     if (!inst || !def) return;
     closeMenu();
-    openAssignModal(inst, def);
+    if (def.type === CardType.Human) openAssignModal(inst, def);
   });
 
   $('cam-upgrade').addEventListener('click', () => {
     const inst = _menuInst;
     if (!inst) return;
     const r = store.upgradeCard(inst.definitionId);
-    if (r.ok) notify('升级成功！属性+30%', 'success');
+    if (r.ok) notify('升级成功！3张合1张更强的卡', 'success');
     else notify(r.reason ?? '失败', 'danger');
+    closeMenu();
+    updateHUD();
+    renderCurrentTab();
+  });
+
+  $('cam-sell').addEventListener('click', () => {
+    const inst = _menuInst;
+    const def  = _menuDef;
+    if (!inst || !def) return;
+    const r = store.sellCard(inst.instanceId);
+    if (r.ok) notify(`出售了 ${def.name}，回收 ${r.gold}💰`, 'success');
+    else notify(r.reason ?? '出售失败', 'danger');
     closeMenu();
     updateHUD();
     renderCurrentTab();
@@ -456,17 +460,15 @@ export function initUI() {
   $('modal-close').addEventListener('click',  () => $('modal-overlay').classList.remove('open'));
   $('assign-cancel').addEventListener('click', () => $('assign-modal').classList.remove('open'));
 
-  // ── Store subscription ───────────────────────────────────────────────────────
   store.subscribe(evt => {
     updateHUD();
     if (evt !== 'tick') renderCurrentTab();
   });
 
-  // ── Initial render ───────────────────────────────────────────────────────────
   updateHUD();
   setTab(hasSave ? 'hand' : 'shop');
 
   if (!hasSave) {
-    setTimeout(() => notify('城镇已建立！先去商店购买卡牌。', 'success'), 600);
+    setTimeout(() => notify('城镇建立！先去商店购买卡牌。', 'success'), 600);
   }
 }

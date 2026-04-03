@@ -54,13 +54,13 @@
     #top-bar {
       display: flex;
       align-items: center;
-      /* 允许换行，窄屏下自动折到第二行 */
       flex-wrap: wrap;
       gap: 6px 10px;
       padding: 6px 12px;
       background: var(--panel-bg);
       border-bottom: 2px solid var(--panel-border);
       pointer-events: all;
+      transition: background 0.3s, border-bottom-color 0.3s;
     }
 
     .hud-title {
@@ -87,7 +87,6 @@
 
     .hud-spacer { flex: 1; min-width: 8px; }
 
-    /* 窄屏（≤600px）：隐藏 label 文字，只留图标+数值，节省宽度 */
     @media (max-width: 600px) {
       .hud-stat .label { display: none; }
       .hud-stat { padding: 3px 6px; font-size: 10px; }
@@ -95,15 +94,13 @@
       #month-progress-wrap { width: 60px; }
     }
 
-    /* 极窄屏（≤400px）：进度条也隐藏 */
     @media (max-width: 400px) {
       #month-progress-wrap { display: none; }
     }
 
-    /* ── 侧边日志 & 折叠按钮 ── */
+    /* ── 侧边日志 ── */
     #log-toggle {
       position: absolute;
-      /* 位置由 JS 动态同步，这里给默认值 */
       right: 220px;
       top: 50%;
       transform: translateY(-50%);
@@ -163,7 +160,6 @@
       padding: 10px 12px;
       padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
       min-height: 150px;
-      /* 竖屏下限制高度，避免占满屏幕 */
       max-height: 38vh;
       overflow-y: auto;
     }
@@ -205,10 +201,10 @@
       text-align: center;
       letter-spacing: 1px;
     }
-    .card-human .card-header { background: #1a3a4a; color: #60c0d0; }
+    .card-human .card-header   { background: #1a3a4a; color: #60c0d0; }
     .card-monster .card-header { background: #3a1a1a; color: #d06060; }
-    .card-building .card-header { background: #3a2a1a; color: #c0a060; }
-    .card-magic .card-header { background: #2a1a3a; color: #c060d0; }
+    .card-building .card-header{ background: #3a2a1a; color: #c0a060; }
+    .card-magic .card-header   { background: #2a1a3a; color: #c060d0; }
 
     .card-pixel-art {
       flex: 1;
@@ -239,16 +235,6 @@
       font-size: 8px;
       color: var(--gold);
       text-align: center;
-    }
-    .card-level-badge {
-      position: absolute;
-      top: 2px; right: 2px;
-      font-family: 'Silkscreen', monospace;
-      font-size: 7px;
-      background: var(--gold);
-      color: var(--ink);
-      padding: 1px 3px;
-      border-radius: 2px;
     }
 
     /* ── Shop panel ── */
@@ -356,7 +342,7 @@
       border: 1px solid var(--gold);
       border-radius: 4px;
       overflow: hidden;
-      min-width: 130px;
+      min-width: 160px;
     }
     #card-action-menu.open { display: block; }
     .cam-btn {
@@ -373,6 +359,8 @@
     }
     .cam-btn:hover { background: rgba(212,160,23,.2); }
     .cam-btn:disabled { color: #555; cursor: not-allowed; }
+    .cam-btn.sell-btn { color: #cc8840; }
+    .cam-btn.sell-btn:hover { background: rgba(180,80,20,.2); }
 
     /* ── Assignment modal ── */
     #assign-modal {
@@ -446,6 +434,13 @@
       background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 100%);
       transition: width 0.1s linear;
     }
+
+    #field-list {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
   </style>
 </head>
 <body>
@@ -461,7 +456,7 @@
       <div class="hud-stat"><span class="label">升级</span><span class="value" id="stat-progress">0/10</span></div>
       <div class="hud-stat"><span class="label">场上</span><span class="value" id="stat-field">0/5</span></div>
       <div class="hud-spacer"></div>
-      <div id="month-progress-wrap" title="本月进度（自动推进）">
+      <div id="month-progress-wrap" title="本月进度">
         <div id="month-progress-bar"></div>
       </div>
     </div>
@@ -473,7 +468,7 @@
   <!-- Notifications -->
   <div id="notifications"></div>
 
-  <!-- 侧边日志折叠按钮（位置由 JS 动态同步） -->
+  <!-- 侧边日志折叠按钮 -->
   <button id="log-toggle" title="展开/收起日志">日志</button>
 
   <!-- Card panel -->
@@ -492,11 +487,12 @@
     </div>
   </div>
 
-  <!-- Card action menu -->
+  <!-- Card action menu（增加出售按钮）-->
   <div id="card-action-menu">
     <button class="cam-btn" id="cam-play">▶ 打出上场</button>
     <button class="cam-btn" id="cam-assign">⚑ 分配岗位</button>
     <button class="cam-btn" id="cam-upgrade">⬆ 三张升级</button>
+    <button class="cam-btn sell-btn" id="cam-sell">💸 出售（回收10%）</button>
     <button class="cam-btn" id="cam-info">📖 查看详情</button>
   </div>
 
@@ -520,21 +516,18 @@
 </div>
 
 <script>
-  // 侧边日志折叠逻辑（原生 JS，无需框架）
   (function () {
     let logOpen = true;
     const LOG_WIDTH = 220;
 
     function syncToggleBtn() {
-      const btn     = document.getElementById('log-toggle');
-      const topBar  = document.getElementById('top-bar');
-      const panel   = document.getElementById('card-panel');
+      const btn    = document.getElementById('log-toggle');
+      const topBar = document.getElementById('top-bar');
+      const panel  = document.getElementById('card-panel');
       if (!btn || !topBar || !panel) return;
-
-      const topH    = topBar.offsetHeight;
-      const panelH  = panel.offsetHeight;
-      const midY    = topH + (window.innerHeight - topH - panelH) / 2;
-
+      const topH   = topBar.offsetHeight;
+      const panelH = panel.offsetHeight;
+      const midY   = topH + (window.innerHeight - topH - panelH) / 2;
       btn.style.top   = midY + 'px';
       btn.style.right = (logOpen ? LOG_WIDTH : 0) + 'px';
       btn.textContent = logOpen ? '▶' : '◀';
@@ -544,25 +537,18 @@
     document.addEventListener('DOMContentLoaded', function () {
       const btn = document.getElementById('log-toggle');
       if (!btn) return;
-
       btn.addEventListener('click', function () {
         logOpen = !logOpen;
         const sideLog = document.getElementById('side-log');
         if (sideLog) {
-          sideLog.style.width = logOpen ? LOG_WIDTH + 'px' : '0';
+          sideLog.style.width   = logOpen ? LOG_WIDTH + 'px' : '0';
           sideLog.style.padding = logOpen ? '8px 0' : '0';
         }
         syncToggleBtn();
       });
-
-      // 等待 side-log 由 Phaser 场景创建后再同步位置
       const interval = setInterval(function () {
-        if (document.getElementById('side-log')) {
-          clearInterval(interval);
-          syncToggleBtn();
-        }
+        if (document.getElementById('side-log')) { clearInterval(interval); syncToggleBtn(); }
       }, 100);
-
       window.addEventListener('resize', syncToggleBtn);
     });
   })();
