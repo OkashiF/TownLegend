@@ -9,11 +9,8 @@ import {
 } from '../utils/sprites';
 import { WORLD_WIDTH } from '../main';
 
-// ── Timing ─────────────────────────────────────────────────────────────────────
-// 200ms/tick → 1周=40tick=8秒，1月=160tick=32秒
 const MS_PER_TICK = 200;
 
-// ── World zone coordinates ─────────────────────────────────────────────────────
 export const ZONE = {
   wallLeft:     900,
   wallRight:   2700,
@@ -28,43 +25,36 @@ export const ZONE = {
 const WANDER      = 40;
 const GROUND_FRAC = 0.62;
 
-// 速度减慢，让战斗可以被玩家观察
-const HUMAN_SPEED   = 20;   // px/tick（原35）
-const MONSTER_SPEED = 14;   // px/tick（原22）
-const HEAL_SPEED    = 14;   // 回血状态下的移动速度
+const HUMAN_SPEED   = 20;
+const MONSTER_SPEED = 14;
+const HEAL_SPEED    = 14;
 
 const HUMAN_SCALE   = 0.55;
 const MONSTER_SCALE = 0.65;
 
-// 攻击参数
-const ATTACK_COOLDOWN  = 8;    // tick/次攻击（原2）→ 约1.6秒/次
-const ATTACK_RANGE     = 60;   // px，攻击距离（不再重叠）
-const CHASE_RANGE      = 800;  // px，战士感知范围
+const ATTACK_COOLDOWN = 8;
+const ATTACK_RANGE    = 60;
+const CHASE_RANGE     = 800;
 
-// ── Combat state ───────────────────────────────────────────────────────────────
-type WarriorState = 'patrol' | 'chase' | 'fight' | 'loot' | 'return' | 'heal';
+type WarriorState    = 'patrol' | 'chase' | 'fight' | 'loot' | 'return' | 'heal';
 type MonsterBehavior = 'waiting' | 'marching' | 'fighting' | 'attacking' | 'retreating';
 
-// ── Interfaces ────────────────────────────────────────────────────────────────
 interface LootDrop {
   id: string;
-  worldX: number;
-  worldY: number;
-  itemId: string;
-  qty: number;
+  worldX: number; worldY: number;
+  itemId: string; qty: number;
   sprite: Phaser.GameObjects.Text;
 }
 
 interface FieldSprite {
   instanceId: string;
-  sprite:     Phaser.GameObjects.Image;
-  label:      Phaser.GameObjects.Text;
-  hpBar:      Phaser.GameObjects.Graphics;
-  craftBar:   Phaser.GameObjects.Graphics;
+  sprite:   Phaser.GameObjects.Image;
+  label:    Phaser.GameObjects.Text;
+  hpBar:    Phaser.GameObjects.Graphics;
+  craftBar: Phaser.GameObjects.Graphics;
   x: number; y: number;
   targetX: number; targetY: number;
   bobPhase: number;
-  // 战士状态机
   warriorState:    WarriorState;
   attackCooldown:  number;
   combatTarget:    string | null;
@@ -72,13 +62,10 @@ interface FieldSprite {
   patrolDir:       1 | -1;
   hitFlashTimer:   number;
   shopServeTarget: { x: number; timer: number } | null;
-  // 怪物行为
   monsterBehavior: MonsterBehavior;
-  // 受击位移（攻击动画）
   knockbackX:      number;
   knockbackTimer:  number;
-  // 怪物消失动画
-  dyingTimer:      number;   // > 0 时正在消失
+  dyingTimer:      number;
 }
 
 interface PasserbySprite {
@@ -87,21 +74,19 @@ interface PasserbySprite {
   hasTraded: boolean;
 }
 
-// ── 巢穴渲染数据 ───────────────────────────────────────────────────────────────
 interface DenSprite {
   spawnZone: SpawnZone;
   worldX: number;
   img: Phaser.GameObjects.Graphics;
-  restPulse: Phaser.GameObjects.Graphics; // 休息动画（脉冲圆）
+  restPulse: Phaser.GameObjects.Graphics;
   pulseTimer: number;
-  occupantId: string | null;              // 当前对应的怪物instanceId
+  occupantId: string | null;
 }
 
-// ── Scene ─────────────────────────────────────────────────────────────────────
 export class TownScene extends Phaser.Scene {
   private bgLayer!:     Phaser.GameObjects.Container;
   private bldgLayer!:   Phaser.GameObjects.Container;
-  private denLayer!:    Phaser.GameObjects.Container; // 巢穴层
+  private denLayer!:    Phaser.GameObjects.Container;
   private entityLayer!: Phaser.GameObjects.Container;
   private fxLayer!:     Phaser.GameObjects.Container;
   private labelLayer!:  Phaser.GameObjects.Container;
@@ -123,8 +108,6 @@ export class TownScene extends Phaser.Scene {
   private lootDropSeq = 0;
 
   constructor() { super({ key: 'TownScene' }); }
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   create() {
     this.sceneH  = this.scale.height;
@@ -167,8 +150,6 @@ export class TownScene extends Phaser.Scene {
     this.updateDens(delta);
   }
 
-  // ── Camera controls ────────────────────────────────────────────────────────
-
   private setupCameraControls() {
     const cam = this.cameras.main;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -189,8 +170,6 @@ export class TownScene extends Phaser.Scene {
     );
   }
 
-  // ── Tick ──────────────────────────────────────────────────────────────────
-
   private doTick() {
     try {
       for (const sp of this.sprites.values()) {
@@ -200,11 +179,9 @@ export class TownScene extends Phaser.Scene {
           sp.shopServeTarget.timer--;
           if (sp.shopServeTarget.timer <= 0) sp.shopServeTarget = null;
         }
-        // 消失动画计时
         if (sp.dyingTimer > 0) {
           sp.dyingTimer--;
           if (sp.dyingTimer === 0) {
-            // 精灵已完成消失动画，移除
             sp.sprite.destroy();
             sp.label.destroy();
             sp.hpBar.destroy();
@@ -220,6 +197,22 @@ export class TownScene extends Phaser.Scene {
         for (const e of [...newLogs].reverse()) this.pushLogEntry(e);
         this.syncSprites();
         this.syncDens();
+      }
+
+      // ── 攻城预警：倒计时=1 时闪城墙 ──────────────────────────────────────
+      for (const inst of store.field) {
+        if (!inst.definitionId) continue;
+        const def = defById(inst.definitionId);
+        if (def.type !== CardType.Monster || !inst.isActive) continue;
+        if (inst.aggressionCountdown === 1) {
+          if (!(inst as any).__warnedAggression) {
+            (inst as any).__warnedAggression = true;
+            store.addLog(`⚠️ ${def.name} 将在下月进攻！做好准备！`, 'bad');
+            this.flashWalls();
+          }
+        } else {
+          (inst as any).__warnedAggression = false;
+        }
       }
 
       const craftedEmoji = store.takeCraftedEmoji();
@@ -240,7 +233,31 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── AI ─────────────────────────────────────────────────────────────────────
+  // ── 攻城预警：城墙红色闪烁 ────────────────────────────────────────────────
+  private flashWalls() {
+    for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
+      const flash = this.add.graphics();
+      this.fxLayer.add(flash);
+      flash.fillStyle(0xff2020, 0.01);
+      flash.fillRect(wallX - 60, this.groundY - 80, 120, 80);
+
+      let alpha = 0.01;
+      let dir   = 1;
+      const step = () => {
+        alpha += dir * 0.04;
+        flash.clear();
+        flash.fillStyle(0xff2020, Math.max(0, Math.min(0.4, alpha)));
+        flash.fillRect(wallX - 60, this.groundY - 80, 120, 80);
+        if (alpha >= 0.4) dir = -1;
+        if (alpha <= 0) {
+          flash.destroy();
+          return;
+        }
+        this.time.delayedCall(50, step);
+      };
+      this.time.delayedCall(50, step);
+    }
+  }
 
   private runAI() {
     const gy = this.groundY;
@@ -250,7 +267,6 @@ export class TownScene extends Phaser.Scene {
       return defById(c.definitionId).type === CardType.Monster && c.isActive;
     });
 
-    // 判断城内是否有任意活跃人物（用于怪物撤退判断）
     const activeTownspeople = store.field.filter(c => {
       if (!c.definitionId) return false;
       const d = defById(c.definitionId);
@@ -266,7 +282,6 @@ export class TownScene extends Phaser.Scene {
 
       if (def.type === CardType.Human) {
         if (!inst.isActive) {
-          // 非活跃：飘向城镇大厅
           sp.targetX = ZONE.town + (Math.random() - 0.5) * WANDER;
           sp.targetY = gy;
           sp.warriorState = 'patrol';
@@ -302,23 +317,16 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 战士状态机 ────────────────────────────────────────────────────────────
-
   private runWarriorAI(
-    inst: CardInstance,
-    sp: FieldSprite,
-    monsters: CardInstance[],
-    townspeople: CardInstance[],
-    gy: number
+    inst: CardInstance, sp: FieldSprite,
+    monsters: CardInstance[], townspeople: CardInstance[], gy: number
   ) {
     const rs = inst.runtimeStats as HumanStats;
 
-    // 优先级1：回血状态
     if (sp.warriorState === 'heal') {
       sp.targetX = ZONE.barracks + (Math.random() - 0.5) * 30;
       sp.targetY = gy;
       const distToBarracks = Math.abs(sp.x - ZONE.barracks);
-      // 到达兵营后回血
       if (distToBarracks < 50) {
         rs.hp = Math.min(rs.maxHp, rs.hp + Math.ceil(rs.maxHp / 40));
         if (rs.hp >= rs.maxHp) {
@@ -326,72 +334,57 @@ export class TownScene extends Phaser.Scene {
           sp.warriorState = 'patrol';
           this.spawnBubble(sp.x, sp.y, '💪');
         } else if (Math.random() < 0.05) {
-          // 偶尔显示回血泡泡
           this.spawnBubble(sp.x, sp.y - 10, '❤️');
         }
       }
-      // 有怪物时从回血状态中断，去战斗
       if (monsters.length > 0) sp.warriorState = 'patrol';
       return;
     }
 
-    // 优先级2：捡战利品
     if (sp.lootTarget) {
       const drop = this.lootDrops.get(sp.lootTarget);
       if (!drop) {
-        sp.lootTarget   = null;
-        sp.warriorState = 'return';
+        sp.lootTarget = null; sp.warriorState = 'return';
       } else {
         sp.warriorState = 'loot';
-        sp.targetX = drop.worldX;
-        sp.targetY = drop.worldY;
+        sp.targetX = drop.worldX; sp.targetY = drop.worldY;
         const dist = Math.hypot(sp.x - drop.worldX, sp.y - drop.worldY);
         if (dist < 24) {
           store.addItem(drop.itemId, 'loot', drop.qty);
           store.emit('inventory');
           drop.sprite.destroy();
           this.lootDrops.delete(sp.lootTarget);
-          sp.lootTarget   = null;
-          sp.warriorState = 'return';
+          sp.lootTarget = null; sp.warriorState = 'return';
           store.addLog(`🎒 战士捡起了战利品`, 'good');
         }
       }
       return;
     }
 
-    // 优先级3：返回兵营
     if (sp.warriorState === 'return') {
       sp.targetX = ZONE.barracks + (Math.random() - 0.5) * WANDER;
       sp.targetY = gy;
       const dist = Math.hypot(sp.x - ZONE.barracks, sp.y - gy);
       if (dist < 60) {
         sp.warriorState = 'patrol';
-        // 到家后检查血量
-        if (rs.hp < rs.maxHp && monsters.length === 0) {
-          sp.warriorState = 'heal';
-        }
+        if (rs.hp < rs.maxHp && monsters.length === 0) sp.warriorState = 'heal';
       }
       return;
     }
 
-    // 优先级4：追击怪物（战士随时主动出击）
     if (monsters.length > 0) {
       let nearestInst: CardInstance | null = null;
       let nearestSp:   FieldSprite | null  = null;
       let nearestDist  = Infinity;
-
       for (const m of monsters) {
         const mSp = this.sprites.get(m.instanceId);
         if (!mSp || mSp.dyingTimer > 0) continue;
         const d = Math.hypot(mSp.x - sp.x, mSp.y - sp.y);
         if (d < nearestDist) { nearestDist = d; nearestInst = m; nearestSp = mSp; }
       }
-
       if (nearestInst && nearestSp) {
         sp.combatTarget = nearestInst.instanceId;
-
         if (nearestDist <= ATTACK_RANGE) {
-          // 在攻击范围内：停下攻击
           sp.warriorState = 'fight';
           sp.attackCooldown--;
           if (sp.attackCooldown <= 0) {
@@ -399,9 +392,7 @@ export class TownScene extends Phaser.Scene {
             this.resolveHit(inst, nearestInst);
           }
         } else {
-          // 追击
           sp.warriorState = 'chase';
-          // 停在攻击距离边缘，不贴上去
           const dirX = nearestSp.x > sp.x ? 1 : -1;
           sp.targetX = nearestSp.x - dirX * (ATTACK_RANGE - 10);
           sp.targetY = nearestSp.y;
@@ -410,7 +401,6 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
-    // 优先级5：捡地上的战利品
     if (this.lootDrops.size > 0) {
       const alreadyClaimed = new Set<string>();
       for (const other of this.sprites.values()) {
@@ -423,14 +413,9 @@ export class TownScene extends Phaser.Scene {
         const d = Math.hypot(drop.worldX - sp.x, drop.worldY - sp.y);
         if (d < nearestDist) { nearestDist = d; nearestDrop = drop; }
       }
-      if (nearestDrop) {
-        sp.lootTarget   = nearestDrop.id;
-        sp.warriorState = 'loot';
-        return;
-      }
+      if (nearestDrop) { sp.lootTarget = nearestDrop.id; sp.warriorState = 'loot'; return; }
     }
 
-    // 优先级6：无事可做 → 巡逻或回血
     if (rs.hp < rs.maxHp) {
       sp.warriorState = 'heal';
     } else {
@@ -445,18 +430,12 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 怪物AI ─────────────────────────────────────────────────────────────────
-
   private runMonsterAI(
-    inst: CardInstance,
-    sp: FieldSprite,
-    townspeople: CardInstance[],
-    gy: number
+    inst: CardInstance, sp: FieldSprite,
+    townspeople: CardInstance[], gy: number
   ) {
     const spawnX = this.monsterSpawnX(inst);
-
     if (inst.aggressionCountdown > 0) {
-      // 等待期：在巢穴附近徘徊
       sp.monsterBehavior = 'waiting';
       if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
         sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
@@ -465,34 +444,15 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    // aggressionCountdown = 0 → 开始进攻
-    // 检查是否有战士在追击自己
-    const pursuingWarrior = store.field.find(c => {
-      if (!c.isActive) return false;
-      const sp2 = this.sprites.get(c.instanceId);
-      if (!sp2) return false;
-      return (this.sprites.get(c.instanceId) as FieldSprite)?.combatTarget === inst.instanceId;
-    });
-
-    // 如果城内所有人物都倒下了，撤退
     const activeTown = townspeople.filter(c => c.isActive);
     if (activeTown.length === 0) {
       sp.monsterBehavior = 'retreating';
-      sp.targetX = spawnX;
-      sp.targetY = gy - 10;
-      const distToSpawn = Math.hypot(sp.x - spawnX, sp.y - (gy - 10));
-      if (distToSpawn < 30) {
-        // 到达巢穴，重置倒计时（store月末处理恢复，这里只标记）
-        // 实际重置在store的resolveRecovery中
-      }
+      sp.targetX = spawnX; sp.targetY = gy - 10;
       return;
     }
 
-    // 在城墙范围内 → 攻击城内人物
     if (sp.x > ZONE.wallLeft && sp.x < ZONE.wallRight) {
       sp.monsterBehavior = 'attacking';
-
-      // 找最近的活跃人物攻击
       let nearestHuman: CardInstance | null = null;
       let nearestHumanSp: FieldSprite | null = null;
       let nearestDist = Infinity;
@@ -502,7 +462,6 @@ export class TownScene extends Phaser.Scene {
         const d = Math.hypot(hSp.x - sp.x, hSp.y - sp.y);
         if (d < nearestDist) { nearestDist = d; nearestHuman = c; nearestHumanSp = hSp; }
       }
-
       if (nearestHuman && nearestHumanSp) {
         if (nearestDist <= ATTACK_RANGE) {
           sp.attackCooldown--;
@@ -510,19 +469,16 @@ export class TownScene extends Phaser.Scene {
             sp.attackCooldown = ATTACK_COOLDOWN;
             this.resolveMonsterHitsHuman(inst, nearestHuman);
           }
-          // 停在攻击距离，面向目标
           const dirX = nearestHumanSp.x > sp.x ? 1 : -1;
           sp.targetX = nearestHumanSp.x - dirX * (ATTACK_RANGE - 5);
           sp.targetY = nearestHumanSp.y;
         } else {
-          sp.targetX = nearestHumanSp.x;
-          sp.targetY = nearestHumanSp.y;
+          sp.targetX = nearestHumanSp.x; sp.targetY = nearestHumanSp.y;
         }
       }
       return;
     }
 
-    // 城墙外：向城镇进军
     sp.monsterBehavior = 'marching';
     sp.targetX = ZONE.town + (Math.random() - 0.5) * 20;
     sp.targetY = gy;
@@ -546,19 +502,31 @@ export class TownScene extends Phaser.Scene {
 
     const mSp = this.sprites.get(defender.instanceId);
     const hSp = this.sprites.get(attacker.instanceId);
+
     if (mSp && hSp) {
       this.spawnCombatFX((mSp.x + hSp.x) / 2, (mSp.y + hSp.y) / 2);
-      // 伤害飘字
       this.spawnDamageText(mSp.x, mSp.y, dmgToMon, '#ff4040');
       if (dmgToHero > 0) this.spawnDamageText(hSp.x, hSp.y, dmgToHero, '#ff9966');
+
+      // 攻击前冲动画
+      const dir = mSp.x > hSp.x ? 1 : -1;
+      this.tweens.add({
+        targets: hSp.sprite,
+        x: hSp.sprite.x + dir * 8,
+        duration: 80, yoyo: true, ease: 'Quad.Out',
+      });
+      // 被击退动画
+      this.tweens.add({
+        targets: mSp.sprite,
+        x: mSp.sprite.x + dir * 6,
+        duration: 120, yoyo: true, ease: 'Quad.Out',
+      });
     }
 
     if (mSp) mSp.hitFlashTimer = 4;
     if (hSp && dmgToHero > 0) hSp.hitFlashTimer = 4;
 
-    if (ds.hp <= 0) {
-      this.killMonster(defender, mSp, attacker);
-    }
+    if (ds.hp <= 0) this.killMonster(defender, mSp, attacker);
 
     if (as.hp <= 0) {
       as.hp = as.maxHp;
@@ -574,7 +542,6 @@ export class TownScene extends Phaser.Scene {
     const hs = human.runtimeStats as HumanStats;
     const monDebuff = store.getMagicBonus('debuff_monster_atk');
     const defBuff   = store.getMagicBonus('buff_human_def');
-
     const dmg = Math.max(1, (ms.atk - monDebuff) - (hs.def + defBuff));
     hs.hp -= dmg;
 
@@ -584,6 +551,13 @@ export class TownScene extends Phaser.Scene {
       this.spawnCombatFX((hSp.x + mSp.x) / 2, (hSp.y + mSp.y) / 2);
       this.spawnDamageText(hSp.x, hSp.y, dmg, '#ff9966');
       hSp.hitFlashTimer = 4;
+
+      // 怪物攻击前冲
+      const dir = hSp.x > mSp.x ? 1 : -1;
+      this.tweens.add({
+        targets: mSp.sprite, x: mSp.sprite.x + dir * 8,
+        duration: 80, yoyo: true, ease: 'Quad.Out',
+      });
     }
 
     if (hs.hp <= 0) {
@@ -604,23 +578,36 @@ export class TownScene extends Phaser.Scene {
 
     store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击败了 ${defById(defender.definitionId).name}！`, 'good');
 
-    // 掉落战利品
     if (mSp) this.spawnLootDrop(defender, mSp.x, mSp.y);
 
-    // 怪物渐渐消失（dyingTimer=20tick=4秒）
+    // 死亡动画：先放大到 1.1x，再缩小+消失（总 600ms）
     if (mSp) {
-      mSp.dyingTimer = 20;
-      // 用tween做渐变透明
+      mSp.dyingTimer = Math.ceil(600 / MS_PER_TICK) + 1;
+
       this.tweens.add({
-        targets: [mSp.sprite, mSp.label, mSp.hpBar],
+        targets: mSp.sprite,
+        scaleX: MONSTER_SCALE * 1.1,
+        scaleY: MONSTER_SCALE * 1.1,
+        duration: 150,
+        ease: 'Quad.Out',
+        onComplete: () => {
+          this.tweens.add({
+            targets: mSp.sprite,
+            scaleX: 0, scaleY: 0,
+            alpha: 0,
+            duration: 450,
+            ease: 'Quad.In',
+          });
+        },
+      });
+      this.tweens.add({
+        targets: [mSp.label, mSp.hpBar],
         alpha: 0,
-        duration: 20 * MS_PER_TICK,
+        duration: 300,
         ease: 'Quad.In',
       });
     }
   }
-
-  // ── 战利品掉落 ─────────────────────────────────────────────────────────────
 
   private spawnLootDrop(monster: CardInstance, wx: number, wy: number) {
     const ms = monster.runtimeStats as MonsterStats;
@@ -634,61 +621,36 @@ export class TownScene extends Phaser.Scene {
     this.lootDrops.set(dropId, { id: dropId, worldX: wx, worldY: wy, itemId: ms.lootId, qty, sprite });
   }
 
-  // ── 巢穴系统 ───────────────────────────────────────────────────────────────
-
-  private buildDens() {
-    // 清除旧巢穴
-    for (const den of this.dens) {
-      den.img.destroy();
-      den.restPulse.destroy();
-    }
-    this.dens = [];
-  }
+  // ── 巢穴系统 ──────────────────────────────────────────────────────────────────
 
   private syncDens() {
-    // 根据场上怪物更新巢穴
     const monsters = store.field.filter(c =>
       defById(c.definitionId).type === CardType.Monster
     );
 
     for (const monster of monsters) {
       if (!monster.spawnZone) continue;
-      const zone = monster.spawnZone as SpawnZone;
+      const zone   = monster.spawnZone as SpawnZone;
       const worldX = MONSTER_SPAWN_POSITIONS[zone] ?? 200;
 
       let den = this.dens.find(d => d.spawnZone === zone);
       if (!den) {
-        // 新建巢穴
         const img = this.add.graphics();
         this.drawDen(img, worldX, this.groundY, monster.definitionId);
         this.denLayer.add(img);
-
         const restPulse = this.add.graphics();
         this.denLayer.add(restPulse);
-
-        den = {
-          spawnZone: zone,
-          worldX,
-          img,
-          restPulse,
-          pulseTimer: 0,
-          occupantId: monster.instanceId,
-        };
+        den = { spawnZone: zone, worldX, img, restPulse, pulseTimer: 0, occupantId: null };
         this.dens.push(den);
       }
 
-      // 更新巢穴状态（是否有怪物在休息）
-      const isResting = !monster.isActive;
-      den.occupantId = isResting ? monster.instanceId : null;
+      den.occupantId = !monster.isActive ? monster.instanceId : null;
     }
 
-    // 移除没有对应怪物的巢穴
     const activeZones = new Set(monsters.map(m => m.spawnZone));
     this.dens = this.dens.filter(den => {
       if (!activeZones.has(den.spawnZone)) {
-        den.img.destroy();
-        den.restPulse.destroy();
-        return false;
+        den.img.destroy(); den.restPulse.destroy(); return false;
       }
       return true;
     });
@@ -696,11 +658,7 @@ export class TownScene extends Phaser.Scene {
 
   private updateDens(delta: number) {
     for (const den of this.dens) {
-      if (!den.occupantId) {
-        den.restPulse.clear();
-        continue;
-      }
-      // 巢穴休息动画：脉冲圆
+      if (!den.occupantId) { den.restPulse.clear(); continue; }
       den.pulseTimer += delta;
       const scale = 0.5 + 0.5 * Math.sin(den.pulseTimer * 0.003);
       den.restPulse.clear();
@@ -711,40 +669,33 @@ export class TownScene extends Phaser.Scene {
 
   private drawDen(g: Phaser.GameObjects.Graphics, wx: number, gy: number, monsterId: string) {
     g.clear();
-    // 根据怪物类型绘制不同巢穴
     if (monsterId.includes('rat')) {
-      // 鼠穴：小土堆+洞口
       g.fillStyle(0x8a6a40); g.fillEllipse(wx, gy - 6, 60, 20);
       g.fillStyle(0x2a1a08); g.fillEllipse(wx, gy - 4, 24, 14);
       g.fillStyle(0x5a3a18); g.fillEllipse(wx - 8, gy - 12, 16, 10);
       g.fillStyle(0x5a3a18); g.fillEllipse(wx + 8, gy - 12, 16, 10);
     } else if (monsterId.includes('wolf')) {
-      // 狼穴：岩石堆
       g.fillStyle(0x707070); g.fillEllipse(wx, gy - 10, 70, 26);
       g.fillStyle(0x909090); g.fillEllipse(wx - 14, gy - 16, 28, 18);
       g.fillStyle(0x909090); g.fillEllipse(wx + 14, gy - 16, 28, 18);
       g.fillStyle(0x1a1a1a); g.fillEllipse(wx, gy - 6, 28, 16);
     } else if (monsterId.includes('troll')) {
-      // 巨魔岩穴：大石门
       g.fillStyle(0x606060); g.fillRect(wx - 30, gy - 50, 60, 52);
       g.fillStyle(0x808080); g.fillRect(wx - 28, gy - 48, 56, 10);
       g.fillStyle(0x1a1a1a); g.fillRect(wx - 14, gy - 38, 28, 38);
       g.fillStyle(0x404040); g.fillRect(wx - 30, gy - 52, 14, 14);
       g.fillStyle(0x404040); g.fillRect(wx + 16, gy - 52, 14, 14);
     } else if (monsterId.includes('harpy')) {
-      // 鸟妖巢：树上大巢
       g.fillStyle(0x5a3a10); g.fillRect(wx - 4, gy - 60, 8, 60);
       g.fillStyle(0x8a6a30); g.fillEllipse(wx, gy - 62, 56, 26);
       g.fillStyle(0x6a4a18); g.fillEllipse(wx - 4, gy - 60, 44, 18);
     } else if (monsterId.includes('dragon')) {
-      // 龙穴：大型熔岩洞
       g.fillStyle(0x404040); g.fillEllipse(wx, gy - 24, 90, 50);
       g.fillStyle(0x602020); g.fillEllipse(wx - 20, gy - 30, 30, 20);
       g.fillStyle(0x602020); g.fillEllipse(wx + 20, gy - 30, 30, 20);
       g.fillStyle(0x1a0000); g.fillEllipse(wx, gy - 12, 42, 26);
       g.fillStyle(0xff4400, 0.5); g.fillEllipse(wx, gy - 8, 24, 14);
     } else {
-      // 默认：石堆
       g.fillStyle(0x808080); g.fillEllipse(wx, gy - 8, 50, 20);
       g.fillStyle(0x1a1a1a); g.fillEllipse(wx, gy - 4, 20, 12);
     }
@@ -765,7 +716,7 @@ export class TownScene extends Phaser.Scene {
     for (const inst of store.field) {
       const sp = this.sprites.get(inst.instanceId);
       if (!sp) continue;
-      if (sp.dyingTimer > 0) continue; // 正在消失，不更新纹理
+      if (sp.dyingTimer > 0) continue;
       const newKey = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       if ((sp.sprite as any).__texKey !== newKey) {
         sp.sprite.setTexture(newKey);
@@ -799,7 +750,6 @@ export class TownScene extends Phaser.Scene {
       this.labelLayer.add(hpBar);
       this.labelLayer.add(craftBar);
 
-      // 初始位置：怪物到对应巢穴，人物到对应区域
       let sx = ZONE.town, sy = this.groundY;
       if (def.type === CardType.Monster && inst.spawnZone) {
         sx = MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? ZONE.town;
@@ -818,20 +768,14 @@ export class TownScene extends Phaser.Scene {
       this.sprites.set(inst.instanceId, {
         instanceId: inst.instanceId,
         sprite, label, hpBar, craftBar,
-        x: sx, y: sy,
-        targetX: sx, targetY: sy,
+        x: sx, y: sy, targetX: sx, targetY: sy,
         bobPhase: Math.random() * Math.PI * 2,
-        warriorState:    'patrol',
-        attackCooldown:  ATTACK_COOLDOWN,
-        combatTarget:    null,
-        lootTarget:      null,
-        patrolDir:       1,
-        hitFlashTimer:   0,
-        shopServeTarget: null,
+        warriorState: 'patrol', attackCooldown: ATTACK_COOLDOWN,
+        combatTarget: null, lootTarget: null, patrolDir: 1,
+        hitFlashTimer: 0, shopServeTarget: null,
         monsterBehavior: 'waiting',
-        knockbackX:      0,
-        knockbackTimer:  0,
-        dyingTimer:      0,
+        knockbackX: 0, knockbackTimer: 0,
+        dyingTimer: 0,
       });
     }
 
@@ -842,19 +786,17 @@ export class TownScene extends Phaser.Scene {
 
   private interpolate(dt: number) {
     for (const [id, sp] of this.sprites) {
-      if (sp.dyingTimer > 0) continue; // 消失动画中，tween接管
+      if (sp.dyingTimer > 0) continue;
 
       const inst = store.field.find(c => c.instanceId === id);
       if (!inst?.definitionId) continue;
       const def = defById(inst.definitionId);
 
       sp.bobPhase += 0.04;
-
       const isMonster = def.type === CardType.Monster;
       const speed     = isMonster ? MONSTER_SPEED : (sp.warriorState === 'heal' ? HEAL_SPEED : HUMAN_SPEED);
 
       if (!inst.isActive) {
-        // 非活跃人物：半透明飘回城镇
         sp.sprite.setAlpha(0.45);
         sp.sprite.clearTint();
         sp.sprite.setPosition(sp.x, sp.y + Math.sin(sp.bobPhase) * 1.5);
@@ -867,7 +809,6 @@ export class TownScene extends Phaser.Scene {
           sp.sprite.clearTint();
         }
 
-        // 回血状态：轻微绿色光晕
         if (!isMonster && sp.warriorState === 'heal') {
           sp.sprite.setTint(0xaaffaa);
           sp.sprite.setAlpha(0.85);
@@ -906,28 +847,27 @@ export class TownScene extends Phaser.Scene {
     sp.hpBar.fillRect(bx, by, Math.round(w * pct), h);
   }
 
+  // ── 制造进度条（修复版）──────────────────────────────────────────────────────
+  // 修复：getCraftProgressInfo 返回 maxPoints=0 时不绘制，避免空转时进度条满值
   private drawCraftBar(sp: FieldSprite, inst: CardInstance, def: CardDefinition) {
     sp.craftBar.clear();
     if (def.type !== CardType.Human || inst.jobAssignment !== JobType.Craft || !inst.isActive) return;
     const { points, maxPoints } = store.getCraftProgressInfo();
-    const pct = maxPoints > 0 ? Math.min(1, points / maxPoints) : 0;
+    if (maxPoints === 0) return;  // 没有可制造配方 → 不显示
+    const pct = Math.min(1, points / maxPoints);
     const w = 32, h = 2;
     const bx = sp.x - w / 2, by = sp.y - 22;
     sp.craftBar.fillStyle(0x1a1a0a); sp.craftBar.fillRect(bx, by, w, h);
-    if (pct > 0) {
-      sp.craftBar.fillStyle(0xe0a020);
-      sp.craftBar.fillRect(bx, by, Math.round(w * pct), h);
-    }
+    sp.craftBar.fillStyle(0xe0a020);
+    sp.craftBar.fillRect(bx, by, Math.round(w * pct), h);
   }
-
-  // ── Spawn X ────────────────────────────────────────────────────────────────
 
   private monsterSpawnX(inst: CardInstance): number {
     if (!inst.spawnZone) return MONSTER_SPAWN_POSITIONS[SpawnZone.Left0];
     return MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? MONSTER_SPAWN_POSITIONS[SpawnZone.Left0];
   }
 
-  // ── Background（改善道路视觉）──────────────────────────────────────────────
+  // ── Background ────────────────────────────────────────────────────────────
 
   private buildBackground() {
     const W  = WORLD_WIDTH;
@@ -946,17 +886,14 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(0, i, W, 1);
     }
 
-    // 地面基础色（草地）
+    // 地面基础色
     g.fillStyle(0x4a7a3a); g.fillRect(0, gy,     W, H - gy);
     g.fillStyle(0x3a6a2a); g.fillRect(0, gy + 8, W, H - gy - 8);
 
-    // ── 城内道路（加宽到40px，分层纹理）──────────────────────────────────────
+    // 城内道路
     const roadW = ZONE.wallRight - ZONE.wallLeft;
-    // 底层：压实夯土
     g.fillStyle(0x8a7a60); g.fillRect(ZONE.wallLeft, gy, roadW, 40);
-    // 中层：石板路面
     g.fillStyle(0x9a8a70); g.fillRect(ZONE.wallLeft, gy + 2, roadW, 32);
-    // 石板缝隙
     g.fillStyle(0x6a5a48);
     for (let rx = ZONE.wallLeft; rx < ZONE.wallRight; rx += 48) {
       g.fillRect(rx, gy + 2, 2, 32);
@@ -964,13 +901,11 @@ export class TownScene extends Phaser.Scene {
     for (let ry = gy + 12; ry < gy + 36; ry += 12) {
       g.fillRect(ZONE.wallLeft, ry, roadW, 1);
     }
-    // 路边草丛过渡
     g.fillStyle(0x5a8a40);
     for (let rx = ZONE.wallLeft; rx < ZONE.wallRight; rx += 18) {
       const h2 = 3 + (rx % 3);
       g.fillRect(rx, gy - h2, 4, h2);
     }
-    // 路面偶有小石子（点缀）
     g.fillStyle(0xb0a088);
     for (let i = 0; i < 40; i++) {
       const rx = ZONE.wallLeft + 10 + (i * 67 % (roadW - 20));
@@ -978,18 +913,15 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(rx, ry, 3, 2);
     }
 
-    // ── 城外土路（加宽到30px，泥土质感）─────────────────────────────────────
-    // 左侧
+    // 城外土路
     g.fillStyle(0x7a6050); g.fillRect(0, gy, ZONE.wallLeft, 30);
     g.fillStyle(0x8a7060); g.fillRect(0, gy + 4, ZONE.wallLeft, 20);
-    // 泥土纹理（不规则深色斑点）
     g.fillStyle(0x5a4030);
     for (let i = 0; i < 20; i++) {
       const rx = 10 + (i * 53 % (ZONE.wallLeft - 20));
       const ry = gy + 6 + (i * 31 % 12);
       g.fillRect(rx, ry, 5, 3);
     }
-    // 右侧
     g.fillStyle(0x7a6050); g.fillRect(ZONE.wallRight, gy, W - ZONE.wallRight, 30);
     g.fillStyle(0x8a7060); g.fillRect(ZONE.wallRight, gy + 4, W - ZONE.wallRight, 20);
     g.fillStyle(0x5a4030);
@@ -999,22 +931,20 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(rx, ry, 5, 3);
     }
 
-    // 道路边沿植草
+    // 路边植草
     g.fillStyle(0x4a8a38);
     for (let rx = 0; rx < ZONE.wallLeft; rx += 14) {
-      const h3 = 2 + (rx % 3);
-      g.fillRect(rx, gy - h3, 3, h3);
+      const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
     for (let rx = ZONE.wallRight; rx < W; rx += 14) {
-      const h3 = 2 + (rx % 3);
-      g.fillRect(rx, gy - h3, 3, h3);
+      const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
 
     // 太阳
     g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
     [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
-      ([x,y,w,h]) => g.fillRect(x as number, y as number, w as number, h as number)
+      ([x,y,w,h]) => g.fillRect(x as number,y as number,w as number,h as number)
     );
 
     // 云朵
@@ -1033,22 +963,19 @@ export class TownScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         const tg = this.add.graphics();
         const s = 4;
-        // 树干
         tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 4*s);
-        // 树冠
         tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
         tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
         tg.generateTexture(key, 32, 44);
         tg.destroy();
       }
+      // setOrigin(0.5, 1) 使树底部贴地
       const t = this.add.image(tx, gy, key).setOrigin(0.5, 1);
       this.bgLayer.add(t);
     }
 
     this.buildWalls(g, gy, H);
   }
-
-  // ── 城墙 ───────────────────────────────────────────────────────────────────
 
   private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number) {
     const wallH = 70, wallW = 28, gateW = 36, crenH = 10, crenW = 10, crenGap = 8;
@@ -1057,13 +984,11 @@ export class TownScene extends Phaser.Scene {
 
     for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
       const wx = wallX - wallW / 2;
-
       for (const [wingX, wingW] of [[wx - 80, 80], [wx + wallW + gateW, 80]] as [number, number][]) {
         g.fillStyle(stoneMid); g.fillRect(wingX, gy - wallH, wingW, wallH);
         g.fillStyle(stoneLight); g.fillRect(wingX, gy - wallH, wingW, 6);
         g.fillStyle(stoneDark); g.fillRect(wingX, gy - wallH + 6, wingW, 3);
       }
-
       const towerW = wallW + 8;
       for (const tx of [wx - 8, wx + wallW + gateW - wallW]) {
         g.fillStyle(stoneMid); g.fillRect(tx, gy - wallH - 20, towerW, wallH + 20);
@@ -1075,7 +1000,6 @@ export class TownScene extends Phaser.Scene {
         }
         g.fillStyle(stoneDark); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - wallH - 10, 3, 8);
       }
-
       g.fillStyle(gateColor); g.fillRect(wx + wallW, gy - 44, gateW, 44);
       g.fillStyle(gateHigh); g.fillRect(wx + wallW + 2, gy - 42, gateW - 4, 5);
       g.fillStyle(gateColor); g.fillRect(wx + wallW + 4, gy - 50, gateW - 8, 8);
@@ -1106,15 +1030,16 @@ export class TownScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         const g = this.add.graphics();
         fn(g, 0, 0, scale);
-        g.generateTexture(key, 48, 48);
+        g.generateTexture(key, 48, 60);  // 统一 48x60
         g.destroy();
       }
+      // setOrigin(0.5, 1) 使建筑底部贴地
       const img = this.add.image(cx, gy, key).setOrigin(0.5, 1);
       this.bldgLayer.add(img);
-      // 建筑底部阴影（消除浮空感）
+      // 建筑底部椭圆阴影
       const shadow = this.add.graphics();
-      shadow.fillStyle(0x000000, 0.25);
-      shadow.fillEllipse(cx, gy + 2, 44, 8);
+      shadow.fillStyle(0x000000, 0.22);
+      shadow.fillEllipse(cx, gy + 3, 52, 10);
       this.bldgLayer.add(shadow);
     }
 
@@ -1128,7 +1053,7 @@ export class TownScene extends Phaser.Scene {
       [ZONE.town,    '大厅'],
       [ZONE.barracks,'兵营'],
     ] as [number, string][]).forEach(([x, txt]) => {
-      const t = this.add.text(x, gy - 58, txt, labelStyle).setOrigin(0.5, 1);
+      const t = this.add.text(x, gy - 68, txt, labelStyle).setOrigin(0.5, 1);
       this.bldgLayer.add(t);
     });
   }
@@ -1160,6 +1085,7 @@ export class TownScene extends Phaser.Scene {
     for (let i = this.passerbyList.length - 1; i >= 0; i--) {
       const p = this.passerbyList[i];
       p.x += p.speed * dt;
+      // setOrigin(0.5,1) → y直接用groundY，Bob效果在y方向偏移
       p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
 
       if (!p.hasTraded && store.totalProducts > 0) {
@@ -1190,58 +1116,46 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 伤害飘字 ────────────────────────────────────────────────────────────────
+  // ── FX ─────────────────────────────────────────────────────────────────────
 
   private spawnDamageText(x: number, y: number, dmg: number, color: string) {
     const txt = this.add.text(x, y - 20, `-${dmg}`, {
       fontFamily: '"Silkscreen", monospace',
-      fontSize: '10px',
-      color,
-      stroke: '#000000',
-      strokeThickness: 2,
+      fontSize: '10px', color,
+      stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5, 1);
     this.fxLayer.add(txt);
     this.tweens.add({
-      targets: txt,
-      y: y - 50,
-      alpha: 0,
-      duration: 800,
-      ease: 'Quad.Out',
+      targets: txt, y: y - 50, alpha: 0,
+      duration: 800, ease: 'Quad.Out',
       onComplete: () => txt.destroy(),
     });
   }
-
-  // ── 气泡 ────────────────────────────────────────────────────────────────────
 
   private spawnBubble(x: number, y: number, text: string) {
     const bubble = this.add.text(x, y - 20, text, { fontSize: '16px' }).setOrigin(0.5, 1);
     this.fxLayer.add(bubble);
     this.tweens.add({
-      targets: bubble,
-      y: y - 54,
-      alpha: 0,
-      duration: 1100,
-      ease: 'Quad.Out',
+      targets: bubble, y: y - 54, alpha: 0,
+      duration: 1100, ease: 'Quad.Out',
       onComplete: () => bubble.destroy(),
     });
   }
 
-  // ── 战斗特效 ────────────────────────────────────────────────────────────────
-
   private spawnCombatFX(x: number, y: number) {
     const colors = [0xffd040, 0xff8020, 0xffffff, 0xff4040];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       const dot = this.add.graphics();
       this.fxLayer.add(dot);
       dot.fillStyle(colors[i % colors.length]);
-      dot.fillRect(0, 0, 5, 5);
+      dot.fillRect(0, 0, 4, 4);
       dot.setPosition(x, y);
-      const angle = (Math.PI * 2 * i) / 6 + Math.random() * 0.4;
+      const angle = (Math.PI * 2 * i) / 8 + Math.random() * 0.4;
       this.tweens.add({
         targets: dot,
-        x: x + Math.cos(angle) * (16 + Math.random() * 20),
-        y: y + Math.sin(angle) * (16 + Math.random() * 20),
-        alpha: 0, duration: 400, ease: 'Quad.Out',
+        x: x + Math.cos(angle) * (18 + Math.random() * 22),
+        y: y + Math.sin(angle) * (18 + Math.random() * 22),
+        alpha: 0, duration: 450, ease: 'Quad.Out',
         onComplete: () => dot.destroy(),
       });
     }
@@ -1289,15 +1203,16 @@ function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: n
   function px(c: number, px2: number, py: number, w: number, h: number) {
     g.fillStyle(c, 1); g.fillRect(px2 * s, py * s, w * s, h * s);
   }
-  px(0x8a7060, x+1,  y+4,  10, 8);
-  px(0x7a6050, x+1,  y+10, 10, 2);
-  px(0x8a3030, x,    y+2,  12, 3);
+  // 底部在 y+17，与其他建筑一致
+  px(0x8a7060, x+1,  y+5,  10, 12);
+  px(0x7a6050, x+1,  y+15, 10, 2);
+  px(0x8a3030, x,    y+2,  12, 4);
   px(0xa04040, x+1,  y+1,  10, 1);
-  px(0xa04040, x+2,  y,     8, 1);
-  px(0x5a3010, x+4,  y+7,   4, 5);
-  px(0x8a5020, x+4,  y+8,   1, 1);
-  px(0xd0c090, x+2,  y+5,   2, 2);
-  px(0xd0c090, x+8,  y+5,   2, 2);
-  px(0xd4a017, x+5,  y+1,   2, 3);
+  px(0xa04040, x+2,  y+0,   8, 1);
+  px(0x5a3010, x+4,  y+9,   4, 8);
+  px(0x8a5020, x+4,  y+10,  1, 1);
+  px(0xd0c090, x+2,  y+6,   2, 3);
+  px(0xd0c090, x+8,  y+6,   2, 3);
+  px(0xd4a017, x+5,  y+2,   2, 3);
   px(0xcc3030, x+6,  y+1,   3, 2);
 }

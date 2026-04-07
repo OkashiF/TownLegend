@@ -1,11 +1,10 @@
-﻿import {
+import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
   HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
 } from '../types';
 import { CARD_DB, drawShopCards, LEVEL_COST, shopSize, shopRefreshCost } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
 
-// ── ID factory ─────────────────────────────────────────────────────────────────
 let _idCounter = 0;
 export function newId(): string { return `card_${++_idCounter}`; }
 
@@ -42,8 +41,6 @@ export function instantiate(def: CardDefinition): CardInstance {
   };
 }
 
-// ── 怪物出生点坐标（按上场顺序分配）──────────────────────────────────────────
-// 左侧3个槽位（从近到远），右侧3个槽位（从近到远）
 export const MONSTER_SPAWN_POSITIONS: Record<SpawnZone, number> = {
   [SpawnZone.Left0]:  700,
   [SpawnZone.Left1]:  450,
@@ -54,32 +51,25 @@ export const MONSTER_SPAWN_POSITIONS: Record<SpawnZone, number> = {
 };
 
 const SPAWN_ZONE_ORDER: SpawnZone[] = [
-  SpawnZone.Left0,
-  SpawnZone.Left1,
-  SpawnZone.Left2,
-  SpawnZone.Right0,
-  SpawnZone.Right1,
-  SpawnZone.Right2,
+  SpawnZone.Left0, SpawnZone.Left1, SpawnZone.Left2,
+  SpawnZone.Right0, SpawnZone.Right1, SpawnZone.Right2,
 ];
 
-/** 根据当前场上怪物数量，给新怪物分配出生点 */
 export function assignSpawnZone(monsterCount: number): SpawnZone {
   return SPAWN_ZONE_ORDER[monsterCount % SPAWN_ZONE_ORDER.length];
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────────
 export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
-export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH; // 160
+export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 export const LEVEL_THRESHOLD = 10;
 const SAVE_KEY     = 'town_legend_save';
-const SAVE_VERSION = 3;  // 版本号更新
+const SAVE_VERSION = 3;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
 
-function countLevelProgress(hand: CardInstance[], field: CardInstance[], townLevel: number): number {
-  // 持有任意等级的卡牌均计入（不再要求 level >= townLevel）
+function countLevelProgress(hand: CardInstance[], field: CardInstance[]): number {
   return [...hand, ...field].length;
 }
 
@@ -87,7 +77,6 @@ export function monthlyTax(level: number): number {
   return (LEVEL_COST[level] ?? LEVEL_COST[0]) * 0.5;
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
 export interface LogEntry {
   id: number;
   month: number;
@@ -101,7 +90,6 @@ export interface ShopSlot {
   sold: boolean;
 }
 
-// ── Store ──────────────────────────────────────────────────────────────────────
 type Listener = (event?: string) => void;
 let _logId = 0;
 
@@ -120,13 +108,9 @@ export class GameStore {
 
   shopSlots: ShopSlot[] = [];
   log: LogEntry[] = [];
-
   inventory: ItemStack[] = [];
 
-  // 当月是否有怪物攻城超过一个月（月末判定）
   private siegeMonthsCount = 0;
-
-  // Per-tick craft accumulator
   private craftPoints = 0;
   private _lastCraftedEmoji: string | null = null;
 
@@ -136,20 +120,25 @@ export class GameStore {
     return e;
   }
 
+  // ── 制造进度信息 ─────────────────────────────────────────────────────────────
+  // 修复：只有在有「材料充足的配方」时才返回进度；否则返回 {0,0} 使进度条隐藏
   getCraftProgressInfo(): { points: number; maxPoints: number } {
     for (const recipe of RECIPE_DB) {
-      const hasMats = recipe.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty);
+      const hasMats = recipe.inputs.every(inp =>
+        this.countItem(inp.lootId, 'loot') >= inp.qty
+      );
       if (hasMats) {
-        return { points: Math.min(this.craftPoints, recipe.craftCost), maxPoints: recipe.craftCost };
+        return {
+          points:    Math.min(this.craftPoints, recipe.craftCost),
+          maxPoints: recipe.craftCost,
+        };
       }
     }
-    const fallback = RECIPE_DB[0];
-    return { points: Math.min(this.craftPoints, fallback.craftCost), maxPoints: fallback.craftCost };
+    // 没有任何可制造配方 → 进度条隐藏（maxPoints=0）
+    return { points: 0, maxPoints: 0 };
   }
 
-  // ── 攻城状态判断 ──────────────────────────────────────────────────────────────
-
-  /** 当前是否有怪物正在攻城（aggressionCountdown=0 且 isActive） */
+  // ── 攻城状态 ──────────────────────────────────────────────────────────────────
   get isUnderSiege(): boolean {
     return this.field.some(c => {
       if (!c.definitionId) return false;
@@ -158,7 +147,6 @@ export class GameStore {
     });
   }
 
-  /** 当前是否有活跃怪物（无论是否在攻城） */
   get hasActiveMonsters(): boolean {
     return this.field.some(c => {
       if (!c.definitionId) return false;
@@ -167,7 +155,6 @@ export class GameStore {
   }
 
   // ── Building helpers ──────────────────────────────────────────────────────────
-
   getBuildingCapacity(defId: string): number {
     return this.field
       .filter(c => c.definitionId === defId && c.isActive)
@@ -180,17 +167,9 @@ export class GameStore {
       .reduce((s, c) => s + ((c.runtimeStats as BuildingStats).bonus - 1), 0);
   }
 
-  getWorkshopCraftBonus(): number {
-    return 1 + this.getBuildingExtraRate('building_workshop');
-  }
-
-  getBarracksAtkBonus(): number {
-    return this.getBuildingCapacity('building_barracks');
-  }
-
-  getStallSaleBonus(): number {
-    return 1 + this.getBuildingExtraRate('building_stall');
-  }
+  getWorkshopCraftBonus(): number { return 1 + this.getBuildingExtraRate('building_workshop'); }
+  getBarracksAtkBonus():   number { return this.getBuildingCapacity('building_barracks'); }
+  getStallSaleBonus():     number { return 1 + this.getBuildingExtraRate('building_stall'); }
 
   constructor() {
     this.refreshShopFull();
@@ -202,14 +181,13 @@ export class GameStore {
   emit(event?: string) { this.listeners.forEach(fn => fn(event)); }
 
   get fieldCapacity() { return fieldCap(this.townLevel); }
-  get levelProgress() { return countLevelProgress(this.hand, this.field, this.townLevel); }
+  get levelProgress() { return countLevelProgress(this.hand, this.field); }
 
   getLootDef(lootId: string): LootDef | undefined {
     return LOOT_DB.find(l => l.id === lootId);
   }
 
-  // ── Inventory helpers ─────────────────────────────────────────────────────────
-
+  // ── Inventory ─────────────────────────────────────────────────────────────────
   addItem(itemId: string, kind: ItemStack['kind'], qty: number) {
     const existing = this.inventory.find(s => s.itemId === itemId && s.kind === kind);
     if (existing) { existing.qty += qty; }
@@ -235,7 +213,6 @@ export class GameStore {
   }
 
   // ── Shop ──────────────────────────────────────────────────────────────────────
-
   refreshShopFull() {
     const size = shopSize(this.townLevel);
     const defs = drawShopCards(this.townLevel, size);
@@ -248,17 +225,14 @@ export class GameStore {
     if (!slot || slot.sold) return { ok: false, reason: '该卡已售出' };
     const def = slot.def;
     if (this.gold < def.cost) return { ok: false, reason: `金币不足（需要 ${def.cost}）` };
-
     this.gold -= def.cost;
     slot.sold = true;
     this.hand.push(instantiate(def));
     this.addLog(`购买了 ${def.name}`, 'info');
-
     if (this.shopSlots.every(s => s.sold)) {
       this.refreshShopFull();
       this.addLog('商店售罄，自动刷新！', 'good');
     }
-
     this.emit('buy');
     return { ok: true };
   }
@@ -271,13 +245,7 @@ export class GameStore {
     return { ok: true };
   }
 
-  // ── Sell card ─────────────────────────────────────────────────────────────────
-
-  /** 出售卡牌（手牌或场上），返还10%购买价
-   *  怪物攻城期间不允许出售场上的怪物卡
-   */
   sellCard(instanceId: string): { ok: boolean; reason?: string; gold?: number } {
-    // 先在手牌找
     const handIdx = this.hand.findIndex(c => c.instanceId === instanceId);
     if (handIdx !== -1) {
       const inst = this.hand[handIdx];
@@ -289,18 +257,13 @@ export class GameStore {
       this.emit('sell');
       return { ok: true, gold: refund };
     }
-
-    // 再在场上找
     const fieldIdx = this.field.findIndex(c => c.instanceId === instanceId);
     if (fieldIdx !== -1) {
       const inst = this.field[fieldIdx];
       const def  = defById(inst.definitionId);
-
-      // 怪物攻城期间禁止出售该怪物
       if (def.type === CardType.Monster && inst.isActive && inst.aggressionCountdown === 0) {
         return { ok: false, reason: '怪物正在攻城，无法出售！' };
       }
-
       const refund = Math.max(1, Math.floor(def.cost * 0.1));
       this.field.splice(fieldIdx, 1);
       this.gold += refund;
@@ -309,33 +272,26 @@ export class GameStore {
       this.emit('field');
       return { ok: true, gold: refund };
     }
-
     return { ok: false, reason: '找不到该卡牌' };
   }
-
-  // ── Play / Assign ─────────────────────────────────────────────────────────────
 
   playCard(instanceId: string, opts?: { job?: JobType }): { ok: boolean; reason?: string } {
     const idx = this.hand.findIndex(c => c.instanceId === instanceId);
     if (idx === -1) return { ok: false, reason: '找不到卡牌' };
     if (this.field.length >= this.fieldCapacity)
       return { ok: false, reason: `场上已满（${this.fieldCapacity}）` };
-
     const inst = this.hand[idx];
     const def  = defById(inst.definitionId);
     inst.isOnField = true;
     if (opts?.job) inst.jobAssignment = opts.job;
-
     if (def.type === CardType.Monster) {
       const ms = inst.runtimeStats as MonsterStats;
       inst.aggressionCountdown = ms.aggression;
-      // 自动分配出生点（按当前场上怪物数量）
       const monsterCount = this.field.filter(c =>
         defById(c.definitionId).type === CardType.Monster
       ).length;
       inst.spawnZone = assignSpawnZone(monsterCount);
     }
-
     this.hand.splice(idx, 1);
     this.field.push(inst);
     this.addLog(`打出了 ${def.name}`, 'info');
@@ -351,22 +307,14 @@ export class GameStore {
     return true;
   }
 
-  // ── Upgrade（3张相同→1张下一级新卡）──────────────────────────────────────────
-
   upgradeCard(definitionId: string): { ok: boolean; reason?: string } {
     const def = defById(definitionId);
-    if (!def.upgradeTargetId) {
-      return { ok: false, reason: '该卡牌已是最高等级，无法升级' };
-    }
-
+    if (!def.upgradeTargetId) return { ok: false, reason: '该卡牌已是最高等级，无法升级' };
     const all     = [...this.hand, ...this.field];
     const matches = all.filter(c => c.definitionId === definitionId);
     if (matches.length < 3) return { ok: false, reason: `需要3张（当前 ${matches.length}/3）` };
-
     const targetDef = CARD_DB.find(c => c.id === def.upgradeTargetId);
     if (!targetDef) return { ok: false, reason: '升级目标不存在' };
-
-    // 销毁3张原卡
     const toRemove = matches.slice(0, 3);
     for (const r of toRemove) {
       const hi = this.hand.findIndex(c => c.instanceId === r.instanceId);
@@ -374,26 +322,20 @@ export class GameStore {
       const fi = this.field.findIndex(c => c.instanceId === r.instanceId);
       if (fi !== -1) this.field.splice(fi, 1);
     }
-
-    // 生成1张目标等级新卡加入手牌
     const newInst = instantiate(targetDef);
     this.hand.push(newInst);
-
     this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
     this.emit('upgrade');
     return { ok: true };
   }
 
   // ── Tick ──────────────────────────────────────────────────────────────────────
-
   advanceTick(): { weekEnd: boolean; monthEnd: boolean; newLogs: LogEntry[] } {
     const prevLen = this.log.length;
     this.tick++;
     let weekEnd  = false;
     let monthEnd = false;
-
     this.resolveRealtimeCraft();
-
     if (this.tick >= TICKS_PER_MONTH) {
       this.tick = 0;
       this.week = 1;
@@ -405,23 +347,39 @@ export class GameStore {
       this.week = Math.floor(this.tick / TICKS_PER_WEEK) + 1;
       if (this.tick % TICKS_PER_WEEK === 0) weekEnd = true;
     }
-
     const newLogs = this.log.slice(0, this.log.length - prevLen);
     this.emit('tick');
     return { weekEnd, monthEnd, newLogs };
   }
 
-  // ── Realtime crafting ─────────────────────────────────────────────────────────
-
+  // ── 实时制造（修复版）────────────────────────────────────────────────────────
+  // 修复：只有存在「有材料」的配方时，才累积 craftPoints
+  // 没有可制造目标时，归零 craftPoints，使进度条归零
   private resolveRealtimeCraft() {
-    // 怪物攻城期间不能制造
-    if (this.isUnderSiege) return;
+    if (this.isUnderSiege) {
+      this.craftPoints = 0;
+      return;
+    }
 
     const craftWorkers = this.field.filter(c =>
       defById(c.definitionId).type === CardType.Human &&
       c.jobAssignment === JobType.Craft && c.isActive
     );
-    if (craftWorkers.length === 0) return;
+    if (craftWorkers.length === 0) {
+      this.craftPoints = 0;
+      return;
+    }
+
+    // 检查是否存在材料充足的配方
+    const hasCraftableRecipe = RECIPE_DB.some(recipe =>
+      recipe.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty)
+    );
+
+    if (!hasCraftableRecipe) {
+      // 无材料：不累积，保持归零状态
+      this.craftPoints = 0;
+      return;
+    }
 
     const workshopBonus = this.getWorkshopCraftBonus();
     const diligencePerTick = craftWorkers.reduce(
@@ -440,6 +398,13 @@ export class GameStore {
 
       recipe.inputs.forEach(inp => this.removeItem(inp.lootId, 'loot', inp.qty));
       this.craftPoints -= recipe.craftCost;
+
+      // 制造完成后：若没有剩余可制造配方，归零避免残留
+      const stillHasMats = RECIPE_DB.some(r =>
+        r.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty)
+      );
+      if (!stillHasMats) this.craftPoints = 0;
+
       this.addItem(recipe.outputProductId, 'product', recipe.outputQty);
       const prod = productById(recipe.outputProductId);
       this._lastCraftedEmoji = prod.emoji;
@@ -450,11 +415,9 @@ export class GameStore {
   }
 
   // ── Monthly resolution ────────────────────────────────────────────────────────
-
   private resolveMonth() {
     const underSiege = this.isUnderSiege;
 
-    // 1. 税收（攻城超过一个月则为0）
     if (underSiege && this.siegeMonthsCount >= 1) {
       this.addLog(`⚔️ 怪物围城！本月税收为 0💰`, 'bad');
     } else {
@@ -463,17 +426,14 @@ export class GameStore {
       this.addLog(`🏛️ 税收 +${tax}💰`, 'good');
     }
 
-    // 记录攻城持续时间
     if (underSiege) {
       this.siegeMonthsCount++;
-      if (this.siegeMonthsCount === 1) {
+      if (this.siegeMonthsCount === 1)
         this.addLog(`⚠️ 怪物仍在攻城！若持续，下月税收将为0！`, 'bad');
-      }
     } else {
       this.siegeMonthsCount = 0;
     }
 
-    // 2. 怪物侵略倒计时
     for (const inst of this.field) {
       const def = defById(inst.definitionId);
       if (def.type !== CardType.Monster || !inst.isActive) continue;
@@ -484,21 +444,16 @@ export class GameStore {
       }
     }
 
-    // 3. 商店收入（攻城期间为0）
     if (!underSiege) {
       this.resolveShopIncome();
     } else {
       this.addLog(`🏪 怪物围城，商店无法营业！`, 'bad');
     }
 
-    // 4. 维护费
     this.resolveUpkeep();
-
-    // 5. 恢复
     this.resolveRecovery();
 
-    // 6. 城镇升级检查
-    if (countLevelProgress(this.hand, this.field, this.townLevel) >= LEVEL_THRESHOLD) {
+    if (countLevelProgress(this.hand, this.field) >= LEVEL_THRESHOLD) {
       this.townLevel++;
       this.refreshShopFull();
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
@@ -576,28 +531,24 @@ export class GameStore {
     for (const inst of this.field) {
       if (inst.isActive) continue;
       const defn = defById(inst.definitionId);
-
       if (defn.type === CardType.Monster) {
-        // 怪物休息（巢穴中）
         if (inst.restMonthsLeft > 0) {
           inst.restMonthsLeft--;
           inst.restProgress = (inst.restProgress ?? 0) + 1;
         }
         if (inst.restMonthsLeft === 0) {
-          inst.isActive       = true;
-          inst.restProgress   = 0;
+          inst.isActive     = true;
+          inst.restProgress = 0;
           const ms = inst.runtimeStats as MonsterStats;
           inst.aggressionCountdown = ms.aggression;
-          inst.runtimeStats = { ...ms, hp: ms.maxHp }; // 满血复活
+          inst.runtimeStats = { ...ms, hp: ms.maxHp };
           this.addLog(`👹 ${defn.name} 伤愈归巢，重整侵略！`, 'bad');
         }
       } else {
-        // 人物恢复
         if (inst.restMonthsLeft  > 0) inst.restMonthsLeft--;
         if (inst.strikeMonthsLeft > 0) inst.strikeMonthsLeft--;
         if (inst.restMonthsLeft === 0 && inst.strikeMonthsLeft === 0) {
           inst.isActive = true;
-          // 回满血
           const rs = inst.runtimeStats as HumanStats;
           rs.hp = rs.maxHp;
           this.addLog(`✅ ${defn.name} 已恢复满血`, 'good');
@@ -605,8 +556,6 @@ export class GameStore {
       }
     }
   }
-
-  // ── Magic bonus ───────────────────────────────────────────────────────────────
 
   getMagicBonus(effect: string): number {
     return this.field
@@ -618,7 +567,6 @@ export class GameStore {
   }
 
   // ── Save / Load ───────────────────────────────────────────────────────────────
-
   saveToLocalStorage() {
     try {
       const snap: SaveSnapshot = {
@@ -636,9 +584,7 @@ export class GameStore {
         log:       this.log.slice(0, 50),
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
-    } catch (e) {
-      console.warn('Save failed:', e);
-    }
+    } catch (e) { console.warn('Save failed:', e); }
   }
 
   loadFromLocalStorage(): boolean {
@@ -647,7 +593,6 @@ export class GameStore {
       if (!raw) return false;
       const snap: SaveSnapshot = JSON.parse(raw);
       if (snap.version !== SAVE_VERSION) return false;
-
       this.gold      = snap.gold;
       this.townLevel = snap.townLevel;
       this.tick      = snap.tick;
@@ -658,23 +603,17 @@ export class GameStore {
       this.discarded = snap.discarded;
       this.inventory = snap.inventory ?? [];
       this.log       = snap.log ?? [];
-
       this.shopSlots = snap.shopSlots.map(s => {
         const def = CARD_DB.find(c => c.id === s.defId);
         return def ? { def, sold: s.sold } : null;
       }).filter(Boolean) as ShopSlot[];
       if (this.shopSlots.length === 0) this.refreshShopFull();
-
       const maxId = [...this.hand, ...this.field, ...this.discarded]
         .map(c => parseInt(c.instanceId.replace('card_', '')) || 0)
         .reduce((a, b) => Math.max(a, b), 0);
       _idCounter = maxId;
-
       return true;
-    } catch (e) {
-      console.warn('Load failed:', e);
-      return false;
-    }
+    } catch (e) { console.warn('Load failed:', e); return false; }
   }
 
   clearSave() { localStorage.removeItem(SAVE_KEY); }
