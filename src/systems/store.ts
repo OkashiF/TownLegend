@@ -68,7 +68,7 @@ const SAVE_VERSION = 3;
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
 
-/** 将所有卡牌换算为"原始单位"（level-0 = 1，level-1 = 3，level-2 = 9，…）*/
+/** 将所有卡牌换算为"原始单位"（0级卡 = 3^0 = 1单位，1级卡 = 3^1 = 3单位，2级卡 = 3^2 = 9单位，…）*/
 function computeCardRawValue(cards: CardInstance[]): number {
   return cards.reduce((sum, c) => {
     const def = CARD_DB.find(d => d.id === c.definitionId);

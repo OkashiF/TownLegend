@@ -793,7 +793,7 @@ export class TownScene extends Phaser.Scene {
 
       const isMonster  = def.type === CardType.Monster;
       const isBuilding = def.type === CardType.Building;
-      // 建筑卡用统一的 HUMAN_SCALE，人物/怪物保持原比例
+      // 怪物用 MONSTER_SCALE，人物和建筑卡均用 HUMAN_SCALE
       sprite.setScale(isMonster ? MONSTER_SCALE : HUMAN_SCALE);
       sprite.setOrigin(0.5, 1);
       this.entityLayer.add(sprite);
