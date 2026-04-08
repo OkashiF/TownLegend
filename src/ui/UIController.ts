@@ -355,7 +355,7 @@ function updateHUD() {
   ($('stat-month')    as HTMLElement).textContent = `Y${yr}·M${mo}·W${store.week}`;
   ($('stat-gold')     as HTMLElement).textContent = `💰 ${store.gold}`;
   ($('stat-level')    as HTMLElement).textContent = `⭐ ${store.townLevel}`;
-  ($('stat-progress') as HTMLElement).textContent = `${store.levelProgress}/10`;
+  ($('stat-progress') as HTMLElement).textContent = `${store.levelProgress}/${store.levelThreshold}`;
   ($('stat-field')    as HTMLElement).textContent = `${store.field.length}/${store.fieldCapacity}`;
   ($('stat-tax')      as HTMLElement).textContent = `🏛 ${monthlyTax(store.townLevel)}/月`;
 
@@ -368,6 +368,28 @@ function updateHUD() {
 
   const bar = document.getElementById('month-progress-bar');
   if (bar) bar.style.width = `${(store.tick / 160) * 100}%`;
+
+  updateBuffBar();
+}
+
+// ── Buff bar（魔法卡效果展示）────────────────────────────────────────────────
+
+function updateBuffBar() {
+  const bar = document.getElementById('buff-bar');
+  if (!bar) return;
+  const activeMagic = store.field.filter(c => {
+    const def = defById(c.definitionId);
+    return def.type === CardType.Magic && c.isActive;
+  });
+  bar.innerHTML = '';
+  for (const inst of activeMagic) {
+    const def = defById(inst.definitionId);
+    const chip = document.createElement('div');
+    chip.className = 'buff-chip';
+    chip.textContent = `${def.emoji} ${def.name}`;
+    chip.title = `${def.name}：${def.description}`;
+    bar.appendChild(chip);
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
