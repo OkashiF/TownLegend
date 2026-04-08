@@ -280,28 +280,20 @@ export const CARD_DB: CardDefinition[] = [
   },
 ];
 
-/** 按城镇等级过滤可用卡池
- *  - 1级城镇只能看到0级卡（人物+怪物）
- *  - 2级及以上才有建筑/魔法卡和1级卡
- */
+/** 按城镇等级过滤可用卡池：城镇 x 级可购买卡牌等级 < x 的所有卡牌 */
 export function getCardPool(townLevel: number): CardDefinition[] {
-  if (townLevel === 1) {
-    // 1级只能买0级人物卡和怪物卡
-    return CARD_DB.filter(c => c.level === 0 &&
-      (c.type === CardType.Human || c.type === CardType.Monster));
-  }
-  return CARD_DB.filter(c => c.level <= townLevel);
+  return CARD_DB.filter(c => c.level < townLevel);
 }
 
 /**
- * 生成一批商店卡牌（不重复，直到池耗尽）
- * 数量由 shopSize(townLevel) 决定
+ * 生成一批商店卡牌（允许重复，有放回随机抽取）
  */
-export function drawShopCards(townLevel: number, count: number, exclude: string[] = []): CardDefinition[] {
-  const pool = getCardPool(townLevel).filter(c => !exclude.includes(c.id));
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+export function drawShopCards(townLevel: number, count: number): CardDefinition[] {
+  const pool = getCardPool(townLevel);
+  if (pool.length === 0) return [];
+  const result: CardDefinition[] = [];
+  for (let i = 0; i < count; i++) {
+    result.push(pool[Math.floor(Math.random() * pool.length)]);
   }
-  return pool.slice(0, count);
+  return result;
 }

@@ -45,8 +45,8 @@ export const MONSTER_SPAWN_POSITIONS: Record<SpawnZone, number> = {
   [SpawnZone.Left0]:  700,
   [SpawnZone.Left1]:  450,
   [SpawnZone.Left2]:  200,
-  [SpawnZone.Right0]: 2300,
-  [SpawnZone.Right1]: 2550,
+  [SpawnZone.Right0]: 2900,  // 修复：原2300在城墙内，移至右城墙(2700)外
+  [SpawnZone.Right1]: 3100,  // 修复：原2550在城墙内，移至城外
   [SpawnZone.Right2]: 3400,
 };
 
@@ -62,15 +62,28 @@ export function assignSpawnZone(monsterCount: number): SpawnZone {
 export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
-export const LEVEL_THRESHOLD = 10;
 const SAVE_KEY     = 'town_legend_save';
 const SAVE_VERSION = 3;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
 
-function countLevelProgress(hand: CardInstance[], field: CardInstance[]): number {
-  return [...hand, ...field].length;
+/** 将所有卡牌换算为"原始单位"（0级卡 = 3^0 = 1单位，1级卡 = 3^1 = 3单位，2级卡 = 3^2 = 9单位，…）*/
+function computeCardRawValue(cards: CardInstance[]): number {
+  return cards.reduce((sum, c) => {
+    const def = CARD_DB.find(d => d.id === c.definitionId);
+    return sum + Math.pow(3, def?.level ?? 0);
+  }, 0);
+}
+
+/**
+ * 城镇 x 级升级所需的原始单位阈值。
+ * 规则：总卡牌换算成 x 级卡牌 >= 10x 张
+ * （3张 (x-1)级卡 = 1张 x 级卡，以此类推）
+ * 原始阈值 = 10 * x * 3^(x-1)
+ */
+function getLevelThresholdRaw(townLevel: number): number {
+  return 10 * townLevel * Math.pow(3, townLevel - 1);
 }
 
 export function monthlyTax(level: number): number {
@@ -181,7 +194,13 @@ export class GameStore {
   emit(event?: string) { this.listeners.forEach(fn => fn(event)); }
 
   get fieldCapacity() { return fieldCap(this.townLevel); }
-  get levelProgress() { return countLevelProgress(this.hand, this.field); }
+  /** 当前升级进度（换算成当前等级卡牌数）*/
+  get levelProgress(): number {
+    const raw = computeCardRawValue([...this.hand, ...this.field]);
+    return Math.floor(raw / Math.pow(3, this.townLevel - 1));
+  }
+  /** 当前升级阈值 = 10 × 城镇等级 */
+  get levelThreshold(): number { return 10 * this.townLevel; }
 
   getLootDef(lootId: string): LootDef | undefined {
     return LOOT_DB.find(l => l.id === lootId);
@@ -453,7 +472,8 @@ export class GameStore {
     this.resolveUpkeep();
     this.resolveRecovery();
 
-    if (countLevelProgress(this.hand, this.field) >= LEVEL_THRESHOLD) {
+    const rawVal = computeCardRawValue([...this.hand, ...this.field]);
+    if (rawVal >= getLevelThresholdRaw(this.townLevel)) {
       this.townLevel++;
       this.refreshShopFull();
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
