@@ -1,8 +1,8 @@
-import {
+﻿import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
   HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
 } from '../types';
-import { CARD_DB, drawShopCards, LEVEL_COST, shopSize, shopRefreshCost } from '../data/cards';
+import { CARD_DB, drawShopCards, LEVEL_COST, shopSize, shopRefreshCost, HUMAN_WILDCARD_BY_LEVEL, MONSTER_WILDCARD_BY_LEVEL, WILDCARD_CHANCE } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
 
 let _idCounter = 0;
@@ -326,14 +326,32 @@ export class GameStore {
     return true;
   }
 
-  upgradeCard(definitionId: string): { ok: boolean; reason?: string } {
+  upgradeCard(definitionId: string): { ok: boolean; reason?: string; wildcard?: boolean } {
     const def = defById(definitionId);
     if (!def.upgradeTargetId) return { ok: false, reason: '该卡牌已是最高等级，无法升级' };
+
     const all     = [...this.hand, ...this.field];
     const matches = all.filter(c => c.definitionId === definitionId);
     if (matches.length < 3) return { ok: false, reason: `需要3张（当前 ${matches.length}/3）` };
-    const targetDef = CARD_DB.find(c => c.id === def.upgradeTargetId);
+
+    let finalTargetId = def.upgradeTargetId;
+    let isWildcard    = false;
+
+    if (Math.random() < WILDCARD_CHANCE) {
+      const isHuman   = def.type === CardType.Human;
+      const isMonster = def.type === CardType.Monster;
+      const wildcardMap = isHuman   ? HUMAN_WILDCARD_BY_LEVEL
+                        : isMonster ? MONSTER_WILDCARD_BY_LEVEL
+                        : null;
+      if (wildcardMap && wildcardMap[def.level] !== undefined) {
+        finalTargetId = wildcardMap[def.level];
+        isWildcard    = true;
+      }
+    }
+
+    const targetDef = CARD_DB.find(c => c.id === finalTargetId);
     if (!targetDef) return { ok: false, reason: '升级目标不存在' };
+
     const toRemove = matches.slice(0, 3);
     for (const r of toRemove) {
       const hi = this.hand.findIndex(c => c.instanceId === r.instanceId);
@@ -341,11 +359,21 @@ export class GameStore {
       const fi = this.field.findIndex(c => c.instanceId === r.instanceId);
       if (fi !== -1) this.field.splice(fi, 1);
     }
+
     const newInst = instantiate(targetDef);
     this.hand.push(newInst);
-    this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
+
+    if (isWildcard) {
+      this.addLog(
+        `🎉✨ 奇迹！3张 ${def.name} 触发彩蛋，合成为传说中的 ${targetDef.name}！`,
+        'good'
+      );
+    } else {
+      this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
+    }
+
     this.emit('upgrade');
-    return { ok: true };
+    return { ok: true, wildcard: isWildcard };
   }
 
   // ── Tick ──────────────────────────────────────────────────────────────────────
@@ -518,13 +546,14 @@ export class GameStore {
   }
 
   private resolveUpkeep() {
-    const handUpkeep  = this.hand.reduce(
-      (s, c) => s + Math.ceil(defById(c.definitionId).upkeep * 0.5), 0
-    );
+    //const handUpkeep  = this.hand.reduce(
+      //(s, c) => s + Math.ceil(defById(c.definitionId).upkeep * 0.5), 0
+    //);
     const fieldUpkeep = this.field
       .filter(c => defById(c.definitionId).type !== CardType.Monster)
       .reduce((s, c) => s + defById(c.definitionId).upkeep, 0);
-    const totalUpkeep = handUpkeep + fieldUpkeep;
+    //const totalUpkeep = handUpkeep + fieldUpkeep;
+    const totalUpkeep = fieldUpkeep;
 
     if (this.gold >= totalUpkeep) {
       this.gold -= totalUpkeep;
