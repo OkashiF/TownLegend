@@ -1,5 +1,5 @@
-import Phaser from 'phaser';
-import { store, LogEntry, defById } from '../systems/store';
+﻿import Phaser from 'phaser';
+import { store, LogEntry, defById, TICKS_PER_MONTH } from '../systems/store';
 import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import {
@@ -55,6 +55,7 @@ interface FieldSprite {
   x: number; y: number;
   targetX: number; targetY: number;
   bobPhase: number;
+  isStatic: boolean;  // true for building cards (no AI, no animation)
   warriorState:    WarriorState;
   attackCooldown:  number;
   combatTarget:    string | null;
@@ -106,6 +107,7 @@ export class TownScene extends Phaser.Scene {
 
   private tickAccum   = 0;
   private lootDropSeq = 0;
+  private hiddenAt    = 0;   // Date.now() when tab was hidden
 
   constructor() { super({ key: 'TownScene' }); }
 
@@ -130,6 +132,29 @@ export class TownScene extends Phaser.Scene {
     this.buildBackground();
     this.buildZoneBuildings();
     this.buildSideLog();
+
+    // ── 后台继续运行：tab 切回后补算时间 ────────────────────────────────────────
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.hiddenAt = Date.now();
+      } else if (this.hiddenAt > 0) {
+        const elapsed   = Date.now() - this.hiddenAt;
+        // 最多补算 6 个月，避免一次性处理过多
+        const maxTicks  = 6 * TICKS_PER_MONTH;
+        const catchUp   = Math.min(Math.floor(elapsed / MS_PER_TICK), maxTicks);
+        for (let i = 0; i < catchUp; i++) {
+          const { newLogs } = store.advanceTick();
+          if (newLogs.length > 0) {
+            for (const e of [...newLogs].reverse()) this.pushLogEntry(e);
+          }
+        }
+        if (catchUp > 0) {
+          this.syncSprites();
+          this.syncDens();
+        }
+        this.hiddenAt = 0;
+      }
+    });
 
     store.subscribe(evt => {
       if (evt === 'field' || evt === 'upgrade' || evt === 'sell') {
@@ -164,8 +189,8 @@ export class TownScene extends Phaser.Scene {
     });
     this.input.on('pointerup', () => { this.isDragging = false; });
     this.input.on('wheel',
-      (_p: Phaser.Input.Pointer, _gos: unknown, _dx: number, _dy: number, dy: number) => {
-        cam.setZoom(Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.75, 1.5));
+      (_p: Phaser.Input.Pointer, _gos: unknown, _dx: number, deltaY: number) => {
+        cam.setZoom(Phaser.Math.Clamp(cam.zoom - deltaY * 0.001, 0.75, 1.5));
       }
     );
   }
@@ -703,6 +728,28 @@ export class TownScene extends Phaser.Scene {
 
   // ── Sprite sync ────────────────────────────────────────────────────────────
 
+  // ── Building helpers ──────────────────────────────────────────────────────────
+  /** 返回建筑卡的目标区域 X */
+  private buildingZoneX(defId: string): number {
+    if (defId === 'building_stall')    return ZONE.shop;
+    if (defId === 'building_workshop') return ZONE.craft;
+    if (defId === 'building_inn')      return ZONE.town;
+    if (defId === 'building_barracks') return ZONE.barracks;
+    return ZONE.town;
+  }
+
+  /** 返回建筑卡在场上的静态 X（同类型卡按顺序排列，各偏移 ±70px） */
+  private buildingFieldX(instanceId: string, defId: string): number {
+    const base = this.buildingZoneX(defId);
+    let idx = 0;
+    for (const c of store.field) {
+      if (c.instanceId === instanceId) break;
+      if (c.definitionId === defId) idx++;
+    }
+    const offsets = [-70, 70, -140, 140, -210, 210];
+    return base + (offsets[idx] ?? 0);
+  }
+
   private syncSprites() {
     const fieldIds = new Set(store.field.map(c => c.instanceId));
 
@@ -717,6 +764,14 @@ export class TownScene extends Phaser.Scene {
       const sp = this.sprites.get(inst.instanceId);
       if (!sp) continue;
       if (sp.dyingTimer > 0) continue;
+      const def = defById(inst.definitionId);
+      // 建筑卡：更新静态位置（以防其他建筑被移除后需要重排）
+      if (def.type === CardType.Building) {
+        const bx = this.buildingFieldX(inst.instanceId, inst.definitionId);
+        sp.x = bx; sp.y = this.groundY;
+        sp.targetX = bx; sp.targetY = this.groundY;
+        sp.sprite.setPosition(bx, this.groundY);
+      }
       const newKey = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       if ((sp.sprite as any).__texKey !== newKey) {
         sp.sprite.setTexture(newKey);
@@ -729,14 +784,16 @@ export class TownScene extends Phaser.Scene {
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
 
-      // 怪物处于休息状态（被击败后倒计时未归零）→ 不创建sprite，等复活再出现
-      if (def.type === CardType.Monster && !inst.isActive) continue;
+      // 魔法卡不在场上显示精灵，改由 Buff 栏展示
+      if (def.type === CardType.Magic) continue;
 
       const key    = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       const sprite = this.add.image(0, 0, key);
       (sprite as any).__texKey = key;
 
-      const isMonster = def.type === CardType.Monster;
+      const isMonster  = def.type === CardType.Monster;
+      const isBuilding = def.type === CardType.Building;
+      // 怪物用 MONSTER_SCALE，人物和建筑卡均用 HUMAN_SCALE
       sprite.setScale(isMonster ? MONSTER_SCALE : HUMAN_SCALE);
       sprite.setOrigin(0.5, 1);
       this.entityLayer.add(sprite);
@@ -754,7 +811,10 @@ export class TownScene extends Phaser.Scene {
       this.labelLayer.add(craftBar);
 
       let sx = ZONE.town, sy = this.groundY;
-      if (def.type === CardType.Monster && inst.spawnZone) {
+      if (isBuilding) {
+        sx = this.buildingFieldX(inst.instanceId, inst.definitionId);
+        sy = this.groundY;
+      } else if (isMonster && inst.spawnZone) {
         sx = MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? ZONE.town;
         sy = this.groundY;
       } else if (def.type === CardType.Human) {
@@ -773,6 +833,7 @@ export class TownScene extends Phaser.Scene {
         sprite, label, hpBar, craftBar,
         x: sx, y: sy, targetX: sx, targetY: sy,
         bobPhase: Math.random() * Math.PI * 2,
+        isStatic: isBuilding,
         warriorState: 'patrol', attackCooldown: ATTACK_COOLDOWN,
         combatTarget: null, lootTarget: null, patrolDir: 1,
         hitFlashTimer: 0, shopServeTarget: null,
@@ -794,6 +855,16 @@ export class TownScene extends Phaser.Scene {
       const inst = store.field.find(c => c.instanceId === id);
       if (!inst?.definitionId) continue;
       const def = defById(inst.definitionId);
+
+      // 建筑卡：静止不动，不显示 HP/制造进度条，无 bob 动画
+      if (sp.isStatic) {
+        sp.sprite.setAlpha(inst.isActive ? 1 : 0.45);
+        sp.sprite.setPosition(sp.x, sp.y);
+        sp.label.setPosition(sp.x, sp.y - 32);
+        sp.hpBar.clear();
+        sp.craftBar.clear();
+        continue;
+      }
 
       sp.bobPhase += 0.04;
       const isMonster = def.type === CardType.Monster;
@@ -966,7 +1037,8 @@ export class TownScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         const tg = this.add.graphics();
         const s = 4;
-        tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 4*s);
+        // 修复悬空：树干高度从 4*s 改为 5*s，使底部恰好到纹理底部(44px)
+        tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
         tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
         tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
         tg.generateTexture(key, 32, 44);

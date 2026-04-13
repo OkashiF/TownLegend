@@ -43,6 +43,30 @@
       image-rendering: crisp-edges;
     }
 
+    /* ── Buff bar（魔法效果）── */
+    #buff-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 3px 12px;
+      background: rgba(20, 0, 40, 0.12);
+      min-height: 24px;
+      pointer-events: all;
+    }
+    .buff-chip {
+      font-family: 'Silkscreen', monospace;
+      font-size: 9px;
+      background: rgba(100, 40, 160, 0.35);
+      border: 1px solid rgba(160, 80, 220, 0.55);
+      border-radius: 3px;
+      padding: 2px 7px;
+      color: #e0a0f8;
+      cursor: default;
+      white-space: nowrap;
+    }
+    .buff-chip:hover { background: rgba(120, 60, 180, 0.55); }
+
     /* ── HUD overlay ── */
     #hud {
       position: absolute;
@@ -460,6 +484,8 @@
         <div id="month-progress-bar"></div>
       </div>
     </div>
+    <!-- 魔法 Buff 栏：显示场上活跃魔法卡，鼠标悬停显示名称+简介 -->
+    <div id="buff-bar"></div>
   </div>
 
   <!-- Field overlay -->
