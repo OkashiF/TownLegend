@@ -549,8 +549,9 @@ export class GameStore {
     //const handUpkeep  = this.hand.reduce(
       //(s, c) => s + Math.ceil(defById(c.definitionId).upkeep * 0.5), 0
     //);
+    // 仅对“非怪物且处于激活状态”的卡牌收取维护费，罢工（isActive === false）或休息中的卡牌不消耗维护费
     const fieldUpkeep = this.field
-      .filter(c => defById(c.definitionId).type !== CardType.Monster)
+      .filter(c => defById(c.definitionId).type !== CardType.Monster && c.isActive)
       .reduce((s, c) => s + defById(c.definitionId).upkeep, 0);
     //const totalUpkeep = handUpkeep + fieldUpkeep;
     const totalUpkeep = fieldUpkeep;
