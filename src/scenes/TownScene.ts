@@ -729,6 +729,9 @@ export class TownScene extends Phaser.Scene {
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
 
+      // 怪物处于休息状态（被击败后倒计时未归零）→ 不创建sprite，等复活再出现
+      if (def.type === CardType.Monster && !inst.isActive) continue;
+
       const key    = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
       const sprite = this.add.image(0, 0, key);
       (sprite as any).__texKey = key;
@@ -1030,7 +1033,7 @@ export class TownScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         const g = this.add.graphics();
         fn(g, 0, 0, scale);
-        g.generateTexture(key, 48, 60);  // 统一 48x60
+        g.generateTexture(key, 48, 51);  // 51 = 图形底部像素值，贴地
         g.destroy();
       }
       // setOrigin(0.5, 1) 使建筑底部贴地

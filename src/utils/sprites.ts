@@ -325,24 +325,30 @@ export function generateAllTextures(scene: Phaser.Scene): void {
     g.destroy();
   }
 
-  // 人物: 32x54px  setOrigin(0.5,1) → 底部(54px)贴 groundY
+  // ── 纹理高度 = 图形实际底部像素值，确保 setOrigin(0.5,1) 后底部精确贴地 ──
+  // 人物 s=3: 鞋底 logical y+15 → 像素 45px。纹理高 = 45
   for (let d = 0; d < 3; d++) {
     const depth = d;
-    gen(`human_shop_${d}`,   (g, x, y, s) => drawShopWorker(g, x, y, s, depth),   32, 54);
-    gen(`human_craft_${d}`,  (g, x, y, s) => drawCraftWorker(g, x, y, s, depth),  32, 54);
-    gen(`human_combat_${d}`, (g, x, y, s) => drawCombatWorker(g, x, y, s, depth), 32, 54);
+    gen(`human_shop_${d}`,   (g, x, y, s) => drawShopWorker(g, x, y, s, depth),   32, 45);
+    gen(`human_craft_${d}`,  (g, x, y, s) => drawCraftWorker(g, x, y, s, depth),  32, 45);
+    gen(`human_combat_${d}`, (g, x, y, s) => drawCombatWorker(g, x, y, s, depth), 32, 45);
   }
-  gen('human_idle', drawIdleWorker as DrawFn, 32, 54);
+  gen('human_idle', drawIdleWorker as DrawFn, 32, 45);
 
-  // 怪物（尺寸各异，均填满到纹理底部）
+  // 怪物：纹理高 = 图形实际底部像素
+  // rat:    feet bottom = (12+2)*3 = 42px
+  // wolf:   feet bottom = (12+1)*3 = 39px
+  // troll:  feet bottom = (17+3)*3 = 60px
+  // harpy:  feet bottom = (12+1)*3 = 39px
+  // dragon: feet bottom = (19+2)*3 = 63px
   gen('monster_rat',    drawRat,    32, 42);
-  gen('monster_wolf',   drawWolf,   32, 48);
-  gen('monster_troll',  drawTroll,  36, 63);
-  gen('monster_harpy',  drawHarpy,  42, 48);
-  gen('monster_dragon', drawDragon, 54, 66);
+  gen('monster_wolf',   drawWolf,   32, 39);
+  gen('monster_troll',  drawTroll,  36, 60);
+  gen('monster_harpy',  drawHarpy,  42, 39);
+  gen('monster_dragon', drawDragon, 54, 63);
 
-  // 建筑: 48x60px
-  gen('building_basic', drawBuilding, 48, 60);
+  // 建筑 s=3: 墙基 logical y+17 → 像素 51px。纹理高 = 51
+  gen('building_basic', drawBuilding, 48, 51);
   gen('magic_basic',    drawMagic,    48, 48);
 
   // 其他
