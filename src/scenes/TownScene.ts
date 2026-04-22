@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { store, LogEntry, defById, TICKS_PER_MONTH } from '../systems/store';
+import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary } from '../systems/store';
 import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import {
@@ -111,9 +111,6 @@ export class TownScene extends Phaser.Scene {
   private lootDropSeq = 0;
   private hiddenAt    = 0;
 
-  // 月度总结弹窗是否显示中
-  private summaryShowing = false;
-
   constructor() { super({ key: 'TownScene' }); }
 
   create() {
@@ -138,10 +135,10 @@ export class TownScene extends Phaser.Scene {
     this.buildZoneBuildings();
     this.buildSideLog();
 
-    // ── 月度总结弹窗监听 ─────────────────────────────────────────────────────
+    // ── 年度总结弹窗监听 ─────────────────────────────────────────────────────
     store.subscribe(evt => {
-      if (evt === 'monthSummary' && store.lastMonthSummary) {
-        this.showMonthlySummary(store.lastMonthSummary);
+      if (evt === 'yearSummary' && store.lastYearSummary) {
+        this.showYearlySummary(store.lastYearSummary);
       }
     });
 
@@ -271,22 +268,20 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 月度总结弹窗 ────────────────────────────────────────────────────────────
-  private showMonthlySummary(summary: import('../systems/store').MonthSummary) {
-    // 防止重复弹窗
-    const existing = document.getElementById('monthly-summary-modal');
+  // ── 年度总结弹窗 ────────────────────────────────────────────────────────────
+  private showYearlySummary(summary: YearSummary) {
+    const existing = document.getElementById('yearly-summary-modal');
     if (existing) existing.remove();
 
     const overlay = document.createElement('div');
-    overlay.id = 'monthly-summary-modal';
+    overlay.id = 'yearly-summary-modal';
     overlay.style.cssText = `
       position:fixed; inset:0; background:rgba(0,0,0,0.75);
       z-index:200; display:flex; align-items:center; justify-content:center;
       pointer-events:all;
     `;
 
-    const netIncome = summary.taxIncome + summary.shopIncome - summary.upkeepCost;
-    const netColor  = netIncome >= 0 ? '#60cc60' : '#cc4040';
+    const netColor = summary.netBalance >= 0 ? '#60cc60' : '#cc4040';
 
     overlay.innerHTML = `
       <div style="
@@ -299,26 +294,19 @@ export class TownScene extends Phaser.Scene {
         color:#f5e6c8;
       ">
         <div style="font-size:14px;color:#d4a017;text-align:center;margin-bottom:16px;letter-spacing:2px;">
-          📜 第 ${summary.month} 月 月报
+          📜 第 ${summary.year} 年 年终总结
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-          ${this.summaryRow('🏛️ 税收收入',  `+${summary.taxIncome}💰`, '#60cc60')}
-          ${this.summaryRow('🏪 商店收入',  `+${summary.shopIncome}💰`, '#60cc60')}
-          ${this.summaryRow('🏠 维护支出',  `-${summary.upkeepCost}💰`, '#cc8040')}
+          ${this.summaryRow('💳 购买卡牌',  `${summary.cardsBought} 张`)}
+          ${this.summaryRow('⬆️ 升级次数',  `${summary.upgradesDone} 次`)}
+          ${this.summaryRow('💰 总收入',    `+${summary.totalIncome}💰`,   '#60cc60')}
+          ${this.summaryRow('🏠 总支出',    `-${summary.totalExpenses}💰`, '#cc8040')}
           <div style="border-top:1px solid #5a3a1a;margin:4px 0;"></div>
-          ${this.summaryRow('💰 本月净收益', `${netIncome >= 0 ? '+' : ''}${netIncome}💰`, netColor)}
+          ${this.summaryRow('📊 年度盈余',  `${summary.netBalance >= 0 ? '+' : ''}${summary.netBalance}💰`, netColor)}
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;">
-          ${this.summaryRow('⚔️ 击败怪物',  `${summary.monstersDefeated} 只`)}
-          ${this.summaryRow('🔨 制造商品',  `${summary.productsCrafted} 件`)}
-          ${summary.wildcardTriggered ? this.summaryRow('✨ 触发彩蛋', '1次', '#f0c040') : ''}
-          ${summary.siegeOccurred     ? this.summaryRow('🚨 遭遇攻城', '是', '#cc4040') : ''}
-          ${summary.leveledUp         ? this.summaryRow('🎉 城镇升级', `→ ${summary.newLevel}级`, '#f0c040') : ''}
-        </div>
-
-        <button id="monthly-summary-close" style="
+        <button id="yearly-summary-close" style="
           display:block; width:100%;
           font-family:'Silkscreen',monospace; font-size:11px;
           background:#8b1a1a; color:#f5e6c8;
@@ -330,10 +318,9 @@ export class TownScene extends Phaser.Scene {
 
     document.getElementById('game-container')!.appendChild(overlay);
 
-    const closeBtn = document.getElementById('monthly-summary-close')!;
+    const closeBtn = document.getElementById('yearly-summary-close')!;
     const close = () => overlay.remove();
     closeBtn.addEventListener('click', close);
-    // 点击外部也关闭
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   }
 
@@ -556,6 +543,16 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
+    // 有战斗岗位人员时，怪物保持等待状态（战斗进行中，不进军）
+    if (store.hasActiveCombatWorkers) {
+      sp.monsterBehavior = 'waiting';
+      if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
+        sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
+        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+      }
+      return;
+    }
+
     const activeTown = townspeople.filter(c => c.isActive);
     if (activeTown.length === 0) {
       sp.monsterBehavior = 'retreating';
@@ -675,6 +672,7 @@ export class TownScene extends Phaser.Scene {
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
       if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      store.checkSiegeTransition();
     }
   }
 
@@ -720,6 +718,7 @@ export class TownScene extends Phaser.Scene {
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
       if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      store.checkSiegeTransition();
     }
   }
 
