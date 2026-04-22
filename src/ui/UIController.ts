@@ -1,4 +1,4 @@
-import { store, defById, monthlyTax, shopRefreshCost } from '../systems/store';
+import { store, defById, monthlyTax, shopRefreshCost, ACHIEVEMENT_DB } from '../systems/store';
 import { CardInstance, CardDefinition, CardType, JobType } from '../types';
 import { CARD_DB } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
@@ -166,25 +166,27 @@ function openAssignModal(inst: CardInstance, def: CardDefinition) {
 
 // ── Tab management ─────────────────────────────────────────────────────────────
 
-type Tab = 'hand' | 'shop' | 'field' | 'inventory';
+type Tab = 'hand' | 'shop' | 'field' | 'inventory' | 'achievements';
 let currentTab: Tab = 'shop';
 
 function setTab(tab: Tab) {
   currentTab = tab;
   document.querySelectorAll('.card-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`[data-tab="${tab}"]`)!.classList.add('active');
-  $('hand-container').style.display      = tab === 'hand'      ? 'flex' : 'none';
-  $('shop-container').style.display      = tab === 'shop'      ? 'flex' : 'none';
-  $('field-list').style.display          = tab === 'field'     ? 'flex' : 'none';
-  $('inventory-panel').style.display     = tab === 'inventory' ? 'block' : 'none';
+  $('hand-container').style.display        = tab === 'hand'         ? 'flex'  : 'none';
+  $('shop-container').style.display        = tab === 'shop'         ? 'flex'  : 'none';
+  $('field-list').style.display            = tab === 'field'        ? 'flex'  : 'none';
+  $('inventory-panel').style.display       = tab === 'inventory'    ? 'block' : 'none';
+  $('achievements-panel').style.display    = tab === 'achievements' ? 'block' : 'none';
   renderCurrentTab();
 }
 
 function renderCurrentTab() {
-  if (currentTab === 'hand')      renderHand();
-  if (currentTab === 'shop')      renderShop();
-  if (currentTab === 'field')     renderField();
-  if (currentTab === 'inventory') renderInventory();
+  if (currentTab === 'hand')         renderHand();
+  if (currentTab === 'shop')         renderShop();
+  if (currentTab === 'field')        renderField();
+  if (currentTab === 'inventory')    renderInventory();
+  if (currentTab === 'achievements') renderAchievements();
 }
 
 // ── Render hand ───────────────────────────────────────────────────────────────
@@ -347,6 +349,74 @@ function renderInventory() {
     } catch {}
   }
   panel.appendChild(recipeRow);
+}
+
+// ── Render achievements ────────────────────────────────────────────────────────
+
+function renderAchievements() {
+  const panel = $('achievements-panel');
+  panel.innerHTML = '';
+
+  const unlocked = store.achievements.filter(a => a.unlockedAt !== null).length;
+  const total    = store.achievements.length;
+
+  const header = document.createElement('div');
+  header.style.cssText = 'font-family:Silkscreen,monospace;font-size:10px;color:#d4a017;padding:4px 8px 6px;';
+  header.textContent = `🏆 成就 ${unlocked}/${total}`;
+  panel.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:0 8px;';
+
+  for (const def of ACHIEVEMENT_DB) {
+    const rec       = store.achievements.find(a => a.id === def.id);
+    const isUnlocked = rec ? rec.unlockedAt !== null : false;
+
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display:flex; align-items:center; gap:8px;
+      background:${isUnlocked ? 'rgba(212,160,23,0.1)' : 'rgba(30,20,10,0.5)'};
+      border:1px solid ${isUnlocked ? '#7a5a10' : '#3a2a10'};
+      border-radius:3px; padding:5px 8px;
+      opacity:${isUnlocked ? '1' : '0.5'};
+    `;
+
+    const emoji = document.createElement('span');
+    emoji.style.cssText = 'font-size:16px;flex-shrink:0;';
+    emoji.textContent = def.emoji;
+
+    const info = document.createElement('div');
+    info.style.cssText = 'display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;';
+
+    const name = document.createElement('div');
+    name.style.cssText = 'font-family:Silkscreen,monospace;font-size:9px;color:#f0c040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    name.textContent = def.name;
+
+    const desc = document.createElement('div');
+    desc.style.cssText = 'font-family:Silkscreen,monospace;font-size:8px;color:#9a7a50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    desc.textContent = isUnlocked ? def.description : '???';
+
+    info.appendChild(name);
+    info.appendChild(desc);
+
+    if (isUnlocked && rec && rec.unlockedAt !== null) {
+      const unlockInfo = document.createElement('div');
+      const yr = Math.ceil(rec.unlockedAt / 12);
+      const mo = ((rec.unlockedAt - 1) % 12) + 1;
+      unlockInfo.style.cssText = 'font-family:Silkscreen,monospace;font-size:7px;color:#60a060;white-space:nowrap;flex-shrink:0;';
+      unlockInfo.textContent = `Y${yr}·M${mo}`;
+      row.appendChild(emoji);
+      row.appendChild(info);
+      row.appendChild(unlockInfo);
+    } else {
+      row.appendChild(emoji);
+      row.appendChild(info);
+    }
+
+    grid.appendChild(row);
+  }
+
+  panel.appendChild(grid);
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
