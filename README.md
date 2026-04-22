@@ -60,7 +60,7 @@ Tester           Debugger
 | 状态管理 | 自研响应式 `GameStore`（发布/订阅模式）|
 | UI 层 | 原生 DOM（卡牌面板、HUD、弹窗覆盖在 canvas 之上）|
 | 像素图形 | 纯代码绘制：`Phaser.GameObjects.Graphics` → `generateTexture` |
-| 存档 | `localStorage`（JSON 序列化，版本号 `5`）|
+| 存档 | `localStorage`（JSON 序列化，版本号 `6`）|
 
 源码结构：
 
@@ -72,11 +72,11 @@ src/
 │   ├── cards.ts          # 卡牌定义 + 升级映射 + 彩蛋映射 + 商店规模/刷新费
 │   └── items.ts          # 战利品 / 成品 / 配方定义
 ├── systems/
-│   └── store.ts          # 游戏状态机（含彩蛋合成、攻城判断、出售、升级逻辑）
+│   └── store.ts          # 游戏状态机（含彩蛋合成、攻城判断、出售、升级逻辑、成就系统）
 ├── scenes/
-│   └── TownScene.ts      # 场景：巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗
+│   └── TownScene.ts      # 场景：巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗、成就解锁弹窗
 └── ui/
-    └── UIController.ts   # 出售按钮、商店刷新价格动态显示
+    └── UIController.ts   # 出售按钮、商店刷新价格动态显示、成就面板
 ```
 
 ---
@@ -104,7 +104,7 @@ npm run build  # 构建单文件 dist/index.html
 │   Phaser Canvas（可拖拽 / 缩放的世界地图）  │ 220px   │
 │                                            │ 可折叠  │
 ├──────────────────────────────────────────────────────┤
-│  标签页：手牌 | 商店 | 场上 | 库存                     │
+│  标签页：手牌 | 商店 | 场上 | 库存 | 🏆成就              │
 │  卡牌面板（横向滚动，max-height: 38vh）                │
 └──────────────────────────────────────────────────────┘
 ```
@@ -515,7 +515,8 @@ totalCraftMult = buildingBonus × hasteBonus
 7. **城镇升级检查**
 8. **累积年度统计**（每月将税收+商店收入/维护费累加入 `yearStats`）
 9. **年终结算**（仅当 `month % 12 === 0` 时）：生成 `YearSummary`，触发 `yearSummary` 事件弹出年度总结弹窗，清零 `yearStats`
-10. **重置月度统计计数器**
+10. **成就检查**：调用 `checkAchievements()`，检查所有未解锁成就的触发条件
+11. **重置月度统计计数器**
 
 ---
 
@@ -563,7 +564,8 @@ totalCraftMult = buildingBonus × hasteBonus
 ## 存档系统
 
 - 存档时机：每月末结算完成后自动写入 `localStorage`，key 为 `town_legend_save`。
-- 版本号：`5`（与旧版不兼容，升级后会忽略旧存档）。
+- 版本号：`6`（与旧版不兼容，升级后会忽略旧存档）。
+- 新增字段：`achievements`（成就解锁记录）、`totalCardsBought`、`totalUpgradesDone`、`totalMonstersDefeated`、`wildcardEverTriggered`（累计计数，永不清零）。
 
 ---
 
@@ -735,6 +737,7 @@ totalCraftMult = buildingBonus × hasteBonus
 - ✅ **出售回收比例提升至30%**（场上怪物卡出售0金币；手牌及其他卡保底1金币）
 - ✅ **攻城逻辑重写**（有活跃战斗岗位人员时怪物不进军；`isUnderSiege = 有准备好的怪物 && !hasActiveCombatWorkers`；人员全灭/罢工后立即触发攻城）
 - ✅ **年度总结弹窗**（每12个月年末弹出，展示年度购买卡牌/升级次数/总收入/总支出/年度盈余）
+- ✅ **成就系统**（8条初始成就：建镇之始/初战告捷/购物达人/合成师/幸运降临/富甲一方/城镇繁荣/岁月悠长；事件驱动触发+月末统一检查；🏆标签页展示；解锁弹出动画+顶栏金色闪烁；存档版本升至6）
 
 ---
 
@@ -781,4 +784,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 ---
 
-*文档版本：v1.3 · 最后更新：出售回收30%+场上怪物0金币、攻城逻辑重写（hasActiveCombatWorkers）、年度总结弹窗（每12月触发）*
+*文档版本：v1.8 · 最后更新：成就系统（8条成就、🏆标签页、解锁弹窗、存档版本升至6）*
