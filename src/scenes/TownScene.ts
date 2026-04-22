@@ -648,6 +648,20 @@ export class TownScene extends Phaser.Scene {
         x: mSp.sprite.x + dir * 6,
         duration: 120, yoyo: true, ease: 'Quad.Out',
       });
+      // 命中时怪物摆动
+      this.tweens.add({
+        targets: mSp.sprite,
+        angle: dir * 12,
+        duration: 70, yoyo: true, ease: 'Quad.Out',
+      });
+      // 人物受击时摆动
+      if (dmgToHero > 0) {
+        this.tweens.add({
+          targets: hSp.sprite,
+          angle: -dir * 10,
+          duration: 70, yoyo: true, ease: 'Quad.Out',
+        });
+      }
     }
 
     if (mSp && !mSp.isDead) mSp.hitFlashTimer = 4;
@@ -691,6 +705,12 @@ export class TownScene extends Phaser.Scene {
       this.tweens.add({
         targets: mSp.sprite, x: mSp.sprite.x + dir * 8,
         duration: 80, yoyo: true, ease: 'Quad.Out',
+      });
+      // 人物受击摆动
+      this.tweens.add({
+        targets: hSp.sprite,
+        angle: -dir * 10,
+        duration: 70, yoyo: true, ease: 'Quad.Out',
       });
     }
 
@@ -992,6 +1012,8 @@ export class TownScene extends Phaser.Scene {
       if (!inst.isActive) {
         sp.sprite.setAlpha(0.45);
         sp.sprite.clearTint();
+        sp.sprite.setAngle(0);
+        if (isMonster) sp.sprite.setScale(MONSTER_SCALE);
         sp.sprite.setPosition(sp.x, sp.y + Math.sin(sp.bobPhase) * 1.5);
       } else {
         if (sp.hitFlashTimer > 0) {
@@ -1010,15 +1032,45 @@ export class TownScene extends Phaser.Scene {
         const dx   = sp.targetX - sp.x;
         const dy   = sp.targetY - sp.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
+        let renderBobY = 0;
         if (dist > 1) {
           const step = Math.min(speed * dt, dist);
           sp.x += (dx / dist) * step;
           sp.y += (dy / dist) * step;
           sp.sprite.setFlipX(dx < 0);
+          // 步伐弹跳：更快频率上下振荡模拟走路
+          renderBobY = Math.sin(sp.bobPhase * 4) * 2.5;
+          // 战士追击/战斗时轻微身体摆动
+          if (!isMonster && (sp.warriorState === 'chase' || sp.warriorState === 'fight')
+              && sp.hitFlashTimer <= 0) {
+            sp.sprite.setAngle(Math.sin(sp.bobPhase * 6) * 3);
+          } else if (sp.hitFlashTimer <= 0) {
+            sp.sprite.setAngle(0);
+          }
         } else {
           sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
+          // 静止时角色角度动画（hitFlash 期间交由 tween 控制）
+          if (sp.hitFlashTimer <= 0) {
+            if (!isMonster && inst.jobAssignment === JobType.Craft && inst.isActive) {
+              // 锤击/弯腰动作
+              sp.sprite.setAngle(Math.sin(sp.bobPhase * 3) * 5);
+            } else if (!isMonster && inst.jobAssignment === JobType.Shop
+                       && inst.isActive && sp.shopServeTarget) {
+              // 服务顾客时前倾
+              sp.sprite.setAngle(5);
+            } else {
+              sp.sprite.setAngle(0);
+            }
+          }
         }
-        sp.sprite.setPosition(sp.x, sp.y);
+        sp.sprite.setPosition(sp.x, sp.y + renderBobY);
+
+        // 怪物待机呼吸缩放
+        if (isMonster && sp.monsterBehavior === 'waiting') {
+          sp.sprite.setScale(MONSTER_SCALE + Math.sin(sp.bobPhase * 1.5) * 0.02);
+        } else {
+          sp.sprite.setScale(isMonster ? MONSTER_SCALE : HUMAN_SCALE);
+        }
       }
 
       sp.label.setPosition(sp.x, sp.y - 30);
