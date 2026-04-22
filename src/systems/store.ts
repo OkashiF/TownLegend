@@ -113,18 +113,14 @@ export interface ShopSlot {
   sold: boolean;
 }
 
-// ── 月度总结数据结构 ─────────────────────────────────────────────────────────
-export interface MonthSummary {
-  month: number;
-  taxIncome: number;
-  shopIncome: number;
-  upkeepCost: number;
-  monstersDefeated: number;
-  productsCrafted: number;
-  wildcardTriggered: boolean;
-  siegeOccurred: boolean;
-  leveledUp: boolean;
-  newLevel: number;
+// ── 年度总结数据结构 ─────────────────────────────────────────────────────────
+export interface YearSummary {
+  year: number;
+  cardsBought: number;
+  upgradesDone: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netBalance: number;
 }
 
 type Listener = (event?: string) => void;
@@ -160,10 +156,19 @@ export class GameStore {
     newLevel: 1,
   };
 
-  // ── 月度总结（供UI读取）──────────────────────────────────────────────────
-  lastMonthSummary: MonthSummary | null = null;
+  // ── 年度总结（供UI读取）──────────────────────────────────────────────────
+  lastYearSummary: YearSummary | null = null;
+
+  // ── 年度统计（每年清零）──────────────────────────────────────────────────
+  private yearStats = {
+    cardsBought:   0,
+    upgradesDone:  0,
+    totalIncome:   0,
+    totalExpenses: 0,
+  };
 
   private siegeMonthsCount = 0;
+  private _lastSiegeState = false;
   private craftPoints = 0;
   private _lastCraftedEmoji: string | null = null;
 
@@ -191,11 +196,28 @@ export class GameStore {
 
   // ── 攻城状态 ──────────────────────────────────────────────────────────────────
   get isUnderSiege(): boolean {
-    return this.field.some(c => {
+    const hasReadyMonster = this.field.some(c => {
       if (!c.definitionId) return false;
       const def = defById(c.definitionId);
       return def.type === CardType.Monster && c.isActive && c.aggressionCountdown === 0;
     });
+    return hasReadyMonster && !this.hasActiveCombatWorkers;
+  }
+
+  get hasActiveCombatWorkers(): boolean {
+    return this.field.some(c => {
+      if (!c.definitionId) return false;
+      const def = defById(c.definitionId);
+      return def.type === CardType.Human && c.jobAssignment === JobType.Combat && c.isActive;
+    });
+  }
+
+  checkSiegeTransition(): void {
+    const currentSiege = this.isUnderSiege;
+    if (currentSiege && !this._lastSiegeState) {
+      this.addLog('⚔️ 无人守卫！怪物开始向城镇进军！', 'bad');
+    }
+    this._lastSiegeState = currentSiege;
   }
 
   get hasActiveMonsters(): boolean {
@@ -344,6 +366,7 @@ export class GameStore {
     this.gold -= def.cost;
     slot.sold = true;
     this.hand.push(instantiate(def));
+    this.yearStats.cardsBought++;
     this.addLog(`购买了 ${def.name}`, 'info');
     if (this.shopSlots.every(s => s.sold)) {
       this.refreshShopFull();
@@ -366,7 +389,7 @@ export class GameStore {
     if (handIdx !== -1) {
       const inst = this.hand[handIdx];
       const def  = defById(inst.definitionId);
-      const refund = Math.max(1, Math.floor(def.cost * 0.1));
+      const refund = Math.max(1, Math.floor(def.cost * 0.3));
       this.hand.splice(handIdx, 1);
       this.gold += refund;
       this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
@@ -377,13 +400,19 @@ export class GameStore {
     if (fieldIdx !== -1) {
       const inst = this.field[fieldIdx];
       const def  = defById(inst.definitionId);
-      if (def.type === CardType.Monster && inst.isActive && inst.aggressionCountdown === 0) {
-        return { ok: false, reason: '怪物正在攻城，无法出售！' };
+      let refund: number;
+      if (def.type === CardType.Monster) {
+        refund = 0;
+        this.addLog(`💸 出售了 ${def.name}（怪物卡，不返还金币）`, 'info');
+      } else {
+        refund = Math.max(1, Math.floor(def.cost * 0.3));
+        this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
       }
-      const refund = Math.max(1, Math.floor(def.cost * 0.1));
       this.field.splice(fieldIdx, 1);
       this.gold += refund;
-      this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
+      if (def.type === CardType.Human && inst.jobAssignment === JobType.Combat) {
+        this.checkSiegeTransition();
+      }
       this.emit('sell');
       this.emit('field');
       return { ok: true, gold: refund };
@@ -475,6 +504,7 @@ export class GameStore {
       this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
     }
 
+    this.yearStats.upgradesDone++;
     this.emit('upgrade');
     return { ok: true, wildcard: isWildcard };
   }
@@ -626,7 +656,6 @@ export class GameStore {
     // 7. 升级检查
     const rawVal = computeCardRawValue([...this.hand, ...this.field]);
     if (rawVal >= getLevelThreshold(this.townLevel)) {
-      const oldLevel = this.townLevel;
       this.townLevel++;
       this.monthStats.leveledUp = true;
       this.monthStats.newLevel  = this.townLevel;
@@ -634,22 +663,26 @@ export class GameStore {
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
     }
 
-    // 8. 生成月度总结并通知UI
-    this.lastMonthSummary = {
-      month:             this.month - 1,
-      taxIncome:         this.monthStats.taxIncome,
-      shopIncome:        this.monthStats.shopIncome,
-      upkeepCost:        this.monthStats.upkeepCost,
-      monstersDefeated:  this.monthStats.monstersDefeated,
-      productsCrafted:   this.monthStats.productsCrafted,
-      wildcardTriggered: this.monthStats.wildcardTriggered,
-      siegeOccurred:     this.monthStats.siegeOccurred,
-      leveledUp:         this.monthStats.leveledUp,
-      newLevel:          this.monthStats.newLevel,
-    };
-    this.emit('monthSummary');
+    // 8. 累加年度统计
+    this.yearStats.totalIncome   += this.monthStats.taxIncome + this.monthStats.shopIncome;
+    this.yearStats.totalExpenses += this.monthStats.upkeepCost;
 
-    // 9. 重置月度统计
+    // 9. 年终结算（每12个月触发）
+    if (this.month % 12 === 0) {
+      const year = Math.floor(this.month / 12);
+      this.lastYearSummary = {
+        year,
+        cardsBought:   this.yearStats.cardsBought,
+        upgradesDone:  this.yearStats.upgradesDone,
+        totalIncome:   this.yearStats.totalIncome,
+        totalExpenses: this.yearStats.totalExpenses,
+        netBalance:    this.yearStats.totalIncome - this.yearStats.totalExpenses,
+      };
+      this.emit('yearSummary');
+      this.yearStats = { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
+    }
+
+    // 10. 重置月度统计
     this.monthStats = {
       taxIncome: 0, shopIncome: 0, upkeepCost: 0,
       monstersDefeated: 0, productsCrafted: 0,
@@ -738,6 +771,7 @@ export class GameStore {
         this.addLog(`😡 ${defById(c.definitionId).name} 罢工！`, 'bad');
       }
     }
+    this.checkSiegeTransition();
   }
 
   private resolveRecovery() {

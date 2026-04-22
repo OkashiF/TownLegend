@@ -36,7 +36,9 @@ function cardInfoHTML(def: CardDefinition, inst?: CardInstance): string {
     statRow('类型',  { human:'人物', monster:'怪物', building:'建筑', magic:'魔法' }[def.type] ?? def.type),
     statRow('等级',  `Lv.${inst?.level ?? def.level}`),
     statRow('购买',  `${def.cost} 💰`),
-    statRow('售出',  `${Math.max(1, Math.floor(def.cost * 0.1))} 💰（10%回收）`),
+    statRow('售出',  inst?.isOnField && def.type === CardType.Monster
+      ? `0 💰（场上怪物无回收）`
+      : `${Math.max(1, Math.floor(def.cost * 0.3))} 💰（30%回收）`),
     statRow('维护',  def.upkeep ? `${def.upkeep}/月` : '免费'),
   ];
   if (def.upgradeTargetId) {
@@ -113,11 +115,11 @@ function openActionMenu(inst: CardInstance, def: CardDefinition, anchor: HTMLEle
   upgradeBtn.disabled    = !canUpgrade;
   upgradeBtn.textContent = `⬆ 升级（${count}/3）`;
 
-  const sellRefund = Math.max(1, Math.floor(def.cost * 0.1));
-  const isSiegedMonster = inst.isOnField && def.type === CardType.Monster &&
-                          inst.isActive && inst.aggressionCountdown === 0;
-  sellBtn.disabled    = isSiegedMonster;
-  sellBtn.textContent = isSiegedMonster ? `💸 攻城中无法出售` : `💸 出售（${sellRefund}💰）`;
+  const sellRefund = inst.isOnField && def.type === CardType.Monster
+    ? 0
+    : Math.max(1, Math.floor(def.cost * 0.3));
+  sellBtn.disabled    = false;
+  sellBtn.textContent = sellRefund === 0 ? `💸 出售（0💰）` : `💸 出售（${sellRefund}💰）`;
 
   const rect = anchor.getBoundingClientRect();
   menu.style.left = `${Math.min(rect.left, window.innerWidth - 175)}px`;
