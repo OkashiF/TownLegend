@@ -1,4 +1,4 @@
-﻿import {
+import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
   HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
 } from '../types';
@@ -45,8 +45,8 @@ export const MONSTER_SPAWN_POSITIONS: Record<SpawnZone, number> = {
   [SpawnZone.Left0]:  700,
   [SpawnZone.Left1]:  450,
   [SpawnZone.Left2]:  200,
-  [SpawnZone.Right0]: 2900,  // 修复：原2300在城墙内，移至右城墙(2700)外
-  [SpawnZone.Right1]: 3100,  // 修复：原2550在城墙内，移至城外
+  [SpawnZone.Right0]: 2900,
+  [SpawnZone.Right1]: 3100,
   [SpawnZone.Right2]: 3400,
 };
 
@@ -63,27 +63,37 @@ export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 const SAVE_KEY     = 'town_legend_save';
-const SAVE_VERSION = 3;
+// ── 版本号升至 5：修复升级计算（Lv0不计入）、魔法/建筑效果全接入 ──
+const SAVE_VERSION = 5;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
 
-/** 将所有卡牌换算为"原始单位"（0级卡 = 3^0 = 1单位，1级卡 = 3^1 = 3单位，2级卡 = 3^2 = 9单位，…）*/
+/**
+ * 升级进度计算（方案C）：
+ * Lv0 卡贡献 0 单位（不计入升级进度）
+ * Lv1 卡贡献 1 单位
+ * Lv2 卡贡献 3 单位（= 3张Lv1）
+ * Lv3 卡贡献 9 单位（= 3张Lv2 = 9张Lv1）
+ * ... Lv N 贡献 3^(N-1) 单位
+ *
+ * 城镇 x 级升级阈值 = 10x 单位（以Lv1为基准）
+ * 即：1→2级 需要10单位（10张Lv1卡，或等价组合）
+ *     2→3级 需要20单位
+ *     3→4级 需要30单位
+ */
 function computeCardRawValue(cards: CardInstance[]): number {
   return cards.reduce((sum, c) => {
     const def = CARD_DB.find(d => d.id === c.definitionId);
-    return sum + Math.pow(3, def?.level ?? 0);
+    const lv = def?.level ?? 0;
+    if (lv === 0) return sum; // Lv0 不贡献升级进度
+    return sum + Math.pow(3, lv - 1); // Lv1=1, Lv2=3, Lv3=9, Lv4=27, Lv5=81
   }, 0);
 }
 
-/**
- * 城镇 x 级升级所需的原始单位阈值。
- * 规则：总卡牌换算成 x 级卡牌 >= 10x 张
- * （3张 (x-1)级卡 = 1张 x 级卡，以此类推）
- * 原始阈值 = 10 * x * 3^(x-1)
- */
-function getLevelThresholdRaw(townLevel: number): number {
-  return 10 * townLevel * Math.pow(3, townLevel - 1);
+/** 升级阈值 = 10 × 城镇等级（以Lv1单位计） */
+function getLevelThreshold(townLevel: number): number {
+  return 10 * townLevel;
 }
 
 export function monthlyTax(level: number): number {
@@ -101,6 +111,20 @@ export interface LogEntry {
 export interface ShopSlot {
   def: CardDefinition;
   sold: boolean;
+}
+
+// ── 月度总结数据结构 ─────────────────────────────────────────────────────────
+export interface MonthSummary {
+  month: number;
+  taxIncome: number;
+  shopIncome: number;
+  upkeepCost: number;
+  monstersDefeated: number;
+  productsCrafted: number;
+  wildcardTriggered: boolean;
+  siegeOccurred: boolean;
+  leveledUp: boolean;
+  newLevel: number;
 }
 
 type Listener = (event?: string) => void;
@@ -123,6 +147,22 @@ export class GameStore {
   log: LogEntry[] = [];
   inventory: ItemStack[] = [];
 
+  // ── 月度统计（每月初清零）──────────────────────────────────────────────────
+  private monthStats = {
+    taxIncome: 0,
+    shopIncome: 0,
+    upkeepCost: 0,
+    monstersDefeated: 0,
+    productsCrafted: 0,
+    wildcardTriggered: false,
+    siegeOccurred: false,
+    leveledUp: false,
+    newLevel: 1,
+  };
+
+  // ── 月度总结（供UI读取）──────────────────────────────────────────────────
+  lastMonthSummary: MonthSummary | null = null;
+
   private siegeMonthsCount = 0;
   private craftPoints = 0;
   private _lastCraftedEmoji: string | null = null;
@@ -134,7 +174,6 @@ export class GameStore {
   }
 
   // ── 制造进度信息 ─────────────────────────────────────────────────────────────
-  // 修复：只有在有「材料充足的配方」时才返回进度；否则返回 {0,0} 使进度条隐藏
   getCraftProgressInfo(): { points: number; maxPoints: number } {
     for (const recipe of RECIPE_DB) {
       const hasMats = recipe.inputs.every(inp =>
@@ -147,7 +186,6 @@ export class GameStore {
         };
       }
     }
-    // 没有任何可制造配方 → 进度条隐藏（maxPoints=0）
     return { points: 0, maxPoints: 0 };
   }
 
@@ -180,9 +218,68 @@ export class GameStore {
       .reduce((s, c) => s + ((c.runtimeStats as BuildingStats).bonus - 1), 0);
   }
 
-  getWorkshopCraftBonus(): number { return 1 + this.getBuildingExtraRate('building_workshop'); }
-  getBarracksAtkBonus():   number { return this.getBuildingCapacity('building_barracks'); }
-  getStallSaleBonus():     number { return 1 + this.getBuildingExtraRate('building_stall'); }
+  /** 获取所有激活建筑中最高的 bonus（用于互斥效果，如大市集 vs 小摊位不叠加） */
+  private getBuildingMaxBonus(defId: string): number {
+    const cards = this.field.filter(c => c.definitionId === defId && c.isActive);
+    if (cards.length === 0) return 0;
+    return Math.max(...cards.map(c => (c.runtimeStats as BuildingStats).bonus));
+  }
+
+  // ── 商店售价乘数（小摊位/大市集/贸易中心/世界市场 叠加）───────────────────
+  getStallSaleBonus(): number {
+    // 各类型最高bonus取一个，多张同类叠加
+    // 设计：同类建筑的bonus是可叠加的（多张小摊位 → 1.3+0.3+...）
+    return 1
+      + this.getBuildingExtraRate('building_stall')          // Lv2 小摊位 ×1.3
+      + this.getBuildingExtraRate('building_market')         // Lv3 大市集 ×1.8
+      + this.getBuildingExtraRate('building_trading_post')   // Lv4 贸易中心 ×2.5
+      + this.getBuildingExtraRate('building_world_market');  // Lv5 世界市场 ×4
+  }
+
+  // ── 制造速率加成（工坊/大锻造炉/炼金工坊/神圣锻造台 取最高一个，不叠加）──
+  // 设计：同一区域只放一个主制造建筑，取最大值
+  getCraftSpeedBonus(): number {
+    const workshop     = this.getBuildingExtraRate('building_workshop');       // +0.4
+    const forge        = this.getBuildingExtraRate('building_forge');          // +1.5
+    const alchemyLab   = this.getBuildingExtraRate('building_alchemy_lab');    // +3.0
+    const divineForge  = this.getBuildingExtraRate('building_divine_forge');   // +7.0
+    return 1 + workshop + forge + alchemyLab + divineForge;
+  }
+
+  // ── 行人数加成（旅馆类建筑，capacity字段直接代表额外行人）─────────────────
+  getInnPasserbyBonus(): number {
+    return this.getBuildingCapacity('building_inn')          // +3
+      + this.getBuildingCapacity('building_grand_inn')       // +8
+      + this.getBuildingCapacity('building_palace')          // +15（宫殿行人用capacity=15）
+      + this.getBuildingCapacity('building_divine_palace');  // +30
+  }
+
+  // ── 兵营ATK加成 ────────────────────────────────────────────────────────────
+  getBarracksAtkBonus(): number {
+    return this.getBuildingCapacity('building_barracks')      // +4
+      + this.getBuildingCapacity('building_fortress')         // +10
+      + this.getBuildingCapacity('building_citadel')          // +20
+      + this.getBuildingCapacity('building_eternal_citadel'); // +40
+  }
+
+  // ── 兵营DEF加成（城塞专属）──────────────────────────────────────────────
+  getBarracksDefBonus(): number {
+    // 城塞 building_citadel 的 DEF+10 效果
+    // capacity 字段存的是ATK值，这里用独立计算
+    const citadels = this.field.filter(c => c.definitionId === 'building_citadel' && c.isActive);
+    return citadels.length * 10;
+  }
+
+  // ── 宫殿税收加成（神圣宫殿 税收×2）────────────────────────────────────
+  getPalaceTaxMultiplier(): number {
+    const divinePalaces = this.field.filter(
+      c => c.definitionId === 'building_divine_palace' && c.isActive
+    ).length;
+    return divinePalaces > 0 ? 2 : 1;
+  }
+
+  // ── 旧接口兼容 ────────────────────────────────────────────────────────────
+  getWorkshopCraftBonus(): number { return this.getCraftSpeedBonus(); }
 
   constructor() {
     this.refreshShopFull();
@@ -194,13 +291,13 @@ export class GameStore {
   emit(event?: string) { this.listeners.forEach(fn => fn(event)); }
 
   get fieldCapacity() { return fieldCap(this.townLevel); }
-  /** 当前升级进度（换算成当前等级卡牌数）*/
+
+  /** 当前升级进度（Lv1单位，Lv0不计入） */
   get levelProgress(): number {
-    const raw = computeCardRawValue([...this.hand, ...this.field]);
-    return Math.floor(raw / Math.pow(3, this.townLevel - 1));
+    return computeCardRawValue([...this.hand, ...this.field]);
   }
-  /** 当前升级阈值 = 10 × 城镇等级 */
-  get levelThreshold(): number { return 10 * this.townLevel; }
+  /** 升级阈值 */
+  get levelThreshold(): number { return getLevelThreshold(this.townLevel); }
 
   getLootDef(lootId: string): LootDef | undefined {
     return LOOT_DB.find(l => l.id === lootId);
@@ -306,6 +403,11 @@ export class GameStore {
     if (def.type === CardType.Monster) {
       const ms = inst.runtimeStats as MonsterStats;
       inst.aggressionCountdown = ms.aggression;
+
+      // 恐惧术：场上有 delay_aggression 魔法时，倒计时额外+N
+      const delayBonus = this.getMagicBonus('delay_aggression');
+      if (delayBonus > 0) inst.aggressionCountdown += delayBonus;
+
       const monsterCount = this.field.filter(c =>
         defById(c.definitionId).type === CardType.Monster
       ).length;
@@ -364,6 +466,7 @@ export class GameStore {
     this.hand.push(newInst);
 
     if (isWildcard) {
+      this.monthStats.wildcardTriggered = true;
       this.addLog(
         `🎉✨ 奇迹！3张 ${def.name} 触发彩蛋，合成为传说中的 ${targetDef.name}！`,
         'good'
@@ -374,6 +477,11 @@ export class GameStore {
 
     this.emit('upgrade');
     return { ok: true, wildcard: isWildcard };
+  }
+
+  // ── 对外暴露：怪物被击败时由场景调用，记录到月度统计 ──────────────────────
+  recordMonsterDefeated() {
+    this.monthStats.monstersDefeated++;
   }
 
   // ── Tick ──────────────────────────────────────────────────────────────────────
@@ -399,9 +507,7 @@ export class GameStore {
     return { weekEnd, monthEnd, newLogs };
   }
 
-  // ── 实时制造（修复版）────────────────────────────────────────────────────────
-  // 修复：只有存在「有材料」的配方时，才累积 craftPoints
-  // 没有可制造目标时，归零 craftPoints，使进度条归零
+  // ── 实时制造（接入建筑和魔法加速效果）──────────────────────────────────────
   private resolveRealtimeCraft() {
     if (this.isUnderSiege) {
       this.craftPoints = 0;
@@ -417,23 +523,25 @@ export class GameStore {
       return;
     }
 
-    // 检查是否存在材料充足的配方
     const hasCraftableRecipe = RECIPE_DB.some(recipe =>
       recipe.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty)
     );
 
     if (!hasCraftableRecipe) {
-      // 无材料：不累积，保持归零状态
       this.craftPoints = 0;
       return;
     }
 
-    const workshopBonus = this.getWorkshopCraftBonus();
+    // 建筑加速 + 时间加速魔法（craft_haste power=50 → ×1.5）
+    const buildingBonus = this.getCraftSpeedBonus();
+    const hasteBonus    = 1 + (this.getMagicBonus('craft_haste') / 100);
+    const totalBonus    = buildingBonus * hasteBonus;
+
     const diligencePerTick = craftWorkers.reduce(
       (s, c) => s + (c.runtimeStats as HumanStats).diligence, 0
     ) / TICKS_PER_WEEK;
 
-    this.craftPoints += diligencePerTick * workshopBonus;
+    this.craftPoints += diligencePerTick * totalBonus;
 
     let crafted = false;
     for (const recipe of RECIPE_DB) {
@@ -446,7 +554,6 @@ export class GameStore {
       recipe.inputs.forEach(inp => this.removeItem(inp.lootId, 'loot', inp.qty));
       this.craftPoints -= recipe.craftCost;
 
-      // 制造完成后：若没有剩余可制造配方，归零避免残留
       const stillHasMats = RECIPE_DB.some(r =>
         r.inputs.every(inp => this.countItem(inp.lootId, 'loot') >= inp.qty)
       );
@@ -455,6 +562,7 @@ export class GameStore {
       this.addItem(recipe.outputProductId, 'product', recipe.outputQty);
       const prod = productById(recipe.outputProductId);
       this._lastCraftedEmoji = prod.emoji;
+      this.monthStats.productsCrafted += recipe.outputQty;
       this.addLog(`🔨 制造了 ${prod.emoji} ${prod.name} ×${recipe.outputQty}`, 'good');
       crafted = true;
     }
@@ -464,15 +572,25 @@ export class GameStore {
   // ── Monthly resolution ────────────────────────────────────────────────────────
   private resolveMonth() {
     const underSiege = this.isUnderSiege;
+    if (underSiege) this.monthStats.siegeOccurred = true;
 
+    // 1. 税收（繁荣咒 tax_bonus power=50 → +50%；神圣宫殿 税收×2）
     if (underSiege && this.siegeMonthsCount >= 1) {
       this.addLog(`⚔️ 怪物围城！本月税收为 0💰`, 'bad');
     } else {
-      const tax = monthlyTax(this.townLevel);
+      const baseTax = monthlyTax(this.townLevel);
+      const prosperityBonus = this.getMagicBonus('tax_bonus'); // e.g. 50 → 50%
+      const palaceMult      = this.getPalaceTaxMultiplier();   // 1 or 2
+      const tax = Math.round(baseTax * (1 + prosperityBonus / 100) * palaceMult);
       this.gold += tax;
-      this.addLog(`🏛️ 税收 +${tax}💰`, 'good');
+      this.monthStats.taxIncome += tax;
+      let taxNote = `🏛️ 税收 +${tax}💰`;
+      if (prosperityBonus > 0) taxNote += `（繁荣咒 +${prosperityBonus}%）`;
+      if (palaceMult > 1)      taxNote += `（神圣宫殿 ×${palaceMult}）`;
+      this.addLog(taxNote, 'good');
     }
 
+    // 2. 攻城计时
     if (underSiege) {
       this.siegeMonthsCount++;
       if (this.siegeMonthsCount === 1)
@@ -481,6 +599,7 @@ export class GameStore {
       this.siegeMonthsCount = 0;
     }
 
+    // 3. 怪物侵略倒计时
     for (const inst of this.field) {
       const def = defById(inst.definitionId);
       if (def.type !== CardType.Monster || !inst.isActive) continue;
@@ -491,21 +610,52 @@ export class GameStore {
       }
     }
 
+    // 4. 商店收入
     if (!underSiege) {
       this.resolveShopIncome();
     } else {
       this.addLog(`🏪 怪物围城，商店无法营业！`, 'bad');
     }
 
+    // 5. 维护费
     this.resolveUpkeep();
+
+    // 6. 恢复
     this.resolveRecovery();
 
+    // 7. 升级检查
     const rawVal = computeCardRawValue([...this.hand, ...this.field]);
-    if (rawVal >= getLevelThresholdRaw(this.townLevel)) {
+    if (rawVal >= getLevelThreshold(this.townLevel)) {
+      const oldLevel = this.townLevel;
       this.townLevel++;
+      this.monthStats.leveledUp = true;
+      this.monthStats.newLevel  = this.townLevel;
       this.refreshShopFull();
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
     }
+
+    // 8. 生成月度总结并通知UI
+    this.lastMonthSummary = {
+      month:             this.month - 1,
+      taxIncome:         this.monthStats.taxIncome,
+      shopIncome:        this.monthStats.shopIncome,
+      upkeepCost:        this.monthStats.upkeepCost,
+      monstersDefeated:  this.monthStats.monstersDefeated,
+      productsCrafted:   this.monthStats.productsCrafted,
+      wildcardTriggered: this.monthStats.wildcardTriggered,
+      siegeOccurred:     this.monthStats.siegeOccurred,
+      leveledUp:         this.monthStats.leveledUp,
+      newLevel:          this.monthStats.newLevel,
+    };
+    this.emit('monthSummary');
+
+    // 9. 重置月度统计
+    this.monthStats = {
+      taxIncome: 0, shopIncome: 0, upkeepCost: 0,
+      monstersDefeated: 0, productsCrafted: 0,
+      wildcardTriggered: false, siegeOccurred: false,
+      leveledUp: false, newLevel: this.townLevel,
+    };
   }
 
   private resolveShopIncome() {
@@ -513,8 +663,15 @@ export class GameStore {
       const d = defById(c.definitionId);
       return d.type === CardType.Human && c.jobAssignment === JobType.Shop && c.isActive;
     });
-    const innBonus  = this.getBuildingCapacity('building_inn');
-    const passersby = 5 + this.townLevel * 3 + this.getMagicBonus('extra_passersby') + innBonus;
+
+    // 行人计算：基础 + 城镇等级 + 魔法（extra_passersby）+ 建筑旅馆 + 黄金时代
+    const innBonus     = this.getInnPasserbyBonus();
+    const magicExtra   = this.getMagicBonus('extra_passersby'); // 市集魔法 +5
+    let passersby = 5 + this.townLevel * 3 + magicExtra + innBonus;
+
+    // 黄金时代：行人×2（golden_passersby power=100）
+    if (this.getMagicBonus('golden_passersby') > 0) passersby *= 2;
+
     const totalProds = this.totalProducts;
 
     if (shopWorkers.length > 0 && totalProds > 0 && passersby > 0) {
@@ -524,12 +681,19 @@ export class GameStore {
       const shopPower = shopWorkers.reduce(
         (s, c) => s + (c.runtimeStats as HumanStats).intellect, 0
       );
+
+      // 售价乘数：商人智力加成 + 建筑摊位加成 + 大师工艺魔法
       const stallMult = this.getStallSaleBonus();
+      const craftPriceMult = 1 + (this.getMagicBonus('craft_price_bonus') / 100); // 大师工艺 ×1.5
+
       for (const stack of [...this.inventory].filter(s => s.kind === 'product')) {
         if (remaining <= 0) break;
         const sell   = Math.min(stack.qty, remaining);
         const prod   = productById(stack.itemId);
-        const income = Math.round(sell * prod.sellPrice * (1 + shopPower * 0.05) * stallMult);
+        // 成品价格额外乘以大师工艺系数
+        const income = Math.round(
+          sell * prod.sellPrice * (1 + shopPower * 0.05) * stallMult * craftPriceMult
+        );
         this.removeItem(stack.itemId, 'product', sell);
         this.gold   += income;
         totalIncome += income;
@@ -537,6 +701,7 @@ export class GameStore {
         this.addLog(`💰 售出 ${prod.emoji}${prod.name}×${sell}，+${income}💰`, 'good');
       }
       if (totalIncome > 0) {
+        this.monthStats.shopIncome += totalIncome;
         this.addLog(`👥 本月行人 ${passersby} 人，商店总收入 +${totalIncome}💰`, 'good');
         this.emit('inventory');
       }
@@ -546,21 +711,19 @@ export class GameStore {
   }
 
   private resolveUpkeep() {
-    //const handUpkeep  = this.hand.reduce(
-      //(s, c) => s + Math.ceil(defById(c.definitionId).upkeep * 0.5), 0
-    //);
-    // 仅对“非怪物且处于激活状态”的卡牌收取维护费，罢工（isActive === false）或休息中的卡牌不消耗维护费
+    // 手牌不收维护费；场上不活跃（罢工/休息）的卡不收维护费
+    // 怪物永远不收维护费
     const fieldUpkeep = this.field
       .filter(c => defById(c.definitionId).type !== CardType.Monster && c.isActive)
       .reduce((s, c) => s + defById(c.definitionId).upkeep, 0);
-    //const totalUpkeep = handUpkeep + fieldUpkeep;
-    const totalUpkeep = fieldUpkeep;
 
-    if (this.gold >= totalUpkeep) {
-      this.gold -= totalUpkeep;
-      if (totalUpkeep > 0) this.addLog(`🏠 维护费 -${totalUpkeep}`, 'info');
+    this.monthStats.upkeepCost += fieldUpkeep;
+
+    if (this.gold >= fieldUpkeep) {
+      this.gold -= fieldUpkeep;
+      if (fieldUpkeep > 0) this.addLog(`🏠 维护费 -${fieldUpkeep}`, 'info');
     } else {
-      const deficit = totalUpkeep - this.gold;
+      const deficit = fieldUpkeep - this.gold;
       this.gold = 0;
       this.addLog(`⚠️ 金币不足！欠维护费 ${deficit}`, 'bad');
       const candidates = [...this.field]
@@ -607,6 +770,7 @@ export class GameStore {
     }
   }
 
+  // ── getMagicBonus：接入全部魔法效果 ──────────────────────────────────────────
   getMagicBonus(effect: string): number {
     return this.field
       .filter(c => defById(c.definitionId).type === CardType.Magic && c.isActive)

@@ -1,4 +1,4 @@
-﻿import Phaser from 'phaser';
+import Phaser from 'phaser';
 import { store, LogEntry, defById, TICKS_PER_MONTH } from '../systems/store';
 import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
@@ -55,7 +55,7 @@ interface FieldSprite {
   x: number; y: number;
   targetX: number; targetY: number;
   bobPhase: number;
-  isStatic: boolean;  // true for building cards (no AI, no animation)
+  isStatic: boolean;
   warriorState:    WarriorState;
   attackCooldown:  number;
   combatTarget:    string | null;
@@ -67,6 +67,8 @@ interface FieldSprite {
   knockbackX:      number;
   knockbackTimer:  number;
   dyingTimer:      number;
+  // ── Bug修复：标记该sprite是否为"临时死亡占位"，阻止syncSprites重新创建 ──
+  isDead: boolean;
 }
 
 interface PasserbySprite {
@@ -107,7 +109,10 @@ export class TownScene extends Phaser.Scene {
 
   private tickAccum   = 0;
   private lootDropSeq = 0;
-  private hiddenAt    = 0;   // Date.now() when tab was hidden
+  private hiddenAt    = 0;
+
+  // 月度总结弹窗是否显示中
+  private summaryShowing = false;
 
   constructor() { super({ key: 'TownScene' }); }
 
@@ -133,13 +138,19 @@ export class TownScene extends Phaser.Scene {
     this.buildZoneBuildings();
     this.buildSideLog();
 
-    // ── 后台继续运行：tab 切回后补算时间 ────────────────────────────────────────
+    // ── 月度总结弹窗监听 ─────────────────────────────────────────────────────
+    store.subscribe(evt => {
+      if (evt === 'monthSummary' && store.lastMonthSummary) {
+        this.showMonthlySummary(store.lastMonthSummary);
+      }
+    });
+
+    // ── 后台继续运行 ─────────────────────────────────────────────────────────
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         this.hiddenAt = Date.now();
       } else if (this.hiddenAt > 0) {
         const elapsed   = Date.now() - this.hiddenAt;
-        // 最多补算 6 个月，避免一次性处理过多
         const maxTicks  = 6 * TICKS_PER_MONTH;
         const catchUp   = Math.min(Math.floor(elapsed / MS_PER_TICK), maxTicks);
         for (let i = 0; i < catchUp; i++) {
@@ -207,11 +218,13 @@ export class TownScene extends Phaser.Scene {
         if (sp.dyingTimer > 0) {
           sp.dyingTimer--;
           if (sp.dyingTimer === 0) {
+            // 死亡动画结束：销毁Phaser对象，但保留Map条目（isDead=true）
+            // 这样syncSprites看到instanceId已在Map中，不会重新创建sprite
             sp.sprite.destroy();
             sp.label.destroy();
             sp.hpBar.destroy();
             sp.craftBar.destroy();
-            this.sprites.delete(sp.instanceId);
+            // 注意：不从sprites Map中删除，isDead标记阻止重新创建
           }
         }
       }
@@ -224,7 +237,7 @@ export class TownScene extends Phaser.Scene {
         this.syncDens();
       }
 
-      // ── 攻城预警：倒计时=1 时闪城墙 ──────────────────────────────────────
+      // 攻城预警
       for (const inst of store.field) {
         if (!inst.definitionId) continue;
         const def = defById(inst.definitionId);
@@ -258,7 +271,79 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 攻城预警：城墙红色闪烁 ────────────────────────────────────────────────
+  // ── 月度总结弹窗 ────────────────────────────────────────────────────────────
+  private showMonthlySummary(summary: import('../systems/store').MonthSummary) {
+    // 防止重复弹窗
+    const existing = document.getElementById('monthly-summary-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'monthly-summary-modal';
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.75);
+      z-index:200; display:flex; align-items:center; justify-content:center;
+      pointer-events:all;
+    `;
+
+    const netIncome = summary.taxIncome + summary.shopIncome - summary.upkeepCost;
+    const netColor  = netIncome >= 0 ? '#60cc60' : '#cc4040';
+
+    overlay.innerHTML = `
+      <div style="
+        background:rgba(20,12,5,0.97);
+        border:2px solid #d4a017;
+        border-radius:8px;
+        padding:24px 32px;
+        min-width:300px; max-width:420px;
+        font-family:'Silkscreen',monospace;
+        color:#f5e6c8;
+      ">
+        <div style="font-size:14px;color:#d4a017;text-align:center;margin-bottom:16px;letter-spacing:2px;">
+          📜 第 ${summary.month} 月 月报
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+          ${this.summaryRow('🏛️ 税收收入',  `+${summary.taxIncome}💰`, '#60cc60')}
+          ${this.summaryRow('🏪 商店收入',  `+${summary.shopIncome}💰`, '#60cc60')}
+          ${this.summaryRow('🏠 维护支出',  `-${summary.upkeepCost}💰`, '#cc8040')}
+          <div style="border-top:1px solid #5a3a1a;margin:4px 0;"></div>
+          ${this.summaryRow('💰 本月净收益', `${netIncome >= 0 ? '+' : ''}${netIncome}💰`, netColor)}
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;">
+          ${this.summaryRow('⚔️ 击败怪物',  `${summary.monstersDefeated} 只`)}
+          ${this.summaryRow('🔨 制造商品',  `${summary.productsCrafted} 件`)}
+          ${summary.wildcardTriggered ? this.summaryRow('✨ 触发彩蛋', '1次', '#f0c040') : ''}
+          ${summary.siegeOccurred     ? this.summaryRow('🚨 遭遇攻城', '是', '#cc4040') : ''}
+          ${summary.leveledUp         ? this.summaryRow('🎉 城镇升级', `→ ${summary.newLevel}级`, '#f0c040') : ''}
+        </div>
+
+        <button id="monthly-summary-close" style="
+          display:block; width:100%;
+          font-family:'Silkscreen',monospace; font-size:11px;
+          background:#8b1a1a; color:#f5e6c8;
+          border:1px solid #c04040; padding:8px;
+          cursor:pointer; border-radius:3px;
+        ">继续 →</button>
+      </div>
+    `;
+
+    document.getElementById('game-container')!.appendChild(overlay);
+
+    const closeBtn = document.getElementById('monthly-summary-close')!;
+    const close = () => overlay.remove();
+    closeBtn.addEventListener('click', close);
+    // 点击外部也关闭
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  }
+
+  private summaryRow(label: string, value: string, valueColor = '#f0c040'): string {
+    return `<div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#9a7a50;font-size:10px;">${label}</span>
+      <span style="color:${valueColor};font-size:11px;">${value}</span>
+    </div>`;
+  }
+
   private flashWalls() {
     for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
       const flash = this.add.graphics();
@@ -303,7 +388,8 @@ export class TownScene extends Phaser.Scene {
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
       const sp = this.sprites.get(inst.instanceId);
-      if (!sp || sp.dyingTimer > 0) continue;
+      // isDead sprite 不参与AI
+      if (!sp || sp.dyingTimer > 0 || sp.isDead) continue;
 
       if (def.type === CardType.Human) {
         if (!inst.isActive) {
@@ -403,7 +489,8 @@ export class TownScene extends Phaser.Scene {
       let nearestDist  = Infinity;
       for (const m of monsters) {
         const mSp = this.sprites.get(m.instanceId);
-        if (!mSp || mSp.dyingTimer > 0) continue;
+        // 跳过正在死亡或已死亡的sprite
+        if (!mSp || mSp.dyingTimer > 0 || mSp.isDead) continue;
         const d = Math.hypot(mSp.x - sp.x, mSp.y - sp.y);
         if (d < nearestDist) { nearestDist = d; nearestInst = m; nearestSp = mSp; }
       }
@@ -483,7 +570,7 @@ export class TownScene extends Phaser.Scene {
       let nearestDist = Infinity;
       for (const c of activeTown) {
         const hSp = this.sprites.get(c.instanceId);
-        if (!hSp) continue;
+        if (!hSp || hSp.isDead) continue;
         const d = Math.hypot(hSp.x - sp.x, hSp.y - sp.y);
         if (d < nearestDist) { nearestDist = d; nearestHuman = c; nearestHumanSp = hSp; }
       }
@@ -519,28 +606,43 @@ export class TownScene extends Phaser.Scene {
     const defBuff      = store.getMagicBonus('buff_human_def');
     const monDebuff    = store.getMagicBonus('debuff_monster_atk');
     const barracksBuff = store.getBarracksAtkBonus();
+    const barracksDefBuff = store.getBarracksDefBonus();
 
-    const dmgToMon  = Math.max(1, (as.atk + atkBuff + barracksBuff) - ds.def);
-    const dmgToHero = Math.max(0, (ds.atk - monDebuff) - (as.def + defBuff));
+    // 战争号角：战斗人物ATK×1.5（combat_fury power=50 → 1.5倍）
+    const combatFuryMult = 1 + (store.getMagicBonus('combat_fury') / 100);
+
+    // 神圣护佑：DEF×2（divine_def power=100 → ×2）
+    const divineDefMult = store.getMagicBonus('divine_def') > 0 ? 2 : 1;
+
+    // 永恒诅咒：怪物ATK额外-15（great_debuff power=15）
+    const greatDebuff = store.getMagicBonus('great_debuff');
+
+    // 全能祝福：全体属性+10（all_buff power=10）
+    const allBuff = store.getMagicBonus('all_buff');
+
+    const finalAtk = (as.atk + atkBuff + barracksBuff + allBuff) * combatFuryMult;
+    const finalDef = (as.def + defBuff + barracksDefBuff + allBuff) * divineDefMult;
+    const monFinalAtk = ds.atk - monDebuff - greatDebuff;
+
+    const dmgToMon  = Math.max(1, Math.round(finalAtk) - ds.def);
+    const dmgToHero = Math.max(0, monFinalAtk - Math.round(finalDef));
     ds.hp -= dmgToMon;
     as.hp -= dmgToHero;
 
     const mSp = this.sprites.get(defender.instanceId);
     const hSp = this.sprites.get(attacker.instanceId);
 
-    if (mSp && hSp) {
+    if (mSp && hSp && !mSp.isDead) {
       this.spawnCombatFX((mSp.x + hSp.x) / 2, (mSp.y + hSp.y) / 2);
       this.spawnDamageText(mSp.x, mSp.y, dmgToMon, '#ff4040');
       if (dmgToHero > 0) this.spawnDamageText(hSp.x, hSp.y, dmgToHero, '#ff9966');
 
-      // 攻击前冲动画
       const dir = mSp.x > hSp.x ? 1 : -1;
       this.tweens.add({
         targets: hSp.sprite,
         x: hSp.sprite.x + dir * 8,
         duration: 80, yoyo: true, ease: 'Quad.Out',
       });
-      // 被击退动画
       this.tweens.add({
         targets: mSp.sprite,
         x: mSp.sprite.x + dir * 6,
@@ -548,7 +650,7 @@ export class TownScene extends Phaser.Scene {
       });
     }
 
-    if (mSp) mSp.hitFlashTimer = 4;
+    if (mSp && !mSp.isDead) mSp.hitFlashTimer = 4;
     if (hSp && dmgToHero > 0) hSp.hitFlashTimer = 4;
 
     if (ds.hp <= 0) this.killMonster(defender, mSp, attacker);
@@ -565,19 +667,26 @@ export class TownScene extends Phaser.Scene {
   private resolveMonsterHitsHuman(monster: CardInstance, human: CardInstance) {
     const ms = monster.runtimeStats as MonsterStats;
     const hs = human.runtimeStats as HumanStats;
-    const monDebuff = store.getMagicBonus('debuff_monster_atk');
-    const defBuff   = store.getMagicBonus('buff_human_def');
-    const dmg = Math.max(1, (ms.atk - monDebuff) - (hs.def + defBuff));
+    const monDebuff   = store.getMagicBonus('debuff_monster_atk');
+    const defBuff     = store.getMagicBonus('buff_human_def');
+    const greatDebuff = store.getMagicBonus('great_debuff');
+    const allBuff     = store.getMagicBonus('all_buff');
+    const divineDefMult = store.getMagicBonus('divine_def') > 0 ? 2 : 1;
+    const barracksDefBuff = store.getBarracksDefBonus();
+
+    const monFinalAtk = ms.atk - monDebuff - greatDebuff;
+    const humanFinalDef = (hs.def + defBuff + barracksDefBuff + allBuff) * divineDefMult;
+
+    const dmg = Math.max(1, monFinalAtk - Math.round(humanFinalDef));
     hs.hp -= dmg;
 
     const hSp = this.sprites.get(human.instanceId);
     const mSp = this.sprites.get(monster.instanceId);
-    if (hSp && mSp) {
+    if (hSp && mSp && !mSp.isDead) {
       this.spawnCombatFX((hSp.x + mSp.x) / 2, (hSp.y + mSp.y) / 2);
       this.spawnDamageText(hSp.x, hSp.y, dmg, '#ff9966');
       hSp.hitFlashTimer = 4;
 
-      // 怪物攻击前冲
       const dir = hSp.x > mSp.x ? 1 : -1;
       this.tweens.add({
         targets: mSp.sprite, x: mSp.sprite.x + dir * 8,
@@ -601,12 +710,16 @@ export class TownScene extends Phaser.Scene {
     defender.restMonthsLeft = 3;
     defender.restProgress   = 0;
 
+    // 记录到月度统计
+    store.recordMonsterDefeated();
+
     store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击败了 ${defById(defender.definitionId).name}！`, 'good');
 
     if (mSp) this.spawnLootDrop(defender, mSp.x, mSp.y);
 
-    // 死亡动画：先放大到 1.1x，再缩小+消失（总 600ms）
+    // ── Bug修复：死亡动画期间标记isDead，阻止syncSprites重新创建sprite ──
     if (mSp) {
+      mSp.isDead     = true;  // 关键修复：立即标记死亡
       mSp.dyingTimer = Math.ceil(600 / MS_PER_TICK) + 1;
 
       this.tweens.add({
@@ -726,10 +839,8 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── Sprite sync ────────────────────────────────────────────────────────────
+  // ── Sprite sync ──────────────────────────────────────────────────────────────
 
-  // ── Building helpers ──────────────────────────────────────────────────────────
-  /** 返回建筑卡的目标区域 X */
   private buildingZoneX(defId: string): number {
     if (defId === 'building_stall')    return ZONE.shop;
     if (defId === 'building_workshop') return ZONE.craft;
@@ -738,7 +849,6 @@ export class TownScene extends Phaser.Scene {
     return ZONE.town;
   }
 
-  /** 返回建筑卡在场上的静态 X（同类型卡按顺序排列，各偏移 ±70px） */
   private buildingFieldX(instanceId: string, defId: string): number {
     const base = this.buildingZoneX(defId);
     let idx = 0;
@@ -753,19 +863,27 @@ export class TownScene extends Phaser.Scene {
   private syncSprites() {
     const fieldIds = new Set(store.field.map(c => c.instanceId));
 
+    // 清理：已不在field中的sprite（且不在死亡动画中）
     for (const [id, sp] of this.sprites) {
-      if (!fieldIds.has(id) && sp.dyingTimer === 0) {
-        sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy(); sp.craftBar.destroy();
-        this.sprites.delete(id);
+      if (!fieldIds.has(id)) {
+        if (sp.isDead || sp.dyingTimer === 0) {
+          // 已死亡或已销毁：从Map中移除
+          if (!sp.isDead) {
+            sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy(); sp.craftBar.destroy();
+          }
+          this.sprites.delete(id);
+        }
+        // dyingTimer > 0 且不在field中（已标记isDead）：保留，等死亡动画结束
       }
     }
 
     for (const inst of store.field) {
       const sp = this.sprites.get(inst.instanceId);
       if (!sp) continue;
+      // isDead的sprite跳过所有更新（它只在等待动画结束后清理）
+      if (sp.isDead) continue;
       if (sp.dyingTimer > 0) continue;
       const def = defById(inst.definitionId);
-      // 建筑卡：更新静态位置（以防其他建筑被移除后需要重排）
       if (def.type === CardType.Building) {
         const bx = this.buildingFieldX(inst.instanceId, inst.definitionId);
         sp.x = bx; sp.y = this.groundY;
@@ -780,11 +898,11 @@ export class TownScene extends Phaser.Scene {
     }
 
     for (const inst of store.field) {
+      // ── Bug修复核心：只要sprites Map中已有该instanceId（无论isDead），都跳过 ──
       if (this.sprites.has(inst.instanceId)) continue;
+
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
-
-      // 魔法卡不在场上显示精灵，改由 Buff 栏展示
       if (def.type === CardType.Magic) continue;
 
       const key    = spriteKeyForCard(inst.definitionId, inst.jobAssignment, inst.level);
@@ -793,7 +911,6 @@ export class TownScene extends Phaser.Scene {
 
       const isMonster  = def.type === CardType.Monster;
       const isBuilding = def.type === CardType.Building;
-      // 怪物用 MONSTER_SCALE，人物和建筑卡均用 HUMAN_SCALE
       sprite.setScale(isMonster ? MONSTER_SCALE : HUMAN_SCALE);
       sprite.setOrigin(0.5, 1);
       this.entityLayer.add(sprite);
@@ -834,6 +951,7 @@ export class TownScene extends Phaser.Scene {
         x: sx, y: sy, targetX: sx, targetY: sy,
         bobPhase: Math.random() * Math.PI * 2,
         isStatic: isBuilding,
+        isDead: false,  // 新建sprite默认非死亡
         warriorState: 'patrol', attackCooldown: ATTACK_COOLDOWN,
         combatTarget: null, lootTarget: null, patrolDir: 1,
         hitFlashTimer: 0, shopServeTarget: null,
@@ -850,13 +968,14 @@ export class TownScene extends Phaser.Scene {
 
   private interpolate(dt: number) {
     for (const [id, sp] of this.sprites) {
+      // isDead sprite 不参与渲染更新
+      if (sp.isDead) continue;
       if (sp.dyingTimer > 0) continue;
 
       const inst = store.field.find(c => c.instanceId === id);
       if (!inst?.definitionId) continue;
       const def = defById(inst.definitionId);
 
-      // 建筑卡：静止不动，不显示 HP/制造进度条，无 bob 动画
       if (sp.isStatic) {
         sp.sprite.setAlpha(inst.isActive ? 1 : 0.45);
         sp.sprite.setPosition(sp.x, sp.y);
@@ -921,13 +1040,11 @@ export class TownScene extends Phaser.Scene {
     sp.hpBar.fillRect(bx, by, Math.round(w * pct), h);
   }
 
-  // ── 制造进度条（修复版）──────────────────────────────────────────────────────
-  // 修复：getCraftProgressInfo 返回 maxPoints=0 时不绘制，避免空转时进度条满值
   private drawCraftBar(sp: FieldSprite, inst: CardInstance, def: CardDefinition) {
     sp.craftBar.clear();
     if (def.type !== CardType.Human || inst.jobAssignment !== JobType.Craft || !inst.isActive) return;
     const { points, maxPoints } = store.getCraftProgressInfo();
-    if (maxPoints === 0) return;  // 没有可制造配方 → 不显示
+    if (maxPoints === 0) return;
     const pct = Math.min(1, points / maxPoints);
     const w = 32, h = 2;
     const bx = sp.x - w / 2, by = sp.y - 22;
@@ -950,7 +1067,6 @@ export class TownScene extends Phaser.Scene {
     const g  = this.add.graphics();
     this.bgLayer.add(g);
 
-    // 天空渐变
     for (let i = 0; i < gy; i++) {
       const t  = i / gy;
       const r  = Phaser.Math.Linear(0x1a, 0x5a, t) | 0;
@@ -960,11 +1076,9 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(0, i, W, 1);
     }
 
-    // 地面基础色
     g.fillStyle(0x4a7a3a); g.fillRect(0, gy,     W, H - gy);
     g.fillStyle(0x3a6a2a); g.fillRect(0, gy + 8, W, H - gy - 8);
 
-    // 城内道路
     const roadW = ZONE.wallRight - ZONE.wallLeft;
     g.fillStyle(0x8a7a60); g.fillRect(ZONE.wallLeft, gy, roadW, 40);
     g.fillStyle(0x9a8a70); g.fillRect(ZONE.wallLeft, gy + 2, roadW, 32);
@@ -987,7 +1101,6 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(rx, ry, 3, 2);
     }
 
-    // 城外土路
     g.fillStyle(0x7a6050); g.fillRect(0, gy, ZONE.wallLeft, 30);
     g.fillStyle(0x8a7060); g.fillRect(0, gy + 4, ZONE.wallLeft, 20);
     g.fillStyle(0x5a4030);
@@ -1005,7 +1118,6 @@ export class TownScene extends Phaser.Scene {
       g.fillRect(rx, ry, 5, 3);
     }
 
-    // 路边植草
     g.fillStyle(0x4a8a38);
     for (let rx = 0; rx < ZONE.wallLeft; rx += 14) {
       const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
@@ -1014,14 +1126,12 @@ export class TownScene extends Phaser.Scene {
       const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
 
-    // 太阳
     g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
     [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
       ([x,y,w,h]) => g.fillRect(x as number,y as number,w as number,h as number)
     );
 
-    // 云朵
     [[200,0.08],[600,0.05],[1100,0.10],[1700,0.06],[2300,0.09],[2900,0.07],[3400,0.05]].forEach(
       ([cx, ty]) => {
         g.fillStyle(0xe8f0ff, 0.8);
@@ -1030,21 +1140,18 @@ export class TownScene extends Phaser.Scene {
       }
     );
 
-    // 树木
     const treePositions = [300, 450, 580, 700, 780, 2780, 2880, 2980, 3100, 3250];
     for (const tx of treePositions) {
       const key = `tree_w_${tx}`;
       if (!this.textures.exists(key)) {
         const tg = this.add.graphics();
         const s = 4;
-        // 修复悬空：树干高度从 4*s 改为 5*s，使底部恰好到纹理底部(44px)
         tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
         tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
         tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
         tg.generateTexture(key, 32, 44);
         tg.destroy();
       }
-      // setOrigin(0.5, 1) 使树底部贴地
       const t = this.add.image(tx, gy, key).setOrigin(0.5, 1);
       this.bgLayer.add(t);
     }
@@ -1087,8 +1194,6 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── Zone buildings ─────────────────────────────────────────────────────────
-
   private buildZoneBuildings() {
     const gy = this.groundY;
     const scale = 3;
@@ -1105,13 +1210,11 @@ export class TownScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         const g = this.add.graphics();
         fn(g, 0, 0, scale);
-        g.generateTexture(key, 48, 51);  // 51 = 图形底部像素值，贴地
+        g.generateTexture(key, 48, 51);
         g.destroy();
       }
-      // setOrigin(0.5, 1) 使建筑底部贴地
       const img = this.add.image(cx, gy, key).setOrigin(0.5, 1);
       this.bldgLayer.add(img);
-      // 建筑底部椭圆阴影
       const shadow = this.add.graphics();
       shadow.fillStyle(0x000000, 0.22);
       shadow.fillEllipse(cx, gy + 3, 52, 10);
@@ -1132,8 +1235,6 @@ export class TownScene extends Phaser.Scene {
       this.bldgLayer.add(t);
     });
   }
-
-  // ── Passerby ───────────────────────────────────────────────────────────────
 
   private maybeSpawnPasserby() {
     if (store.isUnderSiege || this.passerbyList.length >= 6) return;
@@ -1160,7 +1261,6 @@ export class TownScene extends Phaser.Scene {
     for (let i = this.passerbyList.length - 1; i >= 0; i--) {
       const p = this.passerbyList[i];
       p.x += p.speed * dt;
-      // setOrigin(0.5,1) → y直接用groundY，Bob效果在y方向偏移
       p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
 
       if (!p.hasTraded && store.totalProducts > 0) {
@@ -1172,7 +1272,7 @@ export class TownScene extends Phaser.Scene {
             const d = defById(c.definitionId);
             if (d.type !== CardType.Human || c.jobAssignment !== JobType.Shop || !c.isActive) continue;
             const wSp = this.sprites.get(c.instanceId);
-            if (!wSp || wSp.shopServeTarget) continue;
+            if (!wSp || wSp.shopServeTarget || wSp.isDead) continue;
             const dist = Math.abs(wSp.x - p.x);
             if (dist < nearestDist) { nearestDist = dist; nearestWorkerSp = wSp; }
           }
@@ -1190,8 +1290,6 @@ export class TownScene extends Phaser.Scene {
       }
     }
   }
-
-  // ── FX ─────────────────────────────────────────────────────────────────────
 
   private spawnDamageText(x: number, y: number, dmg: number, color: string) {
     const txt = this.add.text(x, y - 20, `-${dmg}`, {
@@ -1236,8 +1334,6 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── Side log ────────────────────────────────────────────────────────────────
-
   private buildSideLog() {
     const existing = document.getElementById('side-log');
     if (existing) { this.sideLogEl = existing; return; }
@@ -1273,12 +1369,10 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-// ── Town Hall ─────────────────────────────────────────────────────────────────
 function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
   function px(c: number, px2: number, py: number, w: number, h: number) {
     g.fillStyle(c, 1); g.fillRect(px2 * s, py * s, w * s, h * s);
   }
-  // 底部在 y+17，与其他建筑一致
   px(0x8a7060, x+1,  y+5,  10, 12);
   px(0x7a6050, x+1,  y+15, 10, 2);
   px(0x8a3030, x,    y+2,  12, 4);
