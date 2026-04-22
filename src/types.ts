@@ -127,6 +127,13 @@ export interface CardInstance {
   restProgress?: number;
 }
 
+// ─── Achievement types ────────────────────────────────────────────────────────
+
+export interface AchievementRecord {
+  id: string;
+  unlockedAt: number | null;  // month number when unlocked, or null if locked
+}
+
 // ─── Saveable snapshot ────────────────────────────────────────────────────────
 
 export interface SaveSnapshot {
@@ -142,4 +149,9 @@ export interface SaveSnapshot {
   shopSlots: Array<{ defId: string; sold: boolean }>;
   inventory: ItemStack[];
   log: import('./systems/store').LogEntry[];
+  achievements?: AchievementRecord[];
+  totalCardsBought?: number;
+  totalUpgradesDone?: number;
+  totalMonstersDefeated?: number;
+  wildcardEverTriggered?: boolean;
 }

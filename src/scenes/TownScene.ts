@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary } from '../systems/store';
+import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
 import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import {
@@ -139,6 +139,10 @@ export class TownScene extends Phaser.Scene {
     store.subscribe(evt => {
       if (evt === 'yearSummary' && store.lastYearSummary) {
         this.showYearlySummary(store.lastYearSummary);
+      }
+      if (evt === 'achievement') {
+        const pending = store.takePendingAchievement();
+        if (pending) this.showAchievementPopup(pending);
       }
     });
 
@@ -329,6 +333,64 @@ export class TownScene extends Phaser.Scene {
       <span style="color:#9a7a50;font-size:10px;">${label}</span>
       <span style="color:${valueColor};font-size:11px;">${value}</span>
     </div>`;
+  }
+
+  private showAchievementPopup(def: AchievementDef): void {
+    const existing = document.getElementById('achievement-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'achievement-popup';
+    popup.style.cssText = `
+      position:fixed;
+      top:70px; right:16px;
+      background:rgba(20,12,5,0.97);
+      border:2px solid #d4a017;
+      border-radius:6px;
+      padding:10px 16px;
+      z-index:250;
+      display:flex; align-items:center; gap:10px;
+      font-family:'Silkscreen',monospace;
+      color:#f5e6c8;
+      min-width:220px; max-width:280px;
+      box-shadow:0 4px 16px rgba(212,160,23,0.4);
+      opacity:0;
+      transition:opacity 0.3s;
+    `;
+
+    popup.innerHTML = `
+      <div style="font-size:22px;flex-shrink:0;">${def.emoji}</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <div style="font-size:8px;color:#d4a017;letter-spacing:1px;">🏆 成就解锁</div>
+        <div style="font-size:10px;color:#f0c040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${def.name}</div>
+        <div style="font-size:8px;color:#9a7a50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${def.description}</div>
+      </div>
+    `;
+
+    const container = document.getElementById('game-container') ?? document.body;
+    container.appendChild(popup);
+
+    // 淡入
+    this.time.delayedCall(50, () => { popup.style.opacity = '1'; });
+    // 停留2秒后淡出移除
+    this.time.delayedCall(2600, () => {
+      popup.style.transition = 'opacity 0.6s';
+      popup.style.opacity = '0';
+      this.time.delayedCall(650, () => { popup.remove(); });
+    });
+
+    // 顶栏短暂闪烁提示（金色）
+    const topBar = document.getElementById('top-bar');
+    if (topBar) {
+      const origBorder = topBar.style.borderBottomColor;
+      const origBg     = topBar.style.background;
+      topBar.style.borderBottomColor = '#d4a017';
+      topBar.style.background = 'rgba(50,35,5,0.97)';
+      this.time.delayedCall(1500, () => {
+        topBar.style.borderBottomColor = origBorder;
+        topBar.style.background        = origBg;
+      });
+    }
   }
 
   private flashWalls() {
