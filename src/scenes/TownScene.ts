@@ -979,8 +979,13 @@ export class TownScene extends Phaser.Scene {
     }
 
     for (const inst of store.field) {
-      // ── Bug修复核心：只要sprites Map中已有该instanceId（无论isDead），都跳过 ──
-      if (this.sprites.has(inst.instanceId)) continue;
+      if (this.sprites.has(inst.instanceId)) {
+        const sp = this.sprites.get(inst.instanceId)!;
+        if (!sp.isDead) continue;           // 存活的sprite，无需重建
+        if (!inst.isActive) continue;       // 怪物仍在恢复中，等待复活完成
+        // isDead=true 且 isActive 已重新变为 true：怪物已复活，清理死亡记录后重建sprite
+        this.sprites.delete(inst.instanceId);
+      }
 
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
