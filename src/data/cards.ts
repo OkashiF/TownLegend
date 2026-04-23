@@ -36,7 +36,7 @@ export function shopSize(townLevel: number): number {
 }
 
 // ── 彩蛋合成概率 ─────────────────────────────────────────────────────────────
-export const WILDCARD_CHANCE = 0.10; // 10% 概率
+export const WILDCARD_CHANCE = 0.02; // 2% 概率
 
 // ── 彩蛋卡映射：触发等级 → 彩蛋卡ID ─────────────────────────────────────────
 // 人物合成彩蛋（任意同等级人物×3触发）
