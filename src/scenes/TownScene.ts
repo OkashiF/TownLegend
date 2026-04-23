@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { store, LogEntry, defById, TICKS_PER_MONTH } from '../systems/store';
+import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
 import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import {
@@ -111,9 +111,6 @@ export class TownScene extends Phaser.Scene {
   private lootDropSeq = 0;
   private hiddenAt    = 0;
 
-  // 月度总结弹窗是否显示中
-  private summaryShowing = false;
-
   constructor() { super({ key: 'TownScene' }); }
 
   create() {
@@ -138,10 +135,14 @@ export class TownScene extends Phaser.Scene {
     this.buildZoneBuildings();
     this.buildSideLog();
 
-    // ── 月度总结弹窗监听 ─────────────────────────────────────────────────────
+    // ── 年度总结弹窗监听 ─────────────────────────────────────────────────────
     store.subscribe(evt => {
-      if (evt === 'monthSummary' && store.lastMonthSummary) {
-        this.showMonthlySummary(store.lastMonthSummary);
+      if (evt === 'yearSummary' && store.lastYearSummary) {
+        this.showYearlySummary(store.lastYearSummary);
+      }
+      if (evt === 'achievement') {
+        const pending = store.takePendingAchievement();
+        if (pending) this.showAchievementPopup(pending);
       }
     });
 
@@ -271,22 +272,20 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  // ── 月度总结弹窗 ────────────────────────────────────────────────────────────
-  private showMonthlySummary(summary: import('../systems/store').MonthSummary) {
-    // 防止重复弹窗
-    const existing = document.getElementById('monthly-summary-modal');
+  // ── 年度总结弹窗 ────────────────────────────────────────────────────────────
+  private showYearlySummary(summary: YearSummary) {
+    const existing = document.getElementById('yearly-summary-modal');
     if (existing) existing.remove();
 
     const overlay = document.createElement('div');
-    overlay.id = 'monthly-summary-modal';
+    overlay.id = 'yearly-summary-modal';
     overlay.style.cssText = `
       position:fixed; inset:0; background:rgba(0,0,0,0.75);
       z-index:200; display:flex; align-items:center; justify-content:center;
       pointer-events:all;
     `;
 
-    const netIncome = summary.taxIncome + summary.shopIncome - summary.upkeepCost;
-    const netColor  = netIncome >= 0 ? '#60cc60' : '#cc4040';
+    const netColor = summary.netBalance >= 0 ? '#60cc60' : '#cc4040';
 
     overlay.innerHTML = `
       <div style="
@@ -299,26 +298,19 @@ export class TownScene extends Phaser.Scene {
         color:#f5e6c8;
       ">
         <div style="font-size:14px;color:#d4a017;text-align:center;margin-bottom:16px;letter-spacing:2px;">
-          📜 第 ${summary.month} 月 月报
+          📜 第 ${summary.year} 年 年终总结
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-          ${this.summaryRow('🏛️ 税收收入',  `+${summary.taxIncome}💰`, '#60cc60')}
-          ${this.summaryRow('🏪 商店收入',  `+${summary.shopIncome}💰`, '#60cc60')}
-          ${this.summaryRow('🏠 维护支出',  `-${summary.upkeepCost}💰`, '#cc8040')}
+          ${this.summaryRow('💳 购买卡牌',  `${summary.cardsBought} 张`)}
+          ${this.summaryRow('⬆️ 升级次数',  `${summary.upgradesDone} 次`)}
+          ${this.summaryRow('💰 总收入',    `+${summary.totalIncome}💰`,   '#60cc60')}
+          ${this.summaryRow('🏠 总支出',    `-${summary.totalExpenses}💰`, '#cc8040')}
           <div style="border-top:1px solid #5a3a1a;margin:4px 0;"></div>
-          ${this.summaryRow('💰 本月净收益', `${netIncome >= 0 ? '+' : ''}${netIncome}💰`, netColor)}
+          ${this.summaryRow('📊 年度盈余',  `${summary.netBalance >= 0 ? '+' : ''}${summary.netBalance}💰`, netColor)}
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px;">
-          ${this.summaryRow('⚔️ 击败怪物',  `${summary.monstersDefeated} 只`)}
-          ${this.summaryRow('🔨 制造商品',  `${summary.productsCrafted} 件`)}
-          ${summary.wildcardTriggered ? this.summaryRow('✨ 触发彩蛋', '1次', '#f0c040') : ''}
-          ${summary.siegeOccurred     ? this.summaryRow('🚨 遭遇攻城', '是', '#cc4040') : ''}
-          ${summary.leveledUp         ? this.summaryRow('🎉 城镇升级', `→ ${summary.newLevel}级`, '#f0c040') : ''}
-        </div>
-
-        <button id="monthly-summary-close" style="
+        <button id="yearly-summary-close" style="
           display:block; width:100%;
           font-family:'Silkscreen',monospace; font-size:11px;
           background:#8b1a1a; color:#f5e6c8;
@@ -330,10 +322,9 @@ export class TownScene extends Phaser.Scene {
 
     document.getElementById('game-container')!.appendChild(overlay);
 
-    const closeBtn = document.getElementById('monthly-summary-close')!;
+    const closeBtn = document.getElementById('yearly-summary-close')!;
     const close = () => overlay.remove();
     closeBtn.addEventListener('click', close);
-    // 点击外部也关闭
     overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   }
 
@@ -342,6 +333,64 @@ export class TownScene extends Phaser.Scene {
       <span style="color:#9a7a50;font-size:10px;">${label}</span>
       <span style="color:${valueColor};font-size:11px;">${value}</span>
     </div>`;
+  }
+
+  private showAchievementPopup(def: AchievementDef): void {
+    const existing = document.getElementById('achievement-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'achievement-popup';
+    popup.style.cssText = `
+      position:fixed;
+      top:70px; right:16px;
+      background:rgba(20,12,5,0.97);
+      border:2px solid #d4a017;
+      border-radius:6px;
+      padding:10px 16px;
+      z-index:250;
+      display:flex; align-items:center; gap:10px;
+      font-family:'Silkscreen',monospace;
+      color:#f5e6c8;
+      min-width:220px; max-width:280px;
+      box-shadow:0 4px 16px rgba(212,160,23,0.4);
+      opacity:0;
+      transition:opacity 0.3s;
+    `;
+
+    popup.innerHTML = `
+      <div style="font-size:22px;flex-shrink:0;">${def.emoji}</div>
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <div style="font-size:8px;color:#d4a017;letter-spacing:1px;">🏆 成就解锁</div>
+        <div style="font-size:10px;color:#f0c040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${def.name}</div>
+        <div style="font-size:8px;color:#9a7a50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${def.description}</div>
+      </div>
+    `;
+
+    const container = document.getElementById('game-container') ?? document.body;
+    container.appendChild(popup);
+
+    // 淡入
+    this.time.delayedCall(50, () => { popup.style.opacity = '1'; });
+    // 停留2秒后淡出移除
+    this.time.delayedCall(2600, () => {
+      popup.style.transition = 'opacity 0.6s';
+      popup.style.opacity = '0';
+      this.time.delayedCall(650, () => { popup.remove(); });
+    });
+
+    // 顶栏短暂闪烁提示（金色）
+    const topBar = document.getElementById('top-bar');
+    if (topBar) {
+      const origBorder = topBar.style.borderBottomColor;
+      const origBg     = topBar.style.background;
+      topBar.style.borderBottomColor = '#d4a017';
+      topBar.style.background = 'rgba(50,35,5,0.97)';
+      this.time.delayedCall(1500, () => {
+        topBar.style.borderBottomColor = origBorder;
+        topBar.style.background        = origBg;
+      });
+    }
   }
 
   private flashWalls() {
@@ -556,6 +605,16 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
+    // 有战斗岗位人员时，怪物保持等待状态（战斗进行中，不进军）
+    if (store.hasActiveCombatWorkers) {
+      sp.monsterBehavior = 'waiting';
+      if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
+        sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
+        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+      }
+      return;
+    }
+
     const activeTown = townspeople.filter(c => c.isActive);
     if (activeTown.length === 0) {
       sp.monsterBehavior = 'retreating';
@@ -638,16 +697,9 @@ export class TownScene extends Phaser.Scene {
       if (dmgToHero > 0) this.spawnDamageText(hSp.x, hSp.y, dmgToHero, '#ff9966');
 
       const dir = mSp.x > hSp.x ? 1 : -1;
-      this.tweens.add({
-        targets: hSp.sprite,
-        x: hSp.sprite.x + dir * 8,
-        duration: 80, yoyo: true, ease: 'Quad.Out',
-      });
-      this.tweens.add({
-        targets: mSp.sprite,
-        x: mSp.sprite.x + dir * 6,
-        duration: 120, yoyo: true, ease: 'Quad.Out',
-      });
+      // 击退：通过 knockbackX 在 interpolate 中渲染（x tween 会被 setPosition 覆盖）
+      hSp.knockbackX = dir * 8;
+      mSp.knockbackX = dir * 6;
       // 命中时怪物摆动
       this.tweens.add({
         targets: mSp.sprite,
@@ -675,6 +727,7 @@ export class TownScene extends Phaser.Scene {
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
       if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      store.checkSiegeTransition();
     }
   }
 
@@ -702,10 +755,8 @@ export class TownScene extends Phaser.Scene {
       hSp.hitFlashTimer = 4;
 
       const dir = hSp.x > mSp.x ? 1 : -1;
-      this.tweens.add({
-        targets: mSp.sprite, x: mSp.sprite.x + dir * 8,
-        duration: 80, yoyo: true, ease: 'Quad.Out',
-      });
+      // 怪物攻击前冲：通过 knockbackX 在 interpolate 中渲染（x tween 会被 setPosition 覆盖）
+      mSp.knockbackX = dir * 8;
       // 人物受击摆动
       this.tweens.add({
         targets: hSp.sprite,
@@ -720,6 +771,7 @@ export class TownScene extends Phaser.Scene {
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
       if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      store.checkSiegeTransition();
     }
   }
 
@@ -918,8 +970,13 @@ export class TownScene extends Phaser.Scene {
     }
 
     for (const inst of store.field) {
-      // ── Bug修复核心：只要sprites Map中已有该instanceId（无论isDead），都跳过 ──
-      if (this.sprites.has(inst.instanceId)) continue;
+      if (this.sprites.has(inst.instanceId)) {
+        const sp = this.sprites.get(inst.instanceId)!;
+        if (!sp.isDead) continue;           // 存活的sprite，无需重建
+        if (!inst.isActive) continue;       // 怪物仍在恢复中，等待复活完成
+        // isDead=true 且 isActive 已重新变为 true：怪物已复活，清理死亡记录后重建sprite
+        this.sprites.delete(inst.instanceId);
+      }
 
       const def = defById(inst.definitionId);
       if (def.name === '???') continue;
@@ -1048,7 +1105,7 @@ export class TownScene extends Phaser.Scene {
             sp.sprite.setAngle(0);
           }
         } else {
-          sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
+          renderBobY = Math.sin(sp.bobPhase) * 1.5;
           // 静止时角色角度动画（hitFlash 期间交由 tween 控制）
           if (sp.hitFlashTimer <= 0) {
             if (!isMonster && inst.jobAssignment === JobType.Craft && inst.isActive) {
@@ -1063,7 +1120,11 @@ export class TownScene extends Phaser.Scene {
             }
           }
         }
-        sp.sprite.setPosition(sp.x, sp.y + renderBobY);
+        // 击退偏移：每帧指数衰减，不影响逻辑坐标 sp.x
+        const kbX = sp.knockbackX;
+        sp.knockbackX *= 0.7;
+        if (Math.abs(sp.knockbackX) < 0.5) sp.knockbackX = 0;
+        sp.sprite.setPosition(sp.x + kbX, sp.y + renderBobY);
 
         // 怪物待机呼吸缩放
         if (isMonster && sp.monsterBehavior === 'waiting') {

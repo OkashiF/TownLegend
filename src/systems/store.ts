@@ -1,9 +1,30 @@
 import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
   HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
+  AchievementRecord,
 } from '../types';
 import { CARD_DB, drawShopCards, LEVEL_COST, shopSize, shopRefreshCost, HUMAN_WILDCARD_BY_LEVEL, MONSTER_WILDCARD_BY_LEVEL, WILDCARD_CHANCE } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
+
+// ─── Achievement definitions ───────────────────────────────────────────────────
+
+export interface AchievementDef {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+}
+
+export const ACHIEVEMENT_DB: AchievementDef[] = [
+  { id: 'first_town',              name: '建镇之始', emoji: '🏰', description: '创建你的第一个城镇。' },
+  { id: 'first_monster_defeated',  name: '初战告捷', emoji: '⚔️', description: '首次击败一只怪物。' },
+  { id: 'buy_10_cards',            name: '购物达人', emoji: '🛒', description: '累计购买10张卡牌。' },
+  { id: 'first_upgrade',           name: '合成师',   emoji: '⬆️', description: '首次将3张卡牌合成升级。' },
+  { id: 'wildcard_upgrade',        name: '幸运降临', emoji: '✨', description: '触发彩蛋升级，获得传说卡牌。' },
+  { id: 'gold_500',                name: '富甲一方', emoji: '💰', description: '同时拥有500枚金币。' },
+  { id: 'town_level_3',            name: '城镇繁荣', emoji: '🎉', description: '城镇升至3级。' },
+  { id: 'survive_12_months',       name: '岁月悠长', emoji: '📅', description: '游戏进行满1年（12个月）。' },
+];
 
 let _idCounter = 0;
 export function newId(): string { return `card_${++_idCounter}`; }
@@ -63,8 +84,8 @@ export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 const SAVE_KEY     = 'town_legend_save';
-// ── 版本号升至 5：修复升级计算（Lv0不计入）、魔法/建筑效果全接入 ──
-const SAVE_VERSION = 5;
+// ── 版本号升至 6：新增成就系统（achievements 字段） ──
+const SAVE_VERSION = 6;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
@@ -113,18 +134,14 @@ export interface ShopSlot {
   sold: boolean;
 }
 
-// ── 月度总结数据结构 ─────────────────────────────────────────────────────────
-export interface MonthSummary {
-  month: number;
-  taxIncome: number;
-  shopIncome: number;
-  upkeepCost: number;
-  monstersDefeated: number;
-  productsCrafted: number;
-  wildcardTriggered: boolean;
-  siegeOccurred: boolean;
-  leveledUp: boolean;
-  newLevel: number;
+// ── 年度总结数据结构 ─────────────────────────────────────────────────────────
+export interface YearSummary {
+  year: number;
+  cardsBought: number;
+  upgradesDone: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netBalance: number;
 }
 
 type Listener = (event?: string) => void;
@@ -147,6 +164,68 @@ export class GameStore {
   log: LogEntry[] = [];
   inventory: ItemStack[] = [];
 
+  // ── 成就系统 ──────────────────────────────────────────────────────────────────
+  achievements: AchievementRecord[] = ACHIEVEMENT_DB.map(def => ({ id: def.id, unlockedAt: null }));
+  // 最近解锁的成就（供TownScene消费一次）
+  private _pendingAchievement: AchievementDef | null = null;
+
+  takePendingAchievement(): AchievementDef | null {
+    const a = this._pendingAchievement;
+    this._pendingAchievement = null;
+    return a;
+  }
+
+  unlockAchievement(id: string): void {
+    const rec = this.achievements.find(a => a.id === id);
+    if (!rec || rec.unlockedAt !== null) return;
+    rec.unlockedAt = this.month;
+    const def = ACHIEVEMENT_DB.find(d => d.id === id);
+    if (def) {
+      this.addLog(`🏆 成就解锁：${def.emoji} ${def.name}`, 'good');
+      this._pendingAchievement = def;
+    }
+    this.emit('achievement');
+  }
+
+  checkAchievements(): void {
+    // 建镇之始（游戏启动时由constructor解锁）
+
+    // 首次击败怪物
+    if (this._totalMonstersDefeated > 0) {
+      this.unlockAchievement('first_monster_defeated');
+    }
+
+    // 购物达人：累计购买10张卡牌
+    if (this._totalCardsBought >= 10) {
+      this.unlockAchievement('buy_10_cards');
+    }
+
+    // 合成师：首次升级
+    if (this._totalUpgradesDone >= 1) {
+      this.unlockAchievement('first_upgrade');
+    }
+
+    // 幸运降临：首次彩蛋
+    if (this._wildcardEverTriggered) {
+      this.unlockAchievement('wildcard_upgrade');
+    }
+
+    // 富甲一方：持有>=500金币
+    if (this.gold >= 500) {
+      this.unlockAchievement('gold_500');
+    }
+
+    // 城镇繁荣：城镇>=3级
+    if (this.townLevel >= 3) {
+      this.unlockAchievement('town_level_3');
+    }
+
+    // 岁月悠长：进行满12个月
+    if (this.month >= 12) {
+      this.unlockAchievement('survive_12_months');
+    }
+  }
+
   // ── 月度统计（每月初清零）──────────────────────────────────────────────────
   private monthStats = {
     taxIncome: 0,
@@ -160,12 +239,27 @@ export class GameStore {
     newLevel: 1,
   };
 
-  // ── 月度总结（供UI读取）──────────────────────────────────────────────────
-  lastMonthSummary: MonthSummary | null = null;
+  // ── 年度总结（供UI读取）──────────────────────────────────────────────────
+  lastYearSummary: YearSummary | null = null;
+
+  // ── 年度统计（每年清零）──────────────────────────────────────────────────
+  private yearStats = {
+    cardsBought:   0,
+    upgradesDone:  0,
+    totalIncome:   0,
+    totalExpenses: 0,
+  };
 
   private siegeMonthsCount = 0;
+  private _lastSiegeState = false;
   private craftPoints = 0;
   private _lastCraftedEmoji: string | null = null;
+
+  // ── 成就用累计计数（永不清零）────────────────────────────────────────────────
+  private _totalCardsBought    = 0;
+  private _totalUpgradesDone   = 0;
+  private _totalMonstersDefeated = 0;
+  private _wildcardEverTriggered = false;
 
   takeCraftedEmoji(): string | null {
     const e = this._lastCraftedEmoji;
@@ -191,11 +285,28 @@ export class GameStore {
 
   // ── 攻城状态 ──────────────────────────────────────────────────────────────────
   get isUnderSiege(): boolean {
-    return this.field.some(c => {
+    const hasReadyMonster = this.field.some(c => {
       if (!c.definitionId) return false;
       const def = defById(c.definitionId);
       return def.type === CardType.Monster && c.isActive && c.aggressionCountdown === 0;
     });
+    return hasReadyMonster && !this.hasActiveCombatWorkers;
+  }
+
+  get hasActiveCombatWorkers(): boolean {
+    return this.field.some(c => {
+      if (!c.definitionId) return false;
+      const def = defById(c.definitionId);
+      return def.type === CardType.Human && c.jobAssignment === JobType.Combat && c.isActive;
+    });
+  }
+
+  checkSiegeTransition(): void {
+    const currentSiege = this.isUnderSiege;
+    if (currentSiege && !this._lastSiegeState) {
+      this.addLog('⚔️ 无人守卫！怪物开始向城镇进军！', 'bad');
+    }
+    this._lastSiegeState = currentSiege;
   }
 
   get hasActiveMonsters(): boolean {
@@ -284,6 +395,7 @@ export class GameStore {
   constructor() {
     this.refreshShopFull();
     this.addLog('🏰 城镇建立！欢迎来到镇主传说。', 'good');
+    this.unlockAchievement('first_town');
   }
 
   subscribe(fn: Listener)   { this.listeners.add(fn); }
@@ -344,11 +456,14 @@ export class GameStore {
     this.gold -= def.cost;
     slot.sold = true;
     this.hand.push(instantiate(def));
+    this.yearStats.cardsBought++;
+    this._totalCardsBought++;
     this.addLog(`购买了 ${def.name}`, 'info');
     if (this.shopSlots.every(s => s.sold)) {
       this.refreshShopFull();
       this.addLog('商店售罄，自动刷新！', 'good');
     }
+    this.checkAchievements();
     this.emit('buy');
     return { ok: true };
   }
@@ -366,7 +481,7 @@ export class GameStore {
     if (handIdx !== -1) {
       const inst = this.hand[handIdx];
       const def  = defById(inst.definitionId);
-      const refund = Math.max(1, Math.floor(def.cost * 0.1));
+      const refund = Math.max(1, Math.floor(def.cost * 0.3));
       this.hand.splice(handIdx, 1);
       this.gold += refund;
       this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
@@ -377,13 +492,19 @@ export class GameStore {
     if (fieldIdx !== -1) {
       const inst = this.field[fieldIdx];
       const def  = defById(inst.definitionId);
-      if (def.type === CardType.Monster && inst.isActive && inst.aggressionCountdown === 0) {
-        return { ok: false, reason: '怪物正在攻城，无法出售！' };
+      let refund: number;
+      if (def.type === CardType.Monster) {
+        refund = 0;
+        this.addLog(`💸 出售了 ${def.name}（怪物卡，不返还金币）`, 'info');
+      } else {
+        refund = Math.max(1, Math.floor(def.cost * 0.3));
+        this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
       }
-      const refund = Math.max(1, Math.floor(def.cost * 0.1));
       this.field.splice(fieldIdx, 1);
       this.gold += refund;
-      this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
+      if (def.type === CardType.Human && inst.jobAssignment === JobType.Combat) {
+        this.checkSiegeTransition();
+      }
       this.emit('sell');
       this.emit('field');
       return { ok: true, gold: refund };
@@ -467,6 +588,7 @@ export class GameStore {
 
     if (isWildcard) {
       this.monthStats.wildcardTriggered = true;
+      this._wildcardEverTriggered = true;
       this.addLog(
         `🎉✨ 奇迹！3张 ${def.name} 触发彩蛋，合成为传说中的 ${targetDef.name}！`,
         'good'
@@ -475,6 +597,9 @@ export class GameStore {
       this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
     }
 
+    this.yearStats.upgradesDone++;
+    this._totalUpgradesDone++;
+    this.checkAchievements();
     this.emit('upgrade');
     return { ok: true, wildcard: isWildcard };
   }
@@ -482,6 +607,8 @@ export class GameStore {
   // ── 对外暴露：怪物被击败时由场景调用，记录到月度统计 ──────────────────────
   recordMonsterDefeated() {
     this.monthStats.monstersDefeated++;
+    this._totalMonstersDefeated++;
+    this.checkAchievements();
   }
 
   // ── Tick ──────────────────────────────────────────────────────────────────────
@@ -626,7 +753,6 @@ export class GameStore {
     // 7. 升级检查
     const rawVal = computeCardRawValue([...this.hand, ...this.field]);
     if (rawVal >= getLevelThreshold(this.townLevel)) {
-      const oldLevel = this.townLevel;
       this.townLevel++;
       this.monthStats.leveledUp = true;
       this.monthStats.newLevel  = this.townLevel;
@@ -634,22 +760,29 @@ export class GameStore {
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
     }
 
-    // 8. 生成月度总结并通知UI
-    this.lastMonthSummary = {
-      month:             this.month - 1,
-      taxIncome:         this.monthStats.taxIncome,
-      shopIncome:        this.monthStats.shopIncome,
-      upkeepCost:        this.monthStats.upkeepCost,
-      monstersDefeated:  this.monthStats.monstersDefeated,
-      productsCrafted:   this.monthStats.productsCrafted,
-      wildcardTriggered: this.monthStats.wildcardTriggered,
-      siegeOccurred:     this.monthStats.siegeOccurred,
-      leveledUp:         this.monthStats.leveledUp,
-      newLevel:          this.monthStats.newLevel,
-    };
-    this.emit('monthSummary');
+    // 8. 累加年度统计
+    this.yearStats.totalIncome   += this.monthStats.taxIncome + this.monthStats.shopIncome;
+    this.yearStats.totalExpenses += this.monthStats.upkeepCost;
 
-    // 9. 重置月度统计
+    // 9. 年终结算（每12个月触发）
+    if (this.month % 12 === 0) {
+      const year = Math.floor(this.month / 12);
+      this.lastYearSummary = {
+        year,
+        cardsBought:   this.yearStats.cardsBought,
+        upgradesDone:  this.yearStats.upgradesDone,
+        totalIncome:   this.yearStats.totalIncome,
+        totalExpenses: this.yearStats.totalExpenses,
+        netBalance:    this.yearStats.totalIncome - this.yearStats.totalExpenses,
+      };
+      this.emit('yearSummary');
+      this.yearStats = { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
+    }
+
+    // 10. 成就检查（月末统一）
+    this.checkAchievements();
+
+    // 11. 重置月度统计
     this.monthStats = {
       taxIncome: 0, shopIncome: 0, upkeepCost: 0,
       monstersDefeated: 0, productsCrafted: 0,
@@ -738,6 +871,7 @@ export class GameStore {
         this.addLog(`😡 ${defById(c.definitionId).name} 罢工！`, 'bad');
       }
     }
+    this.checkSiegeTransition();
   }
 
   private resolveRecovery() {
@@ -796,6 +930,11 @@ export class GameStore {
         shopSlots: this.shopSlots.map(s => ({ defId: s.def.id, sold: s.sold })),
         inventory: this.inventory,
         log:       this.log.slice(0, 50),
+        achievements:           this.achievements,
+        totalCardsBought:       this._totalCardsBought,
+        totalUpgradesDone:      this._totalUpgradesDone,
+        totalMonstersDefeated:  this._totalMonstersDefeated,
+        wildcardEverTriggered:  this._wildcardEverTriggered,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
     } catch (e) { console.warn('Save failed:', e); }
@@ -822,6 +961,22 @@ export class GameStore {
         return def ? { def, sold: s.sold } : null;
       }).filter(Boolean) as ShopSlot[];
       if (this.shopSlots.length === 0) this.refreshShopFull();
+      // 成就数据：若存档有成就则加载，否则初始化（旧存档迁移）
+      if (snap.achievements && snap.achievements.length > 0) {
+        // 合并：以ACHIEVEMENT_DB为准，补充旧存档中没有的新成就
+        this.achievements = ACHIEVEMENT_DB.map(def => {
+          const saved = snap.achievements!.find(a => a.id === def.id);
+          return saved ?? { id: def.id, unlockedAt: null };
+        });
+      } else {
+        this.achievements = ACHIEVEMENT_DB.map(def => ({ id: def.id, unlockedAt: null }));
+      }
+      this._totalCardsBought      = snap.totalCardsBought      ?? 0;
+      this._totalUpgradesDone     = snap.totalUpgradesDone     ?? 0;
+      this._totalMonstersDefeated = snap.totalMonstersDefeated ?? 0;
+      this._wildcardEverTriggered = snap.wildcardEverTriggered ?? false;
+      // 清除构造器中可能遗留的 pending（加载存档时不触发解锁弹窗）
+      this._pendingAchievement = null;
       const maxId = [...this.hand, ...this.field, ...this.discarded]
         .map(c => parseInt(c.instanceId.replace('card_', '')) || 0)
         .reduce((a, b) => Math.max(a, b), 0);

@@ -596,6 +596,289 @@ export const drawDragon: DrawFn = (g, x, y, s) => {
   px(g, 0x0a3a0a, x+9, y+19, 4, 2,  s);
 };
 
+// ── New monster sprites (亡灵系 Lv0-5 + 野兽系高级 Lv3-5) ───────────────────
+
+export const drawSlime: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv0 — 32x42px, bottom = y+13
+  const c1 = 0xd0d0d0, c2 = 0xaaaaaa;
+  const eye = 0xff2020;
+  px(g, c1, x+2, y+2, 4, 2, s);       // dome top
+  px(g, c1, x+1, y+4, 6, 6, s);       // round body
+  px(g, c2, x+0, y+7, 8, 3, s);       // dark belly (widest)
+  px(g, c2, x+1, y+11, 6, 2, s);      // flat bottom (→ y+13)
+  px(g, 0xeeeeee, x+2, y+4, 2, 2, s); // highlight
+  px(g, eye, x+2, y+6, 1, 1, s);      // eye L
+  px(g, eye, x+5, y+6, 1, 1, s);      // eye R
+};
+
+export const drawSkeleton: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv0 — 32x42px, bottom = y+13
+  const bone = 0xeeeecc, bone2 = 0xccccaa;
+  const dark = 0x111111;
+  px(g, bone,  x+2, y+0, 4, 4, s);    // skull
+  px(g, dark,  x+2, y+2, 1, 1, s);    // eye socket L
+  px(g, dark,  x+5, y+2, 1, 1, s);    // eye socket R
+  px(g, bone2, x+2, y+4, 4, 5, s);    // ribcage
+  px(g, dark,  x+2, y+5, 4, 1, s);    // rib gap 1
+  px(g, dark,  x+2, y+7, 4, 1, s);    // rib gap 2
+  px(g, bone2, x+1, y+4, 1, 5, s);    // arm L
+  px(g, bone2, x+6, y+4, 1, 5, s);    // arm R
+  px(g, bone,  x+2, y+9, 4, 1, s);    // pelvis
+  px(g, bone2, x+2, y+10, 1, 3, s);   // leg L (thin)
+  px(g, bone2, x+5, y+10, 1, 3, s);   // leg R (thin)
+  px(g, bone,  x+1, y+12, 2, 1, s);   // foot L (→ y+13)
+  px(g, bone,  x+5, y+12, 2, 1, s);   // foot R
+};
+
+export const drawPoisonSlime: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv1 — 36x51px, bottom = y+16
+  const c1 = 0x40c060, c2 = 0x20a040;
+  const eye = 0xff2020;
+  px(g, 0x60e080, x+1, y+0, 2, 2, s); // bubble L
+  px(g, 0x60e080, x+7, y+0, 2, 2, s); // bubble R
+  px(g, 0x60e080, x+4, y+1, 2, 2, s); // bubble mid
+  px(g, c1, x+2, y+2, 6, 3, s);       // dome top
+  px(g, c1, x+1, y+5, 8, 8, s);       // wide body
+  px(g, c2, x+0, y+9, 10, 3, s);      // dark belly (widest)
+  px(g, c2, x+1, y+13, 8, 3, s);      // flat bottom (→ y+16)
+  px(g, 0x80ff80, x+3, y+6, 2, 2, s); // highlight
+  px(g, eye, x+3, y+7, 1, 1, s);      // eye L
+  px(g, eye, x+6, y+7, 1, 1, s);      // eye R
+};
+
+export const drawSkeletonKnight: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv1 — 36x51px, bottom = y+16
+  const bone = 0xeeeecc, bone2 = 0xccccaa;
+  const armr = 0x888888, armr2 = 0x666666;
+  const dark = 0x111111;
+  px(g, bone,  x+2, y+0, 5, 4, s);     // skull
+  px(g, armr,  x+1, y+1, 7, 4, s);     // helmet
+  px(g, dark,  x+3, y+2, 1, 1, s);     // eye socket L
+  px(g, dark,  x+5, y+2, 1, 1, s);     // eye socket R
+  px(g, armr,  x+1, y+5, 7, 6, s);     // armored body
+  px(g, armr2, x+1, y+6, 7, 1, s);     // armor stripe
+  px(g, armr2, x+1, y+9, 7, 1, s);     // armor stripe
+  px(g, bone2, x+0, y+5, 1, 4, s);     // arm L (bone)
+  px(g, armr,  x+8, y+5, 1, 4, s);     // arm R (armored)
+  // sword (right side, reference drawCombatWorker)
+  px(g, 0x8a6020, x+9, y+4, 1, 2, s);  // grip
+  px(g, 0xaaaaaa, x+8, y+5, 2, 1, s);  // crossguard
+  px(g, 0xc0c0c0, x+9, y+6, 1, 5, s);  // blade
+  px(g, bone,  x+2, y+11, 5, 1, s);    // pelvis
+  px(g, bone2, x+2, y+12, 2, 4, s);    // leg L
+  px(g, bone2, x+5, y+12, 2, 4, s);    // leg R
+  px(g, armr2, x+1, y+15, 3, 1, s);    // foot L armored (→ y+16)
+  px(g, armr2, x+5, y+15, 3, 1, s);    // foot R armored
+};
+
+export const drawLich: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv2 — 42x57px, bottom = y+18
+  const robe = 0x3a1060, robe2 = 0x20094a;
+  const bone = 0xeeeecc;
+  const dark = 0x111111;
+  const orb  = 0xa040ff;
+  px(g, bone,  x+4, y+0, 6, 5, s);     // skull
+  px(g, dark,  x+4, y+2, 2, 2, s);     // eye socket L
+  px(g, dark,  x+8, y+2, 2, 2, s);     // eye socket R
+  px(g, orb,   x+5, y+2, 1, 1, s);     // glowing eye L
+  px(g, orb,   x+9, y+2, 1, 1, s);     // glowing eye R
+  px(g, robe,  x+2, y+5, 10, 10, s);   // robe body
+  px(g, robe2, x+2, y+6,  10, 1, s);   // robe stripe
+  px(g, robe2, x+2, y+10, 10, 1, s);   // robe band
+  px(g, robe,  x+1, y+5,   1, 7, s);   // sleeve L
+  px(g, robe,  x+12, y+5,  1, 7, s);   // sleeve R
+  px(g, bone,  x+1, y+12,  1, 1, s);   // hand L
+  px(g, bone,  x+12, y+12, 1, 1, s);   // hand R
+  px(g, robe2, x+3, y+15,  8, 1, s);   // robe hem
+  px(g, robe,  x+4, y+16,  6, 2, s);   // robe bottom (→ y+18)
+  // staff (right side, reference drawHumanMage)
+  px(g, 0x5a3010, x+13, y+6,  1, 8, s); // staff shaft
+  px(g, orb,      x+12, y+4,  2, 3, s); // magic orb
+  px(g, 0xd0a0ff, x+12, y+4,  1, 1, s); // orb highlight
+};
+
+export const drawDeathLord: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv3 — 42x57px, bottom = y+18
+  const c1 = 0x1a1a2a, c2 = 0x0a0a1a;
+  const bone = 0xeeeecc;
+  const glow = 0x40ff80;
+  // bone crown spikes
+  px(g, bone, x+3, y+0, 1, 2, s);
+  px(g, bone, x+5, y+0, 1, 3, s);
+  px(g, bone, x+7, y+0, 2, 3, s);
+  px(g, bone, x+10, y+0, 1, 2, s);
+  // dark head
+  px(g, c1, x+2, y+2, 9, 4, s);
+  px(g, glow, x+3, y+3, 2, 2, s);     // glowing eye L
+  px(g, glow, x+8, y+3, 2, 2, s);     // glowing eye R
+  // heavy black armor body
+  px(g, c1, x+1, y+6, 11, 8, s);
+  px(g, c2, x+1, y+9, 11, 2, s);      // dark armor band
+  // glow dots around body
+  px(g, glow, x+0, y+7,  1, 1, s);
+  px(g, glow, x+0, y+11, 1, 1, s);
+  px(g, glow, x+12, y+7,  1, 1, s);
+  px(g, glow, x+12, y+11, 1, 1, s);
+  // arms
+  px(g, c2, x+0,  y+6, 1, 6, s);
+  px(g, c2, x+12, y+6, 1, 6, s);
+  // legs (→ y+18)
+  px(g, c2, x+2, y+14, 4, 4, s);
+  px(g, c2, x+8, y+14, 4, 4, s);
+  px(g, glow, x+2, y+16, 4, 2, s);    // foot glow L (→ y+18)
+  px(g, glow, x+8, y+16, 4, 2, s);    // foot glow R
+};
+
+export const drawVoidGod: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv4 — 48x63px, bottom = y+20
+  const c1 = 0x080010, c2 = 0x100020;
+  const eye1 = 0xff0040, eye2 = 0x8000ff;
+  // tentacles (4, two per side, reference drawMonsterChaosBeast)
+  px(g, c2, x-1, y+5, 2, 3, s);       // tentacle L-top
+  px(g, c2, x-1, y+9, 2, 3, s);       // tentacle L-bot
+  px(g, c2, x+14, y+5, 2, 3, s);      // tentacle R-top
+  px(g, c2, x+14, y+9, 2, 3, s);      // tentacle R-bot
+  // dark body
+  px(g, c2, x+1, y+4, 13, 10, s);
+  px(g, c1, x+0, y+8, 15,  4, s);     // absolute dark core
+  // massive head
+  px(g, c2, x+2, y+0, 11, 5, s);
+  // 4 eyes (3 red/purple)
+  px(g, eye1, x+3,  y+1, 2, 2, s);    // red eye L
+  px(g, eye2, x+7,  y+1, 2, 2, s);    // purple eye mid
+  px(g, eye1, x+10, y+1, 2, 2, s);    // red eye R
+  px(g, eye2, x+6,  y+3, 2, 1, s);    // small lower eye
+  // legs (→ y+20)
+  px(g, c2, x+2,  y+14, 4, 6, s);
+  px(g, c2, x+9,  y+14, 4, 6, s);
+  px(g, eye2, x+2,  y+18, 4, 2, s);   // void foot glow L (→ y+20)
+  px(g, eye2, x+9,  y+18, 4, 2, s);   // void foot glow R
+};
+
+export const drawEndBringer: DrawFn = (g, x, y, s) => {
+  // 亡灵系 Lv5 — 54x69px, bottom = y+22
+  const c1 = 0x050008, c2 = 0x0a0012;
+  const crack = 0xff2800;
+  const aura  = 0x4a006a;  // dark purple halo
+  // colossal black body
+  px(g, c2, x+1,  y+7,  15, 11, s);
+  px(g, c1, x+0,  y+11, 17,  6, s);   // absolute dark core
+  // cracks (reference drawMonsterWorldEnder crack style)
+  px(g, crack, x+2,  y+8,  1, 4, s);
+  px(g, crack, x+6,  y+10, 1, 3, s);
+  px(g, crack, x+10, y+9,  1, 5, s);
+  px(g, crack, x+14, y+8,  1, 4, s);
+  // head with dark purple halo on top
+  px(g, c2,   x+3,  y+0,  11, 8, s);
+  px(g, aura, x+3,  y+0,  11, 1, s);  // halo arc top
+  px(g, aura, x+2,  y+0,   1, 3, s);  // halo spike L
+  px(g, aura, x+14, y+0,   1, 3, s);  // halo spike R
+  // eyes
+  px(g, 0xff0000, x+5,  y+2, 2, 2, s);
+  px(g, 0xff0000, x+10, y+2, 2, 2, s);
+  px(g, crack,    x+7,  y+4, 3, 1, s); // maw glow
+  // void arms
+  px(g, c1,   x-2,  y+7,  4, 10, s);
+  px(g, aura, x-2,  y+16, 4,  1, s);   // arm tip glow L
+  px(g, c1,   x+15, y+7,  4, 10, s);
+  px(g, aura, x+15, y+16, 4,  1, s);   // arm tip glow R
+  // pillar legs (→ y+22)
+  px(g, c2,   x+3, y+18, 5, 4, s);
+  px(g, c2,   x+9, y+18, 5, 4, s);
+  px(g, aura, x+3, y+20, 5, 3, s);     // void foot glow L (→ y+23=69px)
+  px(g, aura, x+9, y+20, 5, 3, s);     // void foot glow R
+};
+
+export const drawAncientDragon: DrawFn = (g, x, y, s) => {
+  // 野兽系 Lv3 — 42x57px, bottom = y+18  (weathered dragon + bone spines)
+  const c1 = 0x0a3a1a, c2 = 0x062010;  // weathered dark gray-green
+  const spine = 0xd0d0c0;              // bone spines on ridge
+  // wing L
+  px(g, c2, x+0, y+4, 3, 6, s);
+  px(g, c1, x-1, y+5, 2, 4, s);        // wing tip (extends left, reference drawDragon)
+  // main body
+  px(g, c1, x+2, y+5,  9, 8, s);
+  px(g, c2, x+2, y+11, 9, 4, s);
+  // bone spines on dorsal ridge
+  px(g, spine, x+3, y+4, 1, 2, s);
+  px(g, spine, x+5, y+3, 1, 2, s);
+  px(g, spine, x+7, y+3, 1, 3, s);
+  px(g, spine, x+9, y+4, 1, 2, s);
+  // head + neck
+  px(g, c1, x+7, y+1, 5, 5, s);
+  px(g, c2, x+11, y+3, 2, 3, s);       // snout
+  px(g, 0xff4040, x+8, y+2, 1, 1, s);  // eye
+  // tail
+  px(g, c1, x+11, y+9, 3, 3, s);
+  px(g, c2, x+12, y+11, 2, 2, s);
+  // legs/feet (→ y+18)
+  px(g, c1, x+2, y+15, 4, 3, s);
+  px(g, c1, x+7, y+15, 4, 3, s);
+  px(g, c2, x+2, y+16, 4, 2, s);       // feet (→ y+18)
+  px(g, c2, x+7, y+16, 4, 2, s);
+};
+
+export const drawDragonKing: DrawFn = (g, x, y, s) => {
+  // 野兽系 Lv4 — 48x63px, bottom = y+20  (dragon + gold crown + wider wings)
+  const c1 = 0x1a6a2a, c2 = 0x0a4a1a;  // same base as drawDragon
+  const gold = 0xd4a017;
+  const eye  = 0xffd040;                // golden eyes
+  // wider wing L (reference drawDragon)
+  px(g, c2, x+0, y+4, 4, 8, s);
+  px(g, c2, x-1, y+5, 2, 6, s);        // wing tip (clips left)
+  // body
+  px(g, c1, x+3, y+5,  10, 10, s);
+  px(g, c2, x+3, y+12, 10,  5, s);
+  // gold crown on head
+  px(g, gold, x+9,  y+0, 1, 2, s);     // crown spike L
+  px(g, gold, x+11, y+0, 2, 3, s);     // crown spike mid
+  px(g, gold, x+14, y+0, 1, 2, s);     // crown spike R
+  px(g, gold, x+9,  y+1, 6, 1, s);     // crown band
+  // head + neck
+  px(g, c1, x+8,  y+1, 7, 6, s);
+  px(g, c2, x+13, y+4, 3, 3, s);       // snout
+  px(g, eye, x+9, y+2, 2, 2, s);       // golden eye
+  // tail
+  px(g, c1, x+13, y+10, 4, 4, s);
+  px(g, c2, x+15, y+12, 2, 2, s);      // tail tip (clips right edge)
+  // legs/feet (→ y+20)
+  px(g, c1, x+3, y+17, 4, 3, s);
+  px(g, c1, x+9, y+17, 4, 3, s);
+  px(g, c2, x+3, y+18, 4, 2, s);       // feet (→ y+20)
+  px(g, c2, x+9, y+18, 4, 2, s);
+};
+
+export const drawPrimordialDragon: DrawFn = (g, x, y, s) => {
+  // 野兽系 Lv5 — 54x69px, bottom = y+22  (largest, lava-cracked)
+  const c1 = 0x0a3a0a, c2 = 0x062006;  // very dark green
+  const lava1 = 0xff4400, lava2 = 0xff8800; // lava cracks
+  // wide wing L (extends left)
+  px(g, c2, x+0, y+4, 5, 10, s);
+  px(g, c2, x-1, y+5, 3,  8, s);
+  // massive body
+  px(g, c1, x+4, y+5,  12, 12, s);
+  px(g, c2, x+4, y+13, 12,  6, s);
+  // lava cracks on body (reference drawMonsterWorldEnder crack style)
+  px(g, lava1, x+5,  y+6, 1, 4, s);
+  px(g, lava2, x+8,  y+8, 1, 3, s);
+  px(g, lava1, x+11, y+7, 1, 5, s);
+  px(g, lava2, x+14, y+9, 1, 3, s);
+  // head + neck
+  px(g, c1, x+9, y+0, 8, 7, s);
+  px(g, c2, x+15, y+3, 2, 3, s);       // snout
+  px(g, lava1, x+10, y+2, 2, 2, s);    // eye L (lava glow)
+  px(g, lava2, x+13, y+2, 2, 2, s);    // eye R (lava glow)
+  px(g, lava2, x+11, y+1, 1, 2, s);    // head crack
+  // tail
+  px(g, c1,   x+14, y+11, 4, 5, s);
+  px(g, lava1, x+15, y+12, 2, 2, s);   // lava crack on tail
+  // legs/feet (→ y+22)
+  px(g, c1,   x+4,  y+19, 5, 3, s);
+  px(g, c1,   x+11, y+19, 5, 3, s);
+  px(g, lava1, x+4,  y+20, 5, 2, s);   // lava feet L (→ y+22)
+  px(g, lava1, x+11, y+20, 5, 2, s);   // lava feet R
+};
+
 // ── Buildings ─────────────────────────────────────────────────────────────────
 // 纹理 48x60px, s=3 → 图形逻辑坐标 0..19，像素 0..57
 // setOrigin(0.5,1) 使纹理底部(60px)贴地，图形底部(57px)略在地面以上，视觉上贴地
@@ -718,6 +1001,10 @@ export type SpriteKey =
   | 'monster_harpy' | 'monster_dragon'
   | 'monster_mutant' | 'monster_chaos_beast' | 'monster_abyss_lord'
   | 'monster_primordial' | 'monster_world_ender'
+  | 'monster_slime' | 'monster_skeleton' | 'monster_poison_slime'
+  | 'monster_skeleton_knight' | 'monster_lich' | 'monster_death_lord'
+  | 'monster_void_god' | 'monster_end_bringer'
+  | 'monster_ancient_dragon' | 'monster_dragon_king' | 'monster_primordial_dragon'
   | 'building_basic' | 'magic_basic' | 'tree' | 'passerby';
 
 export function generateAllTextures(scene: Phaser.Scene): void {
@@ -757,6 +1044,19 @@ export function generateAllTextures(scene: Phaser.Scene): void {
   gen('monster_troll',  drawTroll,  36, 60);
   gen('monster_harpy',  drawHarpy,  42, 39);
   gen('monster_dragon', drawDragon, 54, 63);
+
+  // 新增怪物 (亡灵系 Lv0-5 + 野兽系高级 Lv3-5)
+  gen('monster_slime',            drawSlime,            32, 42);
+  gen('monster_skeleton',         drawSkeleton,         32, 42);
+  gen('monster_poison_slime',     drawPoisonSlime,      36, 51);
+  gen('monster_skeleton_knight',  drawSkeletonKnight,   36, 51);
+  gen('monster_lich',             drawLich,             42, 57);
+  gen('monster_death_lord',       drawDeathLord,        42, 57);
+  gen('monster_void_god',         drawVoidGod,          48, 63);
+  gen('monster_end_bringer',      drawEndBringer,       54, 69);
+  gen('monster_ancient_dragon',   drawAncientDragon,    42, 57);
+  gen('monster_dragon_king',      drawDragonKing,       48, 63);
+  gen('monster_primordial_dragon',drawPrimordialDragon, 54, 69);
 
   // 彩蛋怪物
   // mutant:      bottom = y+14 → 45px  (32 wide)
@@ -815,6 +1115,17 @@ export function spriteKeyForCard(
   if (definitionId === 'monster_troll')  return 'monster_troll';
   if (definitionId === 'monster_harpy')  return 'monster_harpy';
   if (definitionId === 'monster_dragon') return 'monster_dragon';
+  if (definitionId === 'monster_slime')            return 'monster_slime';
+  if (definitionId === 'monster_skeleton')         return 'monster_skeleton';
+  if (definitionId === 'monster_poison_slime')     return 'monster_poison_slime';
+  if (definitionId === 'monster_skeleton_knight')  return 'monster_skeleton_knight';
+  if (definitionId === 'monster_lich')             return 'monster_lich';
+  if (definitionId === 'monster_death_lord')       return 'monster_death_lord';
+  if (definitionId === 'monster_void_god')         return 'monster_void_god';
+  if (definitionId === 'monster_end_bringer')      return 'monster_end_bringer';
+  if (definitionId === 'monster_ancient_dragon')   return 'monster_ancient_dragon';
+  if (definitionId === 'monster_dragon_king')      return 'monster_dragon_king';
+  if (definitionId === 'monster_primordial_dragon') return 'monster_primordial_dragon';
   if (definitionId.startsWith('building')) return 'building_basic';
   if (definitionId.startsWith('magic'))    return 'magic_basic';
   return 'human_idle';
