@@ -419,7 +419,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private runAI() {
-    const gy = this.groundY;
+    const gy = this.groundY + 30;
 
     const activeMonsters = store.field.filter(c => {
       if (!c.definitionId) return false;
@@ -600,7 +600,7 @@ export class TownScene extends Phaser.Scene {
       sp.monsterBehavior = 'waiting';
       if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
         sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
-        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+        sp.targetY = gy + (Math.random() - 0.5) * 6;
       }
       return;
     }
@@ -610,7 +610,7 @@ export class TownScene extends Phaser.Scene {
       sp.monsterBehavior = 'waiting';
       if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
         sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
-        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+        sp.targetY = gy + (Math.random() - 0.5) * 6;
       }
       return;
     }
@@ -618,7 +618,7 @@ export class TownScene extends Phaser.Scene {
     const activeTown = townspeople.filter(c => c.isActive);
     if (activeTown.length === 0) {
       sp.monsterBehavior = 'retreating';
-      sp.targetX = spawnX; sp.targetY = gy - 10;
+      sp.targetX = spawnX; sp.targetY = gy;
       return;
     }
 
@@ -726,7 +726,7 @@ export class TownScene extends Phaser.Scene {
       attacker.isActive       = false;
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY + 30; }
       store.checkSiegeTransition();
     }
   }
@@ -770,7 +770,7 @@ export class TownScene extends Phaser.Scene {
       human.isActive       = false;
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY + 30; }
       store.checkSiegeTransition();
     }
   }
@@ -1004,20 +1004,20 @@ export class TownScene extends Phaser.Scene {
       this.labelLayer.add(hpBar);
       this.labelLayer.add(craftBar);
 
-      let sx = ZONE.town, sy = this.groundY;
+      let sx = ZONE.town, sy = this.groundY + 30;
       if (isBuilding) {
         sx = this.buildingFieldX(inst.instanceId, inst.definitionId);
         sy = this.groundY;
       } else if (isMonster && inst.spawnZone) {
         sx = MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? ZONE.town;
-        sy = this.groundY;
+        sy = this.groundY + 30;
       } else if (def.type === CardType.Human) {
         const job = inst.jobAssignment ?? JobType.Idle;
         sx = job === JobType.Shop   ? ZONE.shop
            : job === JobType.Craft  ? ZONE.craft
            : job === JobType.Combat ? ZONE.barracks
            : ZONE.town;
-        sy = this.groundY;
+        sy = this.groundY + 30;
       }
 
       sprite.setPosition(sx, sy);
