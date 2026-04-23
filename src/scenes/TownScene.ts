@@ -697,16 +697,9 @@ export class TownScene extends Phaser.Scene {
       if (dmgToHero > 0) this.spawnDamageText(hSp.x, hSp.y, dmgToHero, '#ff9966');
 
       const dir = mSp.x > hSp.x ? 1 : -1;
-      this.tweens.add({
-        targets: hSp.sprite,
-        x: hSp.sprite.x + dir * 8,
-        duration: 80, yoyo: true, ease: 'Quad.Out',
-      });
-      this.tweens.add({
-        targets: mSp.sprite,
-        x: mSp.sprite.x + dir * 6,
-        duration: 120, yoyo: true, ease: 'Quad.Out',
-      });
+      // 击退：通过 knockbackX 在 interpolate 中渲染（x tween 会被 setPosition 覆盖）
+      hSp.knockbackX = dir * 8;
+      mSp.knockbackX = dir * 6;
       // 命中时怪物摆动
       this.tweens.add({
         targets: mSp.sprite,
@@ -762,10 +755,8 @@ export class TownScene extends Phaser.Scene {
       hSp.hitFlashTimer = 4;
 
       const dir = hSp.x > mSp.x ? 1 : -1;
-      this.tweens.add({
-        targets: mSp.sprite, x: mSp.sprite.x + dir * 8,
-        duration: 80, yoyo: true, ease: 'Quad.Out',
-      });
+      // 怪物攻击前冲：通过 knockbackX 在 interpolate 中渲染（x tween 会被 setPosition 覆盖）
+      mSp.knockbackX = dir * 8;
       // 人物受击摆动
       this.tweens.add({
         targets: hSp.sprite,
@@ -1114,7 +1105,7 @@ export class TownScene extends Phaser.Scene {
             sp.sprite.setAngle(0);
           }
         } else {
-          sp.y = sp.targetY + Math.sin(sp.bobPhase) * 1.5;
+          renderBobY = Math.sin(sp.bobPhase) * 1.5;
           // 静止时角色角度动画（hitFlash 期间交由 tween 控制）
           if (sp.hitFlashTimer <= 0) {
             if (!isMonster && inst.jobAssignment === JobType.Craft && inst.isActive) {
@@ -1129,7 +1120,11 @@ export class TownScene extends Phaser.Scene {
             }
           }
         }
-        sp.sprite.setPosition(sp.x, sp.y + renderBobY);
+        // 击退偏移：每帧指数衰减，不影响逻辑坐标 sp.x
+        const kbX = sp.knockbackX;
+        sp.knockbackX *= 0.7;
+        if (Math.abs(sp.knockbackX) < 0.5) sp.knockbackX = 0;
+        sp.sprite.setPosition(sp.x + kbX, sp.y + renderBobY);
 
         // 怪物待机呼吸缩放
         if (isMonster && sp.monsterBehavior === 'waiting') {
