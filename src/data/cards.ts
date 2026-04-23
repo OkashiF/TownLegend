@@ -1,4 +1,4 @@
-import { CardType, CardDefinition } from '../types';
+﻿import { CardType, CardDefinition } from '../types';
 
 // ── 等级价格表 ────────────────────────────────────────────────────────────────
 // Lv0=20, Lv1=50, Lv2=100, Lv3=180, Lv4=300, Lv5=480
@@ -292,7 +292,7 @@ export const CARD_DB: CardDefinition[] = [
     cost: cost(2), upkeep: upkeep(2),
     emoji: '🔮',
     description: '【彩蛋】智慧超群，商店和制造均达极致，但不擅长战斗。由Lv1人物合成时10%概率获得。',
-    stats: { hp: 40, maxHp: 40, atk: 5, def: 4, intellect: 20, strength: 2, diligence: 20 },
+    stats: { hp: 40, maxHp: 40, atk: 10, def: 4, intellect: 20, strength: 5, diligence: 20 },
   },
   {
     id: 'human_hero',
@@ -338,7 +338,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🐀',
     description: '微小的威胁，掉落鼠皮，几乎不具攻击性。3张合成野狼。',
     stats: { hp: 15, maxHp: 15, atk: 4, def: 1, rarity: 1, aggression: 4, strength: 1,
-             lootId: 'loot_rat_hide', lootQtyMin: 2, lootQtyMax: 4 },
+             lootId: 'loot_rat_hide', lootQtyMin: 1, lootQtyMax: 8 },
     upgradeTargetId: 'monster_wolf',
   },
   {
@@ -350,7 +350,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🐺',
     description: '常见的威胁，攻击性一般，掉落狼牙。3张合成巨魔。',
     stats: { hp: 25, maxHp: 25, atk: 8, def: 3, rarity: 2, aggression: 3, strength: 3,
-             lootId: 'loot_wolf_fang', lootQtyMin: 1, lootQtyMax: 3 },
+             lootId: 'loot_wolf_fang', lootQtyMin: 3, lootQtyMax: 5 },
     upgradeTargetId: 'monster_troll',
   },
   {
@@ -362,7 +362,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '👹',
     description: '强壮的怪物，掉落魔晶，攻城倒计时较短。3张合成幼龙。',
     stats: { hp: 50, maxHp: 50, atk: 15, def: 8, rarity: 4, aggression: 2, strength: 6,
-             lootId: 'loot_troll_gem', lootQtyMin: 1, lootQtyMax: 2 },
+             lootId: 'loot_troll_gem', lootQtyMin: 4, lootQtyMax: 5 },
     upgradeTargetId: 'monster_dragon',
   },
   {
@@ -374,7 +374,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🦅',
     description: '快速且具侵略性，频繁骚扰城镇，掉落妖羽。3张合成幼龙。',
     stats: { hp: 35, maxHp: 35, atk: 12, def: 4, rarity: 3, aggression: 1, strength: 4,
-             lootId: 'loot_harpy_feather', lootQtyMin: 2, lootQtyMax: 5 },
+             lootId: 'loot_harpy_feather', lootQtyMin: 3, lootQtyMax: 7 },
     upgradeTargetId: 'monster_dragon',
   },
   {
@@ -386,7 +386,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🐉',
     description: '极稀有的宝藏猎物，掉落龙鳞，侵略性极强。3张合成远古龙。',
     stats: { hp: 100, maxHp: 100, atk: 25, def: 15, rarity: 8, aggression: 1, strength: 10,
-             lootId: 'loot_dragon_scale', lootQtyMin: 1, lootQtyMax: 3 },
+             lootId: 'loot_dragon_scale', lootQtyMin: 2, lootQtyMax: 3 },
     upgradeTargetId: 'monster_ancient_dragon',
   },
   {
@@ -410,7 +410,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '👁️',
     description: '万龙之王，掌控烈焰与风暴，掉落龙王宝珠。3张合成原初神龙。',
     stats: { hp: 500, maxHp: 500, atk: 90, def: 55, rarity: 25, aggression: 1, strength: 35,
-             lootId: 'loot_dragon_orb', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_dragon_orb', lootQtyMin: 1, lootQtyMax: 2 },
     upgradeTargetId: 'monster_primordial_dragon',
   },
   {
@@ -422,7 +422,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🌋',
     description: '世界诞生时便存在的神龙，掉落创世龙晶，是野兽系终点。',
     stats: { hp: 1000, maxHp: 1000, atk: 160, def: 100, rarity: 50, aggression: 1, strength: 60,
-             lootId: 'loot_genesis_crystal', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_genesis_crystal', lootQtyMin: 1, lootQtyMax: 2 },
   },
 
   // ══════════════════════════════════════════════════════════════════════
@@ -450,7 +450,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🫧',
     description: '侵略性极低，几乎不主动攻城，掉落史莱姆核，适合挂机收材料。3张合成毒液史莱姆。',
     stats: { hp: 20, maxHp: 20, atk: 2, def: 2, rarity: 1, aggression: 6, strength: 1,
-             lootId: 'loot_slime_core', lootQtyMin: 2, lootQtyMax: 4 },
+             lootId: 'loot_slime_core', lootQtyMin: 1, lootQtyMax: 8 },
     upgradeTargetId: 'monster_poison_slime',
   },
   {
@@ -462,7 +462,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🦴',
     description: '持剑的亡灵骑士，防御极高但HP一般，掉落诅咒骨。3张合成巫妖。',
     stats: { hp: 45, maxHp: 45, atk: 12, def: 16, rarity: 4, aggression: 3, strength: 5,
-             lootId: 'loot_cursed_bone', lootQtyMin: 1, lootQtyMax: 3 },
+             lootId: 'loot_cursed_bone', lootQtyMin: 2, lootQtyMax: 5 },
     upgradeTargetId: 'monster_lich',
   },
   {
@@ -474,7 +474,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '☣️',
     description: '进化后的史莱姆，毒素腐蚀防甲，掉落魔法凝胶。3张合成巫妖。',
     stats: { hp: 60, maxHp: 60, atk: 10, def: 6, rarity: 3, aggression: 4, strength: 4,
-             lootId: 'loot_magic_gel', lootQtyMin: 1, lootQtyMax: 3 },
+             lootId: 'loot_magic_gel', lootQtyMin: 2, lootQtyMax: 4 },
     upgradeTargetId: 'monster_lich',
   },
   {
@@ -486,7 +486,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🧟',
     description: '强大的亡灵法师，掉落黑魔晶，是亡灵系的中期强敌。3张合成死灵君主。',
     stats: { hp: 120, maxHp: 120, atk: 30, def: 12, rarity: 8, aggression: 2, strength: 10,
-             lootId: 'loot_dark_gem', lootQtyMin: 1, lootQtyMax: 2 },
+             lootId: 'loot_dark_gem', lootQtyMin: 1, lootQtyMax: 3 },
     upgradeTargetId: 'monster_death_lord',
   },
   {
@@ -498,7 +498,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '☠️',
     description: '统领亡灵大军，掉落虚空精华，对城镇构成严重威胁。3张合成虚空之神。',
     stats: { hp: 300, maxHp: 300, atk: 55, def: 25, rarity: 15, aggression: 1, strength: 20,
-             lootId: 'loot_void_essence', lootQtyMin: 1, lootQtyMax: 2 },
+             lootId: 'loot_void_essence', lootQtyMin: 1, lootQtyMax: 3 },
     upgradeTargetId: 'monster_void_god',
   },
   {
@@ -510,7 +510,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🌑',
     description: '来自虚空的古老神明，掌控死亡与黑暗，掉落虚空之心。3张合成终焉之主。',
     stats: { hp: 600, maxHp: 600, atk: 100, def: 60, rarity: 25, aggression: 1, strength: 38,
-             lootId: 'loot_void_heart', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_void_heart', lootQtyMin: 1, lootQtyMax: 2 },
     upgradeTargetId: 'monster_end_bringer',
   },
   {
@@ -522,7 +522,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🕳️',
     description: '世界终结的化身，掌握毁灭一切的力量，掉落终焉碎片，亡灵系终点。',
     stats: { hp: 1200, maxHp: 1200, atk: 180, def: 110, rarity: 50, aggression: 1, strength: 65,
-             lootId: 'loot_end_shard', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_end_shard', lootQtyMin: 1, lootQtyMax: 2 },
   },
 
   // ══════════════════════════════════════════════════════════════════════
@@ -538,7 +538,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '👾',
     description: '【彩蛋】基因突变的神秘生物，HP极高但攻击力低，掉落混合战利品。由Lv0怪物合成时10%概率获得。',
     stats: { hp: 80, maxHp: 80, atk: 6, def: 5, rarity: 5, aggression: 5, strength: 3,
-             lootId: 'loot_mutant_tissue', lootQtyMin: 2, lootQtyMax: 4 },
+             lootId: 'loot_mutant_tissue', lootQtyMin: 4, lootQtyMax: 8 },
   },
   {
     id: 'monster_chaos_beast',
@@ -549,7 +549,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🌀',
     description: '【彩蛋】混沌能量孕育的怪物，侵略性最高(aggression=1)，掉落混沌晶核。由Lv1怪物合成时10%概率获得。',
     stats: { hp: 150, maxHp: 150, atk: 35, def: 8, rarity: 10, aggression: 1, strength: 14,
-             lootId: 'loot_chaos_crystal', lootQtyMin: 1, lootQtyMax: 2 },
+             lootId: 'loot_chaos_crystal', lootQtyMin: 2, lootQtyMax: 6 },
   },
   {
     id: 'monster_abyss_lord',
@@ -560,7 +560,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🕸️',
     description: '【彩蛋】深渊中最强的存在，全属性均超越同等级怪物，掉落深渊精髓。由Lv2怪物合成时10%概率获得。',
     stats: { hp: 400, maxHp: 400, atk: 70, def: 35, rarity: 20, aggression: 1, strength: 25,
-             lootId: 'loot_abyss_essence', lootQtyMin: 1, lootQtyMax: 2 },
+             lootId: 'loot_abyss_essence', lootQtyMin: 2, lootQtyMax: 3 },
   },
   {
     id: 'monster_primordial',
@@ -571,7 +571,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '🌟',
     description: '【彩蛋】远古时代的神话生物，力量媲美神明，掉落原初精华。由Lv3怪物合成时10%概率获得。',
     stats: { hp: 800, maxHp: 800, atk: 120, def: 75, rarity: 35, aggression: 1, strength: 45,
-             lootId: 'loot_primordial_essence', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_primordial_essence', lootQtyMin: 1, lootQtyMax: 2 },
   },
   {
     id: 'monster_world_ender',
@@ -582,7 +582,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '💥',
     description: '【彩蛋】存在本身即是终结，全游戏最强怪物，掌握它意味着挑战极限。由Lv4怪物合成时10%概率获得。',
     stats: { hp: 2000, maxHp: 2000, atk: 250, def: 150, rarity: 100, aggression: 1, strength: 80,
-             lootId: 'loot_world_shard', lootQtyMin: 1, lootQtyMax: 1 },
+             lootId: 'loot_world_shard', lootQtyMin: 1, lootQtyMax: 2 },
   },
 
   // ══════════════════════════════════════════════════════════════════════
