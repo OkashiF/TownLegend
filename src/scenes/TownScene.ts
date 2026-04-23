@@ -441,14 +441,7 @@ export class TownScene extends Phaser.Scene {
       if (!sp || sp.dyingTimer > 0 || sp.isDead) continue;
 
       if (def.type === CardType.Human) {
-        if (!inst.isActive) {
-          sp.targetX = ZONE.town + (Math.random() - 0.5) * WANDER;
-          sp.targetY = gy;
-          sp.warriorState = 'patrol';
-          sp.combatTarget = null;
-          sp.lootTarget   = null;
-          continue;
-        }
+        if (!inst.isActive) continue;
 
         const job = inst.jobAssignment ?? JobType.Idle;
 
@@ -726,7 +719,7 @@ export class TownScene extends Phaser.Scene {
       attacker.isActive       = false;
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) this.knockdownHuman(hSp);
       store.checkSiegeTransition();
     }
   }
@@ -770,7 +763,7 @@ export class TownScene extends Phaser.Scene {
       human.isActive       = false;
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) this.knockdownHuman(hSp);
       store.checkSiegeTransition();
     }
   }
@@ -817,6 +810,34 @@ export class TownScene extends Phaser.Scene {
         ease: 'Quad.In',
       });
     }
+  }
+
+  private knockdownHuman(hSp: FieldSprite): void {
+    hSp.isDead     = true;
+    hSp.dyingTimer = Math.ceil(600 / MS_PER_TICK) + 1;
+
+    this.tweens.add({
+      targets: hSp.sprite,
+      scaleX: HUMAN_SCALE * 1.1,
+      scaleY: HUMAN_SCALE * 1.1,
+      duration: 150,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: hSp.sprite,
+          scaleX: 0, scaleY: 0,
+          alpha: 0,
+          duration: 450,
+          ease: 'Quad.In',
+        });
+      },
+    });
+    this.tweens.add({
+      targets: [hSp.label, hSp.hpBar],
+      alpha: 0,
+      duration: 300,
+      ease: 'Quad.In',
+    });
   }
 
   private spawnLootDrop(monster: CardInstance, wx: number, wy: number) {
@@ -969,12 +990,15 @@ export class TownScene extends Phaser.Scene {
       }
     }
 
+    const revivedHumanIds = new Set<string>();
     for (const inst of store.field) {
       if (this.sprites.has(inst.instanceId)) {
         const sp = this.sprites.get(inst.instanceId)!;
         if (!sp.isDead) continue;           // 存活的sprite，无需重建
-        if (!inst.isActive) continue;       // 怪物仍在恢复中，等待复活完成
-        // isDead=true 且 isActive 已重新变为 true：怪物已复活，清理死亡记录后重建sprite
+        if (!inst.isActive) continue;       // 仍在恢复中，等待复活完成
+        // isDead=true 且 isActive 已重新变为 true：已复活，清理死亡记录后重建sprite
+        const instDef = defById(inst.definitionId);
+        if (instDef.type === CardType.Human) revivedHumanIds.add(inst.instanceId);
         this.sprites.delete(inst.instanceId);
       }
 
@@ -1012,11 +1036,15 @@ export class TownScene extends Phaser.Scene {
         sx = MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? ZONE.town;
         sy = this.groundY;
       } else if (def.type === CardType.Human) {
-        const job = inst.jobAssignment ?? JobType.Idle;
-        sx = job === JobType.Shop   ? ZONE.shop
-           : job === JobType.Craft  ? ZONE.craft
-           : job === JobType.Combat ? ZONE.barracks
-           : ZONE.town;
+        if (revivedHumanIds.has(inst.instanceId)) {
+          sx = ZONE.barracks;
+        } else {
+          const job = inst.jobAssignment ?? JobType.Idle;
+          sx = job === JobType.Shop   ? ZONE.shop
+             : job === JobType.Craft  ? ZONE.craft
+             : job === JobType.Combat ? ZONE.barracks
+             : ZONE.town;
+        }
         sy = this.groundY;
       }
 
