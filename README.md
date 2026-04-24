@@ -996,4 +996,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 特别鸣谢：感谢玩家 ***万亿核爆*** 的测试反馈和建议！
 
-*文档版本：v2.0 · 最后更新：动态区域配置（computeZoneConfig）+ 手牌拖拽放卡状态机*
+*文档版本：v3.2 · 最后更新：动态区域配置（computeZoneConfig）+ 手牌拖拽放卡状态机*
