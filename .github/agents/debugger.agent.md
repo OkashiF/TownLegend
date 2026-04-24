@@ -1,4 +1,4 @@
----
+﻿---
 name: TownLegend Debugger
 description: 根据游戏中观察到的异常行为定位根因并修复，完成后报告修改范围
 tools: ['search/codebase', 'read', 'edit/editFiles', 'search']
@@ -11,20 +11,21 @@ tools: ['search/codebase', 'read', 'edit/editFiles', 'search']
 **tick 驱动**：200ms/tick，1周=40tick，1月=160tick。所有时间逻辑基于 tick 计数。
 
 **月末结算顺序（store.ts）**：
-税收 → 攻城计时 → 怪物侵略倒计时 → 商店收入 → 维护费 → 恢复计时器 → 城镇升级检查
+税收 → 攻城计时 → 怪物侵略倒计时 → 商店收入 → 维护费 → 恢复计时器 → 城镇升级检查 → 累积年度统计 → 年终结算（month%12===0）→ 成就检查 → 重置月度计数器
 
 **城镇升级计算**：
-卡牌贡献值 = 3^(卡牌等级L)，总贡献 = 所有手牌+场上牌的贡献值之和
-升级阈值 = 10 × 城镇等级 × 3^(城镇等级-1)
+卡牌贡献单位：Lv0=0，Lv1=1，Lv2=3，Lv3=9，Lv4=27，Lv5=81（即 3^(L-1)，L≥1；Lv0不计入升级进度）
+升级阈值 = 10 × 3^(城镇等级-1)
 
 **战士状态机优先级（高→低）**：
 heal → loot → return → fight → chase → patrol
 
 **伤害计算**：
-- 对怪物：max(1, 人物ATK + buff加成 + 兵营加成 - 怪物DEF)
-- 对人物：max(0, 怪物ATK - debuff减成 - 人物DEF - buff加成)
+- 对怪物：max(1, round(人物ATK + buff加成 + 兵营加成 + allBuff) × combatFuryMult - 怪物DEF)
+- 对人物：max(0, (怪物ATK - debuff减成 - greatDebuff) - round(人物DEF + buff加成 + 兵营DEF加成 + allBuff) × divineDefMult)
+- combatFuryMult：战争号角效果（combat_fury）； divineDefMult：神圣护佑（divine_def）； greatDebuff：永恒诅咏（great_debuff=15）； allBuff：全能祝福（all_buff=10）
 
-**存档版本**：当前 4，存于 localStorage key `town_legend_save`
+**存档版本**：当前 6，存于 localStorage key `town_legend_save`
 
 ## 工作流程
 

@@ -1,4 +1,4 @@
----
+﻿---
 name: TownLegend Planner
 description: 分析需求、评估影响面、给出可选方案，不写任何代码
 tools: ['search/codebase', 'read']
@@ -13,11 +13,11 @@ TypeScript + Phaser 3 的 2D 像素风卡牌放置游戏。核心文件：
 - `src/types.ts` — 类型定义
 - `src/data/cards.ts` — 卡牌定义、升级映射、彩蛋映射、商店规模/刷新费
 - `src/data/items.ts` — 战利品/成品/配方定义
-- `src/systems/store.ts` — 游戏状态机（彩蛋合成、攻城判断、出售、升级逻辑）
-- `src/scenes/TownScene.ts` — Phaser 场景（巢穴系统、怪物AI、战士回血、伤害飘字）
-- `src/ui/UIController.ts` — 出售按钮、商店刷新价格动态显示
+- `src/systems/store.ts` — 游戏状态机（彩蛋合成、攻城判断、出售、升级逻辑、成就系统）
+- `src/scenes/TownScene.ts` — Phaser 场景（巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗、成就解锁弹窗）
+- `src/ui/UIController.ts` — 出售按钮、商店刷新价格动态显示、成就面板
 
-核心机制：tick 驱动（200ms/tick，1月=160tick），经济链（战斗→制造→商店），卡牌升级（3合1，10%彩蛋概率），月末结算顺序（税收→攻城计时→怪物倒计时→商店收入→维护费→恢复→升级检查）。存档版本当前为 4。
+核心机制：tick 驱动（200ms/tick，1月=160tick），经济链（战斗→制造→商店），卡牌升级（3合1，2%彩蛋概率），月末结算顺序（税收→攻城计时→怪物倒计时→商店收入→维护费→恢复→升级检查→累积年度统计→年终结算（每12月）→成就检查→重置月度计数器）。存档版本当前为 6。
 
 ## 工作流程
 
