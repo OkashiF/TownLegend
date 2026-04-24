@@ -548,6 +548,7 @@
     body.ui-md #card-panel,
     body.ui-md #notifications,
     body.ui-md #log-toggle,
+    body.ui-md #side-log,
     body.ui-md #card-action-menu,
     body.ui-md #assign-modal,
     body.ui-md #modal-overlay,
@@ -557,6 +558,7 @@
     body.ui-lg #card-panel,
     body.ui-lg #notifications,
     body.ui-lg #log-toggle,
+    body.ui-lg #side-log,
     body.ui-lg #card-action-menu,
     body.ui-lg #assign-modal,
     body.ui-lg #modal-overlay,
@@ -697,11 +699,14 @@
       const topBar = document.getElementById('top-bar');
       const panel  = document.getElementById('card-panel');
       if (!btn || !topBar || !panel) return;
-      const topH   = topBar.offsetHeight;
-      const panelH = panel.offsetHeight;
+      const zoom   = document.body.classList.contains('ui-lg') ? 1.5
+                   : document.body.classList.contains('ui-md') ? 1.25
+                   : 1;
+      const topH   = topBar.getBoundingClientRect().height;
+      const panelH = panel.getBoundingClientRect().height;
       const midY   = topH + (window.innerHeight - topH - panelH) / 2;
       btn.style.top   = midY + 'px';
-      btn.style.right = (logOpen ? LOG_WIDTH : 0) + 'px';
+      btn.style.right = (logOpen ? LOG_WIDTH * zoom : 0) + 'px';
       btn.textContent = logOpen ? '▶' : '◀';
       btn.title       = logOpen ? '收起日志' : '展开日志';
     }
