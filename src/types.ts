@@ -177,4 +177,10 @@ export interface SaveSnapshot {
   monsterWildcardsObtained?: string[];
   firstSellCardDone?: boolean;
   reincarnationCount?: number;
+  yearStats?: {
+    cardsBought: number;
+    upgradesDone: number;
+    totalIncome: number;
+    totalExpenses: number;
+  };
 }
