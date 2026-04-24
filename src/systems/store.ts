@@ -1001,7 +1001,7 @@ export class GameStore {
       if (def.type !== CardType.Monster || !inst.isActive) continue;
       if (inst.aggressionCountdown > 0) {
         inst.aggressionCountdown--;
-        if (inst.aggressionCountdown === 0)
+        if (inst.aggressionCountdown === 0 && !this.hasActiveCombatWorkers)
           this.addLog(`⚔️ ${def.name} 开始向城镇进军！`, 'bad');
       }
     }

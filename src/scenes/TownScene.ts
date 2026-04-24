@@ -238,22 +238,6 @@ export class TownScene extends Phaser.Scene {
         this.syncDens();
       }
 
-      // 攻城预警
-      for (const inst of store.field) {
-        if (!inst.definitionId) continue;
-        const def = defById(inst.definitionId);
-        if (def.type !== CardType.Monster || !inst.isActive) continue;
-        if (inst.aggressionCountdown === 1) {
-          if (!(inst as any).__warnedAggression) {
-            (inst as any).__warnedAggression = true;
-            store.addLog(`⚠️ ${def.name} 将在下月进攻！做好准备！`, 'bad');
-            this.flashWalls();
-          }
-        } else {
-          (inst as any).__warnedAggression = false;
-        }
-      }
-
       const craftedEmoji = store.takeCraftedEmoji();
       if (craftedEmoji) {
         const craftWorker = store.field.find(c => {
