@@ -154,4 +154,26 @@ export interface SaveSnapshot {
   totalUpgradesDone?: number;
   totalMonstersDefeated?: number;
   wildcardEverTriggered?: boolean;
+  // ── v7 新增成就追踪字段 ──────────────────────────────────────────────────────
+  wildcardCount?: number;
+  totalProductsCrafted?: number;
+  firstShopSaleDone?: boolean;
+  totalProductsSold?: number;
+  totalGoldEarned?: number;
+  maxMonthlyShopIncome?: number;
+  consecutiveMonthsNoSiege?: number;
+  siegesRepelled?: number;
+  firstJobAssigned?: boolean;
+  firstMonsterOnField?: boolean;
+  firstBuildingOnField?: boolean;
+  firstMagicCardObtained?: boolean;
+  shopRefreshCount?: number;
+  yearsCompleted?: number;
+  highestMonsterLevelDefeated?: number;
+  highestCardLevelAcquired?: number;
+  ultimateProductCrafted?: boolean;
+  lv5BuildingPlaced?: boolean;
+  humanWildcardsObtained?: string[];
+  monsterWildcardsObtained?: string[];
+  firstSellCardDone?: boolean;
 }

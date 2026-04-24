@@ -783,7 +783,7 @@ export class TownScene extends Phaser.Scene {
     defender.restProgress   = 0;
 
     // 记录到月度统计
-    store.recordMonsterDefeated();
+    store.recordMonsterDefeated(defById(defender.definitionId).level);
 
     store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击败了 ${defById(defender.definitionId).name}！`, 'good');
 
