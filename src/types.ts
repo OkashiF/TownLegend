@@ -154,4 +154,5 @@ export interface SaveSnapshot {
   totalUpgradesDone?: number;
   totalMonstersDefeated?: number;
   wildcardEverTriggered?: boolean;
+  reincarnationCount?: number;
 }
