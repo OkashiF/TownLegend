@@ -15,77 +15,14 @@ export enum JobType {
 }
 
 // SpawnZone 不再由玩家选择，改为按上场顺序自动分配
-// 保留枚举供内部使用
+// 保留枚举供内部使用；实际坐标由 computeZoneConfig 动态计算
 export enum SpawnZone {
-  Left0  = 'left0',   // 左近位 x≈700
-  Left1  = 'left1',   // 左中位 x≈450
-  Left2  = 'left2',   // 左远位 x≈200
-  Right0 = 'right0',  // 右近位 x≈2300（场上第4只）
-  Right1 = 'right1',  // 右中位 x≈2550
-  Right2 = 'right2',  // 右远位 x≈3400
-}
-
-// ─── Zone configuration ───────────────────────────────────────────────────────
-//
-// Single source of truth for all world-coordinate constants.
-// Replaces the three previously independent hard-coded definitions in
-// TownScene.ts (ZONE), store.ts (MONSTER_SPAWN_POSITIONS) and main.ts (WORLD_WIDTH).
-//
-// computeZoneConfig(1) returns values identical to the legacy hard-codes:
-//   wallLeft 900, wallRight 2700, shop 1100, craft 1400, town 1800, barracks 2200
-//   patrolLeft 950, patrolRight 2650, worldWidth 3600
-//   monsterSpawn.left [700,450,200], monsterSpawn.right [2900,3100,3400]
-
-export interface ZoneConfig {
-  worldWidth:  number;
-  wallLeft:    number;
-  wallRight:   number;
-  shop:        number;
-  craft:       number;
-  town:        number;
-  barracks:    number;
-  patrolLeft:  number;
-  patrolRight: number;
-  /** Monster out-of-wall spawn X positions.
-   *  left[0..2]  – left side (closest to wall first)
-   *  right[0..2] – right side (closest to wall first)
-   */
-  monsterSpawn: { left: number[]; right: number[] };
-}
-
-/**
- * Compute zone configuration for a given town level.
- * At level 1 the result exactly matches the legacy hard-coded values.
- * Higher levels scale the world proportionally (+400 px per level).
- */
-export function computeZoneConfig(townLevel: number): ZoneConfig {
-  const worldWidth = 3600 + (townLevel - 1) * 400;
-  const wallLeft   = worldWidth * 0.25;   // level 1 → 900
-  const wallRight  = worldWidth * 0.75;   // level 1 → 2700
-
-  return {
-    worldWidth,
-    wallLeft,
-    wallRight,
-    shop:        wallLeft  + 200,   // level 1 → 1100
-    craft:       wallLeft  + 500,   // level 1 → 1400
-    town:        worldWidth / 2,    // level 1 → 1800
-    barracks:    wallRight - 500,   // level 1 → 2200
-    patrolLeft:  wallLeft  + 50,    // level 1 → 950
-    patrolRight: wallRight - 50,    // level 1 → 2650
-    monsterSpawn: {
-      left:  [
-        wallLeft  - 200,  // Left0  level 1 → 700
-        wallLeft  - 450,  // Left1  level 1 → 450
-        wallLeft  - 700,  // Left2  level 1 → 200
-      ],
-      right: [
-        wallRight + 200,  // Right0 level 1 → 2900
-        wallRight + 400,  // Right1 level 1 → 3100
-        wallRight + 700,  // Right2 level 1 → 3400
-      ],
-    },
-  };
+  Left0  = 'left0',   // 左近位（靠左城墙，第1只）
+  Left1  = 'left1',   // 左中位（左侧中距）
+  Left2  = 'left2',   // 左远位（左侧最远）
+  Right0 = 'right0',  // 右近位（靠右城墙，第4只）
+  Right1 = 'right1',  // 右中位（右侧中距）
+  Right2 = 'right2',  // 右远位（右侧最远）
 }
 
 // ─── Item system ──────────────────────────────────────────────────────────────

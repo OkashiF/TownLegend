@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
-import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone, ZoneConfig, computeZoneConfig } from '../types';
+import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
+import { ZoneConfig, computeZoneConfig } from '../config/zones';
 import {
   generateAllTextures, spriteKeyForCard,
   drawPasserby,
@@ -1248,33 +1249,55 @@ export class TownScene extends Phaser.Scene {
       const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
 
+    // 太阳（始终贴近右边缘，与 worldWidth 同步）
     g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
     [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
       ([x,y,w,h]) => g.fillRect(x as number,y as number,w as number,h as number)
     );
 
-    [[200,0.08],[600,0.05],[1100,0.10],[1700,0.06],[2300,0.09],[2900,0.07],[3400,0.05]].forEach(
-      ([cx, ty]) => {
-        g.fillStyle(0xe8f0ff, 0.8);
-        g.fillRect(cx as number, (H * ty) as number, 36, 10);
-        g.fillRect((cx as number) + 5, (H * ty) as number - 5, 26, 10);
-      }
-    );
+    // 云朵：按 worldWidth 比例均匀分布
+    const cloudDefs: [number, number][] = [
+      [Math.round(W * 0.056), 0.08],
+      [Math.round(W * 0.167), 0.05],
+      [Math.round(W * 0.306), 0.10],
+      [Math.round(W * 0.472), 0.06],
+      [Math.round(W * 0.639), 0.09],
+      [Math.round(W * 0.806), 0.07],
+      [Math.round(W * 0.944), 0.05],
+    ];
+    cloudDefs.forEach(([cx, ty]) => {
+      g.fillStyle(0xe8f0ff, 0.8);
+      g.fillRect(cx, (H * ty) | 0, 36, 10);
+      g.fillRect(cx + 5, ((H * ty) | 0) - 5, 26, 10);
+    });
 
-    const treePositions = [300, 450, 580, 700, 780, 2780, 2880, 2980, 3100, 3250];
+    // 树木：左侧树群在 [0, wallLeft] 内按比例分布，右侧在 [wallRight, W] 内
+    const lW = wallLeft;
+    const rW = W - wallRight;
+    const treePositions: number[] = [
+      Math.round(lW * 0.33),
+      Math.round(lW * 0.50),
+      Math.round(lW * 0.64),
+      Math.round(lW * 0.78),
+      Math.round(lW * 0.87),
+      wallRight + Math.round(rW * 0.09),
+      wallRight + Math.round(rW * 0.20),
+      wallRight + Math.round(rW * 0.31),
+      wallRight + Math.round(rW * 0.44),
+      wallRight + Math.round(rW * 0.61),
+    ];
+    if (!this.textures.exists('tree_shared')) {
+      const tg = this.add.graphics();
+      const s = 4;
+      tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
+      tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
+      tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
+      tg.generateTexture('tree_shared', 32, 44);
+      tg.destroy();
+    }
     for (const tx of treePositions) {
-      const key = `tree_w_${tx}`;
-      if (!this.textures.exists(key)) {
-        const tg = this.add.graphics();
-        const s = 4;
-        tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
-        tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
-        tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
-        tg.generateTexture(key, 32, 44);
-        tg.destroy();
-      }
-      const t = this.add.image(tx, gy, key).setOrigin(0.5, 1);
+      const t = this.add.image(tx, gy, 'tree_shared').setOrigin(0.5, 1);
       this.bgLayer.add(t);
     }
 
