@@ -176,4 +176,5 @@ export interface SaveSnapshot {
   humanWildcardsObtained?: string[];
   monsterWildcardsObtained?: string[];
   firstSellCardDone?: boolean;
+  reincarnationCount?: number;
 }

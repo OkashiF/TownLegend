@@ -454,6 +454,9 @@ export class GameStore {
   private craftPoints = 0;
   private _lastCraftedEmoji: string | null = null;
 
+  // ── 轮回计数（永不清零）──────────────────────────────────────────────────────
+  reincarnationCount = 0;
+
   // ── 成就用累计计数（永不清零）────────────────────────────────────────────────
   private _totalCardsBought      = 0;
   private _totalUpgradesDone     = 0;
@@ -1232,6 +1235,7 @@ export class GameStore {
         humanWildcardsObtained:      [...this._humanWildcardsObtained],
         monsterWildcardsObtained:    [...this._monsterWildcardsObtained],
         firstSellCardDone:           this._firstSellCardDone,
+        reincarnationCount:          this.reincarnationCount,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
     } catch (e) { console.warn('Save failed:', e); }
@@ -1242,18 +1246,19 @@ export class GameStore {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return false;
       const snap: SaveSnapshot = JSON.parse(raw);
-      if (snap.version !== SAVE_VERSION) return false;
-      this.gold      = snap.gold;
-      this.townLevel = snap.townLevel;
-      this.tick      = snap.tick;
-      this.week      = snap.week;
-      this.month     = snap.month;
-      this.hand      = snap.hand;
-      this.field     = snap.field;
-      this.discarded = snap.discarded;
+      let isMigrated = false;
+      if (snap.version !== SAVE_VERSION) isMigrated = true;
+      this.gold      = snap.gold      ?? 120;
+      this.townLevel = snap.townLevel ?? 1;
+      this.tick      = snap.tick      ?? 0;
+      this.week      = snap.week      ?? 1;
+      this.month     = snap.month     ?? 1;
+      this.hand      = snap.hand      ?? [];
+      this.field     = snap.field     ?? [];
+      this.discarded = snap.discarded ?? [];
       this.inventory = snap.inventory ?? [];
       this.log       = snap.log ?? [];
-      this.shopSlots = snap.shopSlots.map(s => {
+      this.shopSlots = (snap.shopSlots ?? []).map(s => {
         const def = CARD_DB.find(c => c.id === s.defId);
         return def ? { def, sold: s.sold } : null;
       }).filter(Boolean) as ShopSlot[];
@@ -1294,17 +1299,55 @@ export class GameStore {
       this._humanWildcardsObtained      = new Set(snap.humanWildcardsObtained  ?? []);
       this._monsterWildcardsObtained    = new Set(snap.monsterWildcardsObtained ?? []);
       this._firstSellCardDone           = snap.firstSellCardDone           ?? false;
+      this.reincarnationCount           = snap.reincarnationCount          ?? 0;
       // 清除构造器中可能遗留的 pending（加载存档时不触发解锁弹窗）
       this._pendingAchievement = null;
       const maxId = [...this.hand, ...this.field, ...this.discarded]
         .map(c => parseInt(c.instanceId.replace('card_', '')) || 0)
         .reduce((a, b) => Math.max(a, b), 0);
       _idCounter = maxId;
+      if (isMigrated) {
+        this.addLog('📦 已从旧版本迁移存档，部分字段已补充默认值。', 'info');
+        this.saveToLocalStorage();
+      }
       return true;
     } catch (e) { console.warn('Load failed:', e); return false; }
   }
 
   clearSave() { localStorage.removeItem(SAVE_KEY); }
+
+  reincarnate(): void {
+    // 重置所有游戏进度，保留成就与累计统计
+    this.reincarnationCount++;
+    this.gold      = 120;
+    this.townLevel = 1;
+    this.tick      = 0;
+    this.week      = 1;
+    this.month     = 1;
+    this.hand      = [];
+    this.field     = [];
+    this.discarded = [];
+    this.inventory = [];
+    this.log       = [];
+    this.lastYearSummary = null;
+    // 重置私有运行时字段
+    this.craftPoints      = 0;
+    this.siegeMonthsCount = 0;
+    this._lastSiegeState  = false;
+    this._lastCraftedEmoji = null;
+    this.yearStats  = { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
+    this.monthStats = {
+      taxIncome: 0, shopIncome: 0, upkeepCost: 0,
+      monstersDefeated: 0, productsCrafted: 0,
+      wildcardTriggered: false, siegeOccurred: false,
+      leveledUp: false, newLevel: 1,
+    };
+    // 刷新商店
+    this.refreshShopFull();
+    this.addLog(`♻️ 第 ${this.reincarnationCount} 次轮回！城镇重建，踏上新的征途。`, 'good');
+    this.saveToLocalStorage();
+    this.emit('reincarnate');
+  }
 
   addLog(text: string, kind: LogEntry['kind'] = 'info') {
     this.log.unshift({ id: ++_logId, month: this.month, week: this.week, text, kind });
