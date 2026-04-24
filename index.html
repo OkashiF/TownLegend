@@ -213,6 +213,23 @@
     }
     .card:hover { transform: translateY(-8px); box-shadow: 0 8px 24px rgba(212,160,23,.3); }
     .card.selected { border-color: var(--gold); box-shadow: 0 0 12px rgba(212,160,23,.6); transform: translateY(-12px); }
+
+    /* ── 拖拽幽灵卡牌 ── */
+    .card-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.82;
+      transform: rotate(4deg) scale(0.92);
+      cursor: grabbing;
+      transition: none;
+    }
+
+    /* 拖拽中禁止文字选中 */
+    body.dragging-card {
+      user-select: none;
+      cursor: grabbing !important;
+    }
     .card.card-human { border-color: #4a7a8a; }
     .card.card-monster { border-color: #8a3a3a; }
     .card.card-building { border-color: #7a6a3a; }

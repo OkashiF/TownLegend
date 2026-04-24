@@ -1,26 +1,14 @@
 import Phaser from 'phaser';
 import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
-import { MONSTER_SPAWN_POSITIONS } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
+import { ZoneConfig, computeZoneConfig } from '../config/zones';
 import {
   generateAllTextures, spriteKeyForCard,
   drawPasserby,
   drawShopBuilding, drawCraftBuilding, drawCombatBuilding,
 } from '../utils/sprites';
-import { WORLD_WIDTH } from '../main';
 
 const MS_PER_TICK = 200;
-
-export const ZONE = {
-  wallLeft:     900,
-  wallRight:   2700,
-  shop:        1100,
-  craft:       1400,
-  town:        1800,
-  barracks:    2200,
-  patrolLeft:   950,
-  patrolRight: 2650,
-};
 
 const WANDER      = 40;
 const GROUND_FRAC = 0.62;
@@ -94,6 +82,12 @@ export class TownScene extends Phaser.Scene {
   private fxLayer!:     Phaser.GameObjects.Container;
   private labelLayer!:  Phaser.GameObjects.Container;
 
+  private zoneConfig!: ZoneConfig;
+
+  /** UIController sets this true during card drag to suppress camera movement */
+  isCardDragActive = false;
+  private dropZoneOverlays: Phaser.GameObjects.GameObject[] = [];
+
   private sprites:      Map<string, FieldSprite> = new Map();
   private lootDrops:    Map<string, LootDrop>    = new Map();
   private passerbyList: PasserbySprite[] = [];
@@ -117,6 +111,8 @@ export class TownScene extends Phaser.Scene {
     this.sceneH  = this.scale.height;
     this.groundY = this.sceneH * GROUND_FRAC;
 
+    this.zoneConfig = computeZoneConfig(store.townLevel);
+
     generateAllTextures(this);
 
     this.bgLayer     = this.add.container(0, 0);
@@ -126,8 +122,8 @@ export class TownScene extends Phaser.Scene {
     this.fxLayer     = this.add.container(0, 0);
     this.labelLayer  = this.add.container(0, 0);
 
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, this.sceneH);
-    this.cameras.main.centerOn(ZONE.town, this.sceneH / 2);
+    this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
+    this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
     this.cameras.main.setZoom(1.0);
 
     this.setupCameraControls();
@@ -143,6 +139,15 @@ export class TownScene extends Phaser.Scene {
       if (evt === 'achievement') {
         const pending = store.takePendingAchievement();
         if (pending) this.showAchievementPopup(pending);
+      }
+    });
+
+    // ── 城镇升级：更新区域配置并重绘世界视觉 ────────────────────────────────
+    store.subscribe(evt => {
+      if (evt === 'townLevelUp') {
+        this.zoneConfig = computeZoneConfig(store.townLevel);
+        this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
+        this.rebuildWorldVisuals();
       }
     });
 
@@ -174,6 +179,9 @@ export class TownScene extends Phaser.Scene {
       }
     });
     this.syncSprites();
+
+    // Expose reference so UIController can access without circular imports
+    (window as any).__townScene = this;
   }
 
   update(_t: number, delta: number) {
@@ -190,14 +198,16 @@ export class TownScene extends Phaser.Scene {
   private setupCameraControls() {
     const cam = this.cameras.main;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.isCardDragActive) return;
       this.isDragging = true;
       this.dragStartX = p.x;
       this.dragCamX   = cam.scrollX;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.isCardDragActive) return;
       if (!this.isDragging) return;
       const dx = (p.x - this.dragStartX) / cam.zoom;
-      cam.scrollX = Phaser.Math.Clamp(this.dragCamX - dx, 0, WORLD_WIDTH - cam.width / cam.zoom);
+      cam.scrollX = Phaser.Math.Clamp(this.dragCamX - dx, 0, this.zoneConfig.worldWidth - cam.width / cam.zoom);
     });
     this.input.on('pointerup', () => { this.isDragging = false; });
     this.input.on('wheel',
@@ -378,7 +388,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private flashWalls() {
-    for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
+    for (const wallX of [this.zoneConfig.wallLeft, this.zoneConfig.wallRight]) {
       const flash = this.add.graphics();
       this.fxLayer.add(flash);
       flash.fillStyle(0xff2020, 0.01);
@@ -426,7 +436,7 @@ export class TownScene extends Phaser.Scene {
 
       if (def.type === CardType.Human) {
         if (!inst.isActive) {
-          sp.targetX = ZONE.town + (Math.random() - 0.5) * WANDER;
+          sp.targetX = this.zoneConfig.town + (Math.random() - 0.5) * WANDER;
           sp.targetY = gy;
           sp.warriorState = 'patrol';
           sp.combatTarget = null;
@@ -439,9 +449,9 @@ export class TownScene extends Phaser.Scene {
         if (job === JobType.Combat) {
           this.runWarriorAI(inst, sp, activeMonsters, activeTownspeople, gy);
         } else {
-          const zoneX = job === JobType.Shop  ? ZONE.shop
-                      : job === JobType.Craft ? ZONE.craft
-                      : ZONE.town;
+          const zoneX = job === JobType.Shop  ? this.zoneConfig.shop
+                      : job === JobType.Craft ? this.zoneConfig.craft
+                      : this.zoneConfig.town;
           if (job === JobType.Shop && sp.shopServeTarget) {
             sp.targetX = sp.shopServeTarget.x;
             sp.targetY = gy;
@@ -468,9 +478,9 @@ export class TownScene extends Phaser.Scene {
     const rs = inst.runtimeStats as HumanStats;
 
     if (sp.warriorState === 'heal') {
-      sp.targetX = ZONE.barracks + (Math.random() - 0.5) * 30;
+      sp.targetX = this.zoneConfig.barracks + (Math.random() - 0.5) * 30;
       sp.targetY = gy;
-      const distToBarracks = Math.abs(sp.x - ZONE.barracks);
+      const distToBarracks = Math.abs(sp.x - this.zoneConfig.barracks);
       if (distToBarracks < 50) {
         rs.hp = Math.min(rs.maxHp, rs.hp + Math.ceil(rs.maxHp / 40));
         if (rs.hp >= rs.maxHp) {
@@ -506,9 +516,9 @@ export class TownScene extends Phaser.Scene {
     }
 
     if (sp.warriorState === 'return') {
-      sp.targetX = ZONE.barracks + (Math.random() - 0.5) * WANDER;
+      sp.targetX = this.zoneConfig.barracks + (Math.random() - 0.5) * WANDER;
       sp.targetY = gy;
-      const dist = Math.hypot(sp.x - ZONE.barracks, sp.y - gy);
+      const dist = Math.hypot(sp.x - this.zoneConfig.barracks, sp.y - gy);
       if (dist < 60) {
         sp.warriorState = 'patrol';
         if (rs.hp < rs.maxHp && monsters.length === 0) sp.warriorState = 'heal';
@@ -566,11 +576,11 @@ export class TownScene extends Phaser.Scene {
     } else {
       sp.warriorState = 'patrol';
       sp.combatTarget = null;
-      const atLeft  = sp.x <= ZONE.patrolLeft  + 20;
-      const atRight = sp.x >= ZONE.patrolRight - 20;
+      const atLeft  = sp.x <= this.zoneConfig.patrolLeft  + 20;
+      const atRight = sp.x >= this.zoneConfig.patrolRight - 20;
       if (atLeft)  sp.patrolDir =  1;
       if (atRight) sp.patrolDir = -1;
-      sp.targetX = sp.patrolDir === 1 ? ZONE.patrolRight : ZONE.patrolLeft;
+      sp.targetX = sp.patrolDir === 1 ? this.zoneConfig.patrolRight : this.zoneConfig.patrolLeft;
       sp.targetY = gy;
     }
   }
@@ -606,7 +616,7 @@ export class TownScene extends Phaser.Scene {
       return;
     }
 
-    if (sp.x > ZONE.wallLeft && sp.x < ZONE.wallRight) {
+    if (sp.x > this.zoneConfig.wallLeft && sp.x < this.zoneConfig.wallRight) {
       sp.monsterBehavior = 'attacking';
       let nearestHuman: CardInstance | null = null;
       let nearestHumanSp: FieldSprite | null = null;
@@ -635,7 +645,7 @@ export class TownScene extends Phaser.Scene {
     }
 
     sp.monsterBehavior = 'marching';
-    sp.targetX = ZONE.town + (Math.random() - 0.5) * 20;
+    sp.targetX = this.zoneConfig.town + (Math.random() - 0.5) * 20;
     sp.targetY = gy;
   }
 
@@ -710,7 +720,7 @@ export class TownScene extends Phaser.Scene {
       attacker.isActive       = false;
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) { hSp.targetX = this.zoneConfig.town; hSp.targetY = this.groundY; }
       store.checkSiegeTransition();
     }
   }
@@ -754,7 +764,7 @@ export class TownScene extends Phaser.Scene {
       human.isActive       = false;
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
-      if (hSp) { hSp.targetX = ZONE.town; hSp.targetY = this.groundY; }
+      if (hSp) { hSp.targetX = this.zoneConfig.town; hSp.targetY = this.groundY; }
       store.checkSiegeTransition();
     }
   }
@@ -825,7 +835,7 @@ export class TownScene extends Phaser.Scene {
     for (const monster of monsters) {
       if (!monster.spawnZone) continue;
       const zone   = monster.spawnZone as SpawnZone;
-      const worldX = MONSTER_SPAWN_POSITIONS[zone] ?? 200;
+      const worldX = this.spawnZoneX(zone);
 
       let den = this.dens.find(d => d.spawnZone === zone);
       if (!den) {
@@ -898,11 +908,11 @@ export class TownScene extends Phaser.Scene {
   // ── Sprite sync ──────────────────────────────────────────────────────────────
 
   private buildingZoneX(defId: string): number {
-    if (defId === 'building_stall')    return ZONE.shop;
-    if (defId === 'building_workshop') return ZONE.craft;
-    if (defId === 'building_inn')      return ZONE.town;
-    if (defId === 'building_barracks') return ZONE.barracks;
-    return ZONE.town;
+    if (defId === 'building_stall')    return this.zoneConfig.shop;
+    if (defId === 'building_workshop') return this.zoneConfig.craft;
+    if (defId === 'building_inn')      return this.zoneConfig.town;
+    if (defId === 'building_barracks') return this.zoneConfig.barracks;
+    return this.zoneConfig.town;
   }
 
   private buildingFieldX(instanceId: string, defId: string): number {
@@ -988,19 +998,19 @@ export class TownScene extends Phaser.Scene {
       this.labelLayer.add(hpBar);
       this.labelLayer.add(craftBar);
 
-      let sx = ZONE.town, sy = this.groundY;
+      let sx = this.zoneConfig.town, sy = this.groundY;
       if (isBuilding) {
         sx = this.buildingFieldX(inst.instanceId, inst.definitionId);
         sy = this.groundY;
       } else if (isMonster && inst.spawnZone) {
-        sx = MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? ZONE.town;
+        sx = this.spawnZoneX(inst.spawnZone as SpawnZone);
         sy = this.groundY;
       } else if (def.type === CardType.Human) {
         const job = inst.jobAssignment ?? JobType.Idle;
-        sx = job === JobType.Shop   ? ZONE.shop
-           : job === JobType.Craft  ? ZONE.craft
-           : job === JobType.Combat ? ZONE.barracks
-           : ZONE.town;
+        sx = job === JobType.Shop   ? this.zoneConfig.shop
+           : job === JobType.Craft  ? this.zoneConfig.craft
+           : job === JobType.Combat ? this.zoneConfig.barracks
+           : this.zoneConfig.town;
         sy = this.groundY;
       }
 
@@ -1150,15 +1160,38 @@ export class TownScene extends Phaser.Scene {
     sp.craftBar.fillRect(bx, by, Math.round(w * pct), h);
   }
 
+  /** Map a SpawnZone enum value to a world X coordinate using the current zoneConfig. */
+  private spawnZoneX(zone: SpawnZone): number {
+    const { left, right } = this.zoneConfig.monsterSpawn;
+    switch (zone) {
+      case SpawnZone.Left0:  return left[0];
+      case SpawnZone.Left1:  return left[1];
+      case SpawnZone.Left2:  return left[2];
+      case SpawnZone.Right0: return right[0];
+      case SpawnZone.Right1: return right[1];
+      case SpawnZone.Right2: return right[2];
+      default:               return left[0];
+    }
+  }
+
   private monsterSpawnX(inst: CardInstance): number {
-    if (!inst.spawnZone) return MONSTER_SPAWN_POSITIONS[SpawnZone.Left0];
-    return MONSTER_SPAWN_POSITIONS[inst.spawnZone as SpawnZone] ?? MONSTER_SPAWN_POSITIONS[SpawnZone.Left0];
+    if (!inst.spawnZone) return this.zoneConfig.monsterSpawn.left[0];
+    return this.spawnZoneX(inst.spawnZone as SpawnZone);
   }
 
   // ── Background ────────────────────────────────────────────────────────────
 
+  /** Clear and redraw the static world visuals (bg + zone buildings).
+   *  Called once at create() and again whenever town level changes. */
+  private rebuildWorldVisuals(): void {
+    this.bgLayer.removeAll(true);
+    this.bldgLayer.removeAll(true);
+    this.buildBackground();
+    this.buildZoneBuildings();
+  }
+
   private buildBackground() {
-    const W  = WORLD_WIDTH;
+    const W  = this.zoneConfig.worldWidth;
     const H  = this.sceneH;
     const gy = this.groundY;
     const g  = this.add.graphics();
@@ -1176,80 +1209,104 @@ export class TownScene extends Phaser.Scene {
     g.fillStyle(0x4a7a3a); g.fillRect(0, gy,     W, H - gy);
     g.fillStyle(0x3a6a2a); g.fillRect(0, gy + 8, W, H - gy - 8);
 
-    const roadW = ZONE.wallRight - ZONE.wallLeft;
-    g.fillStyle(0x8a7a60); g.fillRect(ZONE.wallLeft, gy, roadW, 40);
-    g.fillStyle(0x9a8a70); g.fillRect(ZONE.wallLeft, gy + 2, roadW, 32);
+    const wallLeft  = this.zoneConfig.wallLeft;
+    const wallRight = this.zoneConfig.wallRight;
+    const roadW = wallRight - wallLeft;
+    g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy, roadW, 40);
+    g.fillStyle(0x9a8a70); g.fillRect(wallLeft, gy + 2, roadW, 32);
     g.fillStyle(0x6a5a48);
-    for (let rx = ZONE.wallLeft; rx < ZONE.wallRight; rx += 48) {
+    for (let rx = wallLeft; rx < wallRight; rx += 48) {
       g.fillRect(rx, gy + 2, 2, 32);
     }
     for (let ry = gy + 12; ry < gy + 36; ry += 12) {
-      g.fillRect(ZONE.wallLeft, ry, roadW, 1);
+      g.fillRect(wallLeft, ry, roadW, 1);
     }
     g.fillStyle(0x5a8a40);
-    for (let rx = ZONE.wallLeft; rx < ZONE.wallRight; rx += 18) {
+    for (let rx = wallLeft; rx < wallRight; rx += 18) {
       const h2 = 3 + (rx % 3);
       g.fillRect(rx, gy - h2, 4, h2);
     }
     g.fillStyle(0xb0a088);
     for (let i = 0; i < 40; i++) {
-      const rx = ZONE.wallLeft + 10 + (i * 67 % (roadW - 20));
+      const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
       const ry = gy + 6 + (i * 37 % 22);
       g.fillRect(rx, ry, 3, 2);
     }
 
-    g.fillStyle(0x7a6050); g.fillRect(0, gy, ZONE.wallLeft, 30);
-    g.fillStyle(0x8a7060); g.fillRect(0, gy + 4, ZONE.wallLeft, 20);
+    g.fillStyle(0x7a6050); g.fillRect(0, gy, wallLeft, 30);
+    g.fillStyle(0x8a7060); g.fillRect(0, gy + 4, wallLeft, 20);
     g.fillStyle(0x5a4030);
     for (let i = 0; i < 20; i++) {
-      const rx = 10 + (i * 53 % (ZONE.wallLeft - 20));
+      const rx = 10 + (i * 53 % (wallLeft - 20));
       const ry = gy + 6 + (i * 31 % 12);
       g.fillRect(rx, ry, 5, 3);
     }
-    g.fillStyle(0x7a6050); g.fillRect(ZONE.wallRight, gy, W - ZONE.wallRight, 30);
-    g.fillStyle(0x8a7060); g.fillRect(ZONE.wallRight, gy + 4, W - ZONE.wallRight, 20);
+    g.fillStyle(0x7a6050); g.fillRect(wallRight, gy, W - wallRight, 30);
+    g.fillStyle(0x8a7060); g.fillRect(wallRight, gy + 4, W - wallRight, 20);
     g.fillStyle(0x5a4030);
     for (let i = 0; i < 20; i++) {
-      const rx = ZONE.wallRight + 10 + (i * 53 % (W - ZONE.wallRight - 20));
+      const rx = wallRight + 10 + (i * 53 % (W - wallRight - 20));
       const ry = gy + 6 + (i * 31 % 12);
       g.fillRect(rx, ry, 5, 3);
     }
 
     g.fillStyle(0x4a8a38);
-    for (let rx = 0; rx < ZONE.wallLeft; rx += 14) {
+    for (let rx = 0; rx < wallLeft; rx += 14) {
       const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
-    for (let rx = ZONE.wallRight; rx < W; rx += 14) {
+    for (let rx = wallRight; rx < W; rx += 14) {
       const h3 = 2 + (rx % 3); g.fillRect(rx, gy - h3, 3, h3);
     }
 
+    // 太阳（始终贴近右边缘，与 worldWidth 同步）
     g.fillStyle(0xffd040); g.fillRect(W - 120, 20, 18, 18);
     g.fillStyle(0xffb020);
     [[W-128,24,4,10],[W-106,24,4,10],[W-116,14,10,4],[W-116,40,10,4]].forEach(
       ([x,y,w,h]) => g.fillRect(x as number,y as number,w as number,h as number)
     );
 
-    [[200,0.08],[600,0.05],[1100,0.10],[1700,0.06],[2300,0.09],[2900,0.07],[3400,0.05]].forEach(
-      ([cx, ty]) => {
-        g.fillStyle(0xe8f0ff, 0.8);
-        g.fillRect(cx as number, (H * ty) as number, 36, 10);
-        g.fillRect((cx as number) + 5, (H * ty) as number - 5, 26, 10);
-      }
-    );
+    // 云朵：按 worldWidth 比例均匀分布
+    const cloudDefs: [number, number][] = [
+      [Math.round(W * 0.056), 0.08],
+      [Math.round(W * 0.167), 0.05],
+      [Math.round(W * 0.306), 0.10],
+      [Math.round(W * 0.472), 0.06],
+      [Math.round(W * 0.639), 0.09],
+      [Math.round(W * 0.806), 0.07],
+      [Math.round(W * 0.944), 0.05],
+    ];
+    cloudDefs.forEach(([cx, ty]) => {
+      g.fillStyle(0xe8f0ff, 0.8);
+      g.fillRect(cx, (H * ty) | 0, 36, 10);
+      g.fillRect(cx + 5, ((H * ty) | 0) - 5, 26, 10);
+    });
 
-    const treePositions = [300, 450, 580, 700, 780, 2780, 2880, 2980, 3100, 3250];
+    // 树木：左侧树群在 [0, wallLeft] 内按比例分布，右侧在 [wallRight, W] 内
+    const lW = wallLeft;
+    const rW = W - wallRight;
+    const treePositions: number[] = [
+      Math.round(lW * 0.33),
+      Math.round(lW * 0.50),
+      Math.round(lW * 0.64),
+      Math.round(lW * 0.78),
+      Math.round(lW * 0.87),
+      wallRight + Math.round(rW * 0.09),
+      wallRight + Math.round(rW * 0.20),
+      wallRight + Math.round(rW * 0.31),
+      wallRight + Math.round(rW * 0.44),
+      wallRight + Math.round(rW * 0.61),
+    ];
+    if (!this.textures.exists('tree_shared')) {
+      const tg = this.add.graphics();
+      const s = 4;
+      tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
+      tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
+      tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
+      tg.generateTexture('tree_shared', 32, 44);
+      tg.destroy();
+    }
     for (const tx of treePositions) {
-      const key = `tree_w_${tx}`;
-      if (!this.textures.exists(key)) {
-        const tg = this.add.graphics();
-        const s = 4;
-        tg.fillStyle(0x5a3010); tg.fillRect(2*s, 6*s, 2*s, 5*s);
-        tg.fillStyle(0x2a5a2a); tg.fillRect(0, 2*s, 6*s, 4*s);
-        tg.fillStyle(0x3a8a3a); tg.fillRect(s, 3*s, 4*s, 2*s);
-        tg.generateTexture(key, 32, 44);
-        tg.destroy();
-      }
-      const t = this.add.image(tx, gy, key).setOrigin(0.5, 1);
+      const t = this.add.image(tx, gy, 'tree_shared').setOrigin(0.5, 1);
       this.bgLayer.add(t);
     }
 
@@ -1261,7 +1318,7 @@ export class TownScene extends Phaser.Scene {
     const stoneLight = 0xa09070, stoneMid = 0x806850, stoneDark = 0x604830;
     const gateColor = 0x3a2010, gateHigh = 0x5a3820;
 
-    for (const wallX of [ZONE.wallLeft, ZONE.wallRight]) {
+    for (const wallX of [this.zoneConfig.wallLeft, this.zoneConfig.wallRight]) {
       const wx = wallX - wallW / 2;
       for (const [wingX, wingW] of [[wx - 80, 80], [wx + wallW + gateW, 80]] as [number, number][]) {
         g.fillStyle(stoneMid); g.fillRect(wingX, gy - wallH, wingW, wallH);
@@ -1297,10 +1354,10 @@ export class TownScene extends Phaser.Scene {
 
     type DrawFnType = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void;
     const zones: [string, DrawFnType, number][] = [
-      ['bldg_shop',     drawShopBuilding,   ZONE.shop],
-      ['bldg_craft',    drawCraftBuilding,  ZONE.craft],
-      ['bldg_townhall', drawTownHall,       ZONE.town],
-      ['bldg_barracks', drawCombatBuilding, ZONE.barracks],
+      ['bldg_shop',     drawShopBuilding,   this.zoneConfig.shop],
+      ['bldg_craft',    drawCraftBuilding,  this.zoneConfig.craft],
+      ['bldg_townhall', drawTownHall,       this.zoneConfig.town],
+      ['bldg_barracks', drawCombatBuilding, this.zoneConfig.barracks],
     ];
 
     for (const [key, fn, cx] of zones) {
@@ -1323,10 +1380,10 @@ export class TownScene extends Phaser.Scene {
       color: '#c8b890', stroke: '#000', strokeThickness: 2,
     };
     ([
-      [ZONE.shop,    '商店'],
-      [ZONE.craft,   '制造'],
-      [ZONE.town,    '大厅'],
-      [ZONE.barracks,'兵营'],
+      [this.zoneConfig.shop,    '商店'],
+      [this.zoneConfig.craft,   '制造'],
+      [this.zoneConfig.town,    '大厅'],
+      [this.zoneConfig.barracks,'兵营'],
     ] as [number, string][]).forEach(([x, txt]) => {
       const t = this.add.text(x, gy - 68, txt, labelStyle).setOrigin(0.5, 1);
       this.bldgLayer.add(t);
@@ -1342,7 +1399,7 @@ export class TownScene extends Phaser.Scene {
       g.destroy();
     }
     const fromLeft = Math.random() > 0.5;
-    const startX   = fromLeft ? ZONE.wallLeft + 10 : ZONE.wallRight - 10;
+    const startX   = fromLeft ? this.zoneConfig.wallLeft + 10 : this.zoneConfig.wallRight - 10;
     const img      = this.add.image(startX, this.groundY, 'passerby_tex').setOrigin(0.5, 1);
     img.setFlipX(!fromLeft);
     this.entityLayer.add(img);
@@ -1361,7 +1418,7 @@ export class TownScene extends Phaser.Scene {
       p.img.setPosition(p.x, p.groundY + Math.sin(p.x * 0.05) * 1.5);
 
       if (!p.hasTraded && store.totalProducts > 0) {
-        const inShopZone = Math.abs(p.x - ZONE.shop) < 55;
+        const inShopZone = Math.abs(p.x - this.zoneConfig.shop) < 55;
         if (inShopZone) {
           let nearestWorkerSp: FieldSprite | null = null;
           let nearestDist = Infinity;
@@ -1381,7 +1438,7 @@ export class TownScene extends Phaser.Scene {
         }
       }
 
-      if (p.x < ZONE.wallLeft - 20 || p.x > ZONE.wallRight + 20) {
+      if (p.x < this.zoneConfig.wallLeft - 20 || p.x > this.zoneConfig.wallRight + 20) {
         p.img.destroy();
         this.passerbyList.splice(i, 1);
       }
@@ -1465,6 +1522,99 @@ export class TownScene extends Phaser.Scene {
     requestAnimationFrame(() => { el.style.opacity = '1'; });
     while (this.sideLogEl.children.length > 60)
       this.sideLogEl.removeChild(this.sideLogEl.lastChild!);
+  }
+
+  // ── Drag-and-drop support (called by UIController) ───────────────────────────
+
+  /** Highlight valid drop areas for the given card type. */
+  showDropZones(cardType: CardType, _defId: string) {
+    this.hideDropZones();
+    const z  = this.zoneConfig;
+    const gy = this.groundY;
+    const H  = this.sceneH;
+
+    const labelStyle = {
+      fontFamily: '"Silkscreen", monospace',
+      fontSize: '9px',
+      color: '#ffd040',
+      stroke: '#000000',
+      strokeThickness: 2,
+    };
+
+    const addZone = (x: number, w: number, label: string) => {
+      const g = this.add.graphics();
+      g.fillStyle(0xffd040, 0.18);
+      g.fillRect(x, 0, w, H - 20);
+      g.lineStyle(1.5, 0xffd040, 0.65);
+      g.strokeRect(x, 0, w, H - 20);
+      const t = this.add.text(x + w / 2, gy - 90, label, labelStyle).setOrigin(0.5, 1);
+      this.fxLayer.add(g);
+      this.fxLayer.add(t);
+      this.dropZoneOverlays.push(g, t);
+    };
+
+    if (cardType === CardType.Human) {
+      addZone(z.shop    - 120, 240, '商店');
+      addZone(z.craft   - 120, 240, '制造');
+      addZone(z.barracks - 120, 240, '兵营');
+      addZone(z.town    - 120, 240, '大厅');
+    } else if (cardType === CardType.Monster) {
+      addZone(z.wallLeft  - 300, 200, '左侧出生');
+      addZone(z.wallRight + 100, 200, '右侧出生');
+    } else if (cardType === CardType.Building || cardType === CardType.Magic) {
+      addZone(z.wallLeft, z.wallRight - z.wallLeft, '放置区域');
+    }
+  }
+
+  /** Remove all drop zone highlights. */
+  hideDropZones() {
+    for (const obj of this.dropZoneOverlays) {
+      obj.destroy();
+    }
+    this.dropZoneOverlays = [];
+  }
+
+  /** Convert a CSS-pixel screen position to Phaser world coordinates. */
+  screenToWorld(clientX: number, clientY: number): { worldX: number; worldY: number } {
+    const rect = this.game.canvas.getBoundingClientRect();
+    const cam  = this.cameras.main;
+    const sx   = this.game.canvas.width  / rect.width;
+    const sy   = this.game.canvas.height / rect.height;
+    return {
+      worldX: (clientX - rect.left) * sx / cam.zoom + cam.scrollX,
+      worldY: (clientY - rect.top)  * sy / cam.zoom + cam.scrollY,
+    };
+  }
+
+  /** Return the best matching drop zone for the given world X, or null if none. */
+  hitTestDropZone(worldX: number, cardType: CardType): { job?: JobType } | null {
+    const z = this.zoneConfig;
+
+    if (cardType === CardType.Human) {
+      const centers: [number, JobType][] = [
+        [z.shop,     JobType.Shop],
+        [z.craft,    JobType.Craft],
+        [z.barracks, JobType.Combat],
+        [z.town,     JobType.Idle],
+      ];
+      let best: [number, JobType] | null = null;
+      let bestDist = Infinity;
+      for (const [cx, job] of centers) {
+        const d = Math.abs(worldX - cx);
+        if (d < bestDist) { bestDist = d; best = [cx, job]; }
+      }
+      if (best && bestDist < 150) return { job: best[1] };
+      return null;
+    }
+
+    if (cardType === CardType.Monster) {
+      if (worldX < z.wallLeft - 60 || worldX > z.wallRight + 60) return {};
+      return null;
+    }
+
+    // Building / Magic: anywhere inside the walls
+    if (worldX >= z.wallLeft && worldX <= z.wallRight) return {};
+    return null;
   }
 }
 

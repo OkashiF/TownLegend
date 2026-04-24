@@ -163,15 +163,6 @@ export function instantiate(def: CardDefinition): CardInstance {
   };
 }
 
-export const MONSTER_SPAWN_POSITIONS: Record<SpawnZone, number> = {
-  [SpawnZone.Left0]:  700,
-  [SpawnZone.Left1]:  450,
-  [SpawnZone.Left2]:  200,
-  [SpawnZone.Right0]: 2900,
-  [SpawnZone.Right1]: 3100,
-  [SpawnZone.Right2]: 3400,
-};
-
 const SPAWN_ZONE_ORDER: SpawnZone[] = [
   SpawnZone.Left0, SpawnZone.Left1, SpawnZone.Left2,
   SpawnZone.Right0, SpawnZone.Right1, SpawnZone.Right2,
@@ -1027,6 +1018,7 @@ export class GameStore {
       this.monthStats.newLevel  = this.townLevel;
       this.refreshShopFull();
       this.addLog(`🎉 城镇升至 ${this.townLevel} 级！场上槽位 ${this.fieldCapacity}，商店扩展！`, 'good');
+      this.emit('townLevelUp');
     }
 
     // 8. 累加年度统计

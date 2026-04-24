@@ -2,6 +2,7 @@
 import { CardInstance, CardDefinition, CardType, JobType } from '../types';
 import { CARD_DB } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
+import type { TownScene } from '../scenes/TownScene';
 
 // ── DOM helpers ────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,100 @@ function makeCardEl(def: CardDefinition, inst?: CardInstance): HTMLElement {
     <div class="card-pixel-art">${def.emoji}</div>
     <div class="card-footer"><div class="card-name">${def.name}</div>${footer}</div>`;
   return el;
+}
+
+// ── Drag-and-drop ─────────────────────────────────────────────────────────────
+
+function getScene(): TownScene | null {
+  return (window as any).__townScene ?? null;
+}
+
+interface DragState {
+  inst:   CardInstance;
+  def:    CardDefinition;
+  ghost:  HTMLDivElement;
+  startX: number;
+  startY: number;
+  active: boolean;   // true once pointer has moved > 8px
+}
+let dragState: DragState | null = null;
+
+function startCardDrag(e: PointerEvent, inst: CardInstance, def: CardDefinition, el: HTMLElement) {
+  const ghost = el.cloneNode(true) as HTMLDivElement;
+  ghost.className = `card card-${def.type} card-ghost`;
+  ghost.style.left   = `${e.clientX - 40}px`;
+  ghost.style.top    = `${e.clientY - 60}px`;
+  ghost.style.width  = '80px';
+  ghost.style.height = '120px';
+  document.body.appendChild(ghost);
+  document.body.classList.add('dragging-card');
+
+  dragState = { inst, def, ghost, startX: e.clientX, startY: e.clientY, active: false };
+
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup',   onDragEnd);
+
+  const scene = getScene();
+  if (scene) scene.showDropZones(def.type, def.id);
+}
+
+function onDragMove(e: PointerEvent) {
+  if (!dragState) return;
+  const dist = Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY);
+  if (!dragState.active) {
+    if (dist < 8) return;
+    dragState.active = true;
+    const scene = getScene();
+    if (scene) scene.isCardDragActive = true;
+  }
+  dragState.ghost.style.left = `${e.clientX - 40}px`;
+  dragState.ghost.style.top  = `${e.clientY - 60}px`;
+}
+
+function onDragEnd(e: PointerEvent) {
+  if (!dragState) return;
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup',   onDragEnd);
+
+  const scene = getScene();
+  scene?.hideDropZones();
+  if (scene) scene.isCardDragActive = false;
+
+  if (!dragState.active) {
+    // Treat as a normal click: show the action menu
+    const ghost = dragState.ghost;
+    const inst  = dragState.inst;
+    const def   = dragState.def;
+    cleanupDrag();
+    openActionMenu(inst, def, ghost);
+    return;
+  }
+
+  const { worldX } = scene!.screenToWorld(e.clientX, e.clientY);
+  const hit = scene!.hitTestDropZone(worldX, dragState.def.type);
+
+  if (hit && store.field.length < store.fieldCapacity) {
+    const r = store.playCard(dragState.inst.instanceId, hit.job != null ? { job: hit.job } : undefined);
+    if (r.ok) {
+      notify(`打出了 ${dragState.def.name}`, 'success');
+      updateHUD();
+      renderCurrentTab();
+    } else {
+      notify(r.reason ?? '失败', 'danger');
+    }
+  } else if (store.field.length >= store.fieldCapacity) {
+    notify('场上已满！', 'danger');
+  }
+  // hit === null: silently cancel
+
+  cleanupDrag();
+}
+
+function cleanupDrag() {
+  if (!dragState) return;
+  dragState.ghost.remove();
+  document.body.classList.remove('dragging-card');
+  dragState = null;
 }
 
 // ── Action menu ────────────────────────────────────────────────────────────────
@@ -202,6 +297,11 @@ function renderHand() {
     const def = CARD_DB.find(d => d.id === inst.definitionId)!;
     const el  = makeCardEl(def, inst);
     el.onclick = e => { e.stopPropagation(); openActionMenu(inst, def, el); };
+    el.addEventListener('pointerdown', (e) => {
+      if (currentTab !== 'hand') return;
+      e.stopPropagation();
+      startCardDrag(e as PointerEvent, inst, def, el);
+    });
     c.appendChild(el);
   }
 }

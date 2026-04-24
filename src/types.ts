@@ -15,14 +15,14 @@ export enum JobType {
 }
 
 // SpawnZone 不再由玩家选择，改为按上场顺序自动分配
-// 保留枚举供内部使用
+// 保留枚举供内部使用；实际坐标由 computeZoneConfig 动态计算
 export enum SpawnZone {
-  Left0  = 'left0',   // 左近位 x≈700
-  Left1  = 'left1',   // 左中位 x≈450
-  Left2  = 'left2',   // 左远位 x≈200
-  Right0 = 'right0',  // 右近位 x≈2300（场上第4只）
-  Right1 = 'right1',  // 右中位 x≈2550
-  Right2 = 'right2',  // 右远位 x≈3400
+  Left0  = 'left0',   // 左近位（靠左城墙，第1只）
+  Left1  = 'left1',   // 左中位（左侧中距）
+  Left2  = 'left2',   // 左远位（左侧最远）
+  Right0 = 'right0',  // 右近位（靠右城墙，第4只）
+  Right1 = 'right1',  // 右中位（右侧中距）
+  Right2 = 'right2',  // 右远位（右侧最远）
 }
 
 // ─── Item system ──────────────────────────────────────────────────────────────
