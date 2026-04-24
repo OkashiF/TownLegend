@@ -45,8 +45,10 @@ Tester           Debugger
 12. [月末结算流程](#月末结算流程)
 13. [城镇升级](#城镇升级)
 14. [存档系统](#存档系统)
-15. [数据总表](#数据总表)
-16. [后续开发计划](#后续开发计划)
+15. [成就系统](#成就系统)
+16. [轮回系统](#轮回系统)
+17. [数据总表](#数据总表)
+18. [后续开发计划](#后续开发计划)
 
 ---
 
@@ -95,7 +97,7 @@ npm run build  # 构建单文件 dist/index.html
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  顶栏 HUD：时间 | 金币 | 税收 | 等级 | 升级 | 场上 | 月份进度条  │
+│  顶栏 HUD：时间 | 金币 | 税收 | 等级 | 升级 | 场上 | [♻ 轮回] | [缩放] | 月份进度条  │
 │  ⚠️ 怪物攻城时顶栏变红                                  │
 ├──────────────────────────────────────────────────────┤
 │  Buff 栏（透明）：活跃魔法卡 Chip，鼠标悬停显示名称+简介  │
@@ -110,6 +112,8 @@ npm run build  # 构建单文件 dist/index.html
 ```
 
 - **顶栏** 攻城期间整体变红，给予明显视觉警示。
+- **♻ 轮回** 按钮：仅城镇达到6级（最高级）后可点击，点击弹出确认弹窗；完成过至少1次轮回后，顶栏额外显示"轮回 ♻ N"计数器。
+- **缩放** 按钮：循环切换界面缩放档位（小/中/大，对应 1×/1.25×/1.5×），仅缩放 DOM UI 层（HUD、卡牌面板、弹窗等），不影响 Phaser canvas 世界视角；设置通过 `localStorage` 持久化。
 - **Buff 栏** 位于顶栏正下方，透明背景；每张活跃魔法卡显示为紫色 Chip，鼠标悬停显示"名称：简介"提示框；无魔法时高度折叠。
 - **日志** 实时滚入，按 `good`（绿）/ `bad`（红）/ `info`（灰）三色标注，保留最近 60 条。
 - **月度总结弹窗** 改为**年度总结弹窗**，每12个月（年末）自动弹出，显示本年购买卡牌/升级次数/总收入/总支出/年度盈余，点击"继续→"或点击外部关闭。
@@ -566,12 +570,158 @@ totalCraftMult = buildingBonus × hasteBonus
 ## 存档系统
 
 - 存档时机：每月末结算完成后自动写入 `localStorage`，key 为 `town_legend_save`。
-- 版本号：`6`（与旧版不兼容，升级后会忽略旧存档）。
-- 新增字段：`achievements`（成就解锁记录）、`totalCardsBought`、`totalUpgradesDone`、`totalMonstersDefeated`、`wildcardEverTriggered`（累计计数，永不清零）。
+- 版本号：`7`（与旧版不兼容，升级后会忽略旧存档；v7 扩展成就系统至100个，新增轮回系统）。
+- 新增字段：`achievements`（成就解锁记录）、`totalCardsBought`、`totalUpgradesDone`、`totalMonstersDefeated`、`wildcardEverTriggered`、`wildcardCount`、`totalProductsCrafted`、`firstShopSaleDone`、`totalProductsSold`、`totalGoldEarned`、`maxMonthlyShopIncome`、`consecutiveMonthsNoSiege`、`siegesRepelled`、`firstJobAssigned`、`firstMonsterOnField`、`firstBuildingOnField`、`firstMagicCardObtained`、`shopRefreshCount`、`yearsCompleted`、`highestMonsterLevelDefeated`、`highestCardLevelAcquired`、`ultimateProductCrafted`、`lv5BuildingPlaced`、`humanWildcardsObtained`、`monsterWildcardsObtained`、`firstSellCardDone`（成就追踪计数，永不清零）；`reincarnationCount`（轮回次数，永不清零）。
 
 ---
 
-## 数据总表
+## 成就系统
+
+共 **100 个成就**，按城镇等级分为 5 个解锁阶段。成就面板位于卡牌标签页"🏆成就"，显示解锁进度（N/100）、每条成就的名称/说明，以及解锁时间（年·月）。解锁时弹出动画提示，顶栏金色短暂闪烁，日志同步记录。
+
+成就触发时机：绝大多数成就在"月末统一检查"（`checkAchievements()`）中判定；部分即时性成就（购买、升级、击败怪物等）在对应操作完成后立即调用一次检查。已解锁的成就不会重复触发。
+
+### 第一阶段（18个，城镇1级可解锁）
+
+| id | 名称 | emoji | 触发条件 |
+|---|---|---|---|
+| first_town | 建镇之始 | 🏰 | 游戏启动 |
+| buy_first_card | 萌新报到 | 🛒 | 累计购买1张卡牌 |
+| buy_3_cards | 初窥门道 | 🛍️ | 累计购买3张卡牌 |
+| buy_10_cards | 购物达人 | 🛒 | 累计购买10张卡牌 |
+| first_job_assigned | 各司其职 | 👔 | 首次为角色分配职业 |
+| first_monster_on_field | 引狼入室 | 👹 | 首次将怪物放置到场上 |
+| first_monster_defeated | 初战告捷 | ⚔️ | 首次击败怪物 |
+| defeat_3_monsters | 三战三捷 | ⚔️ | 累计击败3只怪物 |
+| defeat_5_monsters | 战场新星 | ⚔️ | 累计击败5只怪物 |
+| first_craft | 初出茅庐 | 🔨 | 首次制造成品 |
+| craft_5_products | 小试牛刀 | 🔨 | 累计制造5件成品 |
+| first_shop_sale | 开张大吉 | 🏪 | 首次通过商店售出成品 |
+| gold_100 | 小财初聚 | 💰 | 同时持有100金币 |
+| gold_200 | 初有盈余 | 💰 | 同时持有200金币 |
+| gold_500 | 富甲一方 | 💰 | 同时持有500金币 |
+| survive_3_months | 三月立城 | 📅 | 存活满3个月 |
+| survive_6_months | 半年基业 | 📅 | 存活满6个月 |
+| survive_12_months | 岁月悠长 | 📅 | 存活满1年 |
+
+### 第二阶段（17个，城镇2级阶段可解锁）
+
+| id | 名称 | emoji | 触发条件 |
+|---|---|---|---|
+| town_level_2 | 城镇成形 | 🏘️ | 城镇升至2级 |
+| first_upgrade | 合成师 | ⬆️ | 首次完成升级 |
+| upgrade_3_times | 初尝合成 | ⬆️ | 累计完成3次升级 |
+| wildcard_upgrade | 幸运降临 | ✨ | 首次触发彩蛋升级 |
+| first_lv1_card | 精英驾到 | 🌟 | 首次获得Lv1卡牌 |
+| defeat_10_monsters | 百战老兵 | ⚔️ | 累计击败10只怪物 |
+| buy_20_cards | 卡牌收藏家 | 🛍️ | 累计购买20张卡牌 |
+| craft_10_products | 小作坊主 | 🔨 | 累计制造10件成品 |
+| first_sell_card | 退而求其次 | 💸 | 首次出售一张卡牌 |
+| shop_monthly_300 | 初尝甜头 | 🏪 | 单月商店收入超过300金币 |
+| gold_1000 | 千金之家 | 💰 | 同时持有1000金币 |
+| full_field | 满员出战 | 🃏 | 场上同时放满所有槽位 |
+| assign_2_jobs | 分工协作 | 👔 | 场上同时有2种不同职业的人物 |
+| refresh_shop_5 | 货比三家 | 🔄 | 累计手动刷新商店5次 |
+| survive_24_months | 两年春秋 | 📅 | 存活满2年 |
+| complete_year_1 | 年终盘账 | 📊 | 完成第1份年度总结 |
+| total_income_5000 | 积少成多 | 📈 | 累计赚取5000金币 |
+
+### 第三阶段（18个，城镇3级阶段可解锁）
+
+| id | 名称 | emoji | 触发条件 |
+|---|---|---|---|
+| town_level_3 | 城镇繁荣 | 🎉 | 城镇升至3级 |
+| first_building | 大兴土木 | 🏗️ | 首次将建筑卡放置到场上 |
+| first_lv2_card | 精英升华 | 🌟 | 首次获得Lv2卡牌 |
+| upgrade_10_times | 合成达人 | ⬆️ | 累计完成10次升级 |
+| defeat_20_monsters | 讨伐先锋 | ⚔️ | 累计击败20只怪物 |
+| defeat_lv1_monster | 降伏精锐 | ⚔️ | 首次击败Lv1怪物 |
+| craft_30_products | 勤工巧匠 | 🔨 | 累计制造30件成品 |
+| shop_monthly_500 | 商业小成 | 🏪 | 单月商店收入超过500金币 |
+| gold_3000 | 腰缠万贯 | 💰 | 同时持有3000金币 |
+| gold_5000 | 财富积累 | 💰 | 同时持有5000金币 |
+| buy_50_cards | 卡海冲浪 | 🛒 | 累计购买50张卡牌 |
+| first_siege_survived | 守土安邦 | 🛡️ | 首次成功抵御攻城（怪物被击败而非城镇陷落）|
+| no_siege_6_months | 太平六月 | 🕊️ | 连续6个月无攻城 |
+| wildcard_twice | 好运连连 | ✨ | 累计触发2次彩蛋升级 |
+| total_income_10000 | 万贯家财 | 📈 | 累计赚取10000金币 |
+| sell_20_products | 薄利多销 | 💸 | 累计出售20件成品 |
+| build_2_buildings | 基础建设 | 🏛️ | 场上同时有2座建筑 |
+| survive_36_months | 三年老将 | 📅 | 存活满3年 |
+
+### 第四阶段（19个，城镇4级阶段可解锁）
+
+| id | 名称 | emoji | 触发条件 |
+|---|---|---|---|
+| town_level_4 | 大城初成 | 🏙️ | 城镇升至4级 |
+| first_lv3_card | 传奇降临 | 👑 | 首次获得Lv3卡牌 |
+| upgrade_20_times | 合成大师 | ⬆️ | 累计完成20次升级 |
+| defeat_30_monsters | 怪物克星 | ⚔️ | 累计击败30只怪物 |
+| defeat_50_monsters | 降魔专家 | ⚔️ | 累计击败50只怪物 |
+| defeat_lv2_monster | 降妖除魔 | ⚔️ | 首次击败Lv2怪物 |
+| craft_80_products | 精工良品 | 🔨 | 累计制造80件成品 |
+| shop_monthly_1000 | 日进斗金 | 🏪 | 单月商店收入超过1000金币 |
+| gold_8000 | 大财到来 | 💰 | 同时持有8000金币 |
+| gold_15000 | 万金之主 | 💰 | 同时持有15000金币 |
+| no_siege_12_months | 一年安定 | 🕊️ | 连续12个月无攻城 |
+| total_income_30000 | 商界小成 | 📈 | 累计赚取30000金币 |
+| build_4_buildings | 城市建设 | 🏛️ | 场上同时有4座建筑 |
+| wildcard_5_times | 欧皇附体 | ✨ | 累计触发5次彩蛋升级 |
+| siege_repelled_3 | 铜墙铁壁 | 🛡️ | 累计成功抵御3次攻城 |
+| buy_100_cards | 集邮达人 | 🛒 | 累计购买100张卡牌 |
+| survive_48_months | 四年岁月 | 📅 | 存活满4年 |
+| complete_3_years | 三年账本 | 📊 | 完成3份年度总结 |
+| first_magic_card | 法力无边 | 🔮 | 首次获得魔法卡 |
+
+### 第五阶段（28个，城镇5级及以上）
+
+| id | 名称 | emoji | 触发条件 |
+|---|---|---|---|
+| town_level_5 | 传奇城镇 | 🏆 | 城镇升至5级 |
+| first_lv4_card | 史诗登场 | 💎 | 首次获得Lv4卡牌 |
+| first_lv5_card | 神话降世 | 🌌 | 首次获得Lv5卡牌 |
+| defeat_100_monsters | 百怪斩 | ⚔️ | 累计击败100只怪物 |
+| defeat_200_monsters | 降魔两百 | ⚔️ | 累计击败200只怪物 |
+| defeat_lv3_monster | 屠龙英雄 | 🔥 | 首次击败Lv3怪物 |
+| defeat_lv4_monster | 无惧强敌 | 👁️ | 首次击败Lv4怪物 |
+| defeat_lv5_monster | 神话终结 | 💥 | 首次击败Lv5怪物 |
+| upgrade_50_times | 炼金大师 | ⬆️ | 累计完成50次升级 |
+| upgrade_100_times | 无尽合成 | ⬆️ | 累计完成100次升级 |
+| craft_200_products | 工业先驱 | 🔨 | 累计制造200件成品 |
+| shop_monthly_5000 | 商界翘楚 | 🏪 | 单月商店收入超过5000金币 |
+| gold_30000 | 富可敌国 | 💰 | 同时持有30000金币 |
+| gold_100000 | 国富民强 | 💰 | 同时持有100000金币 |
+| total_income_100000 | 百万商会 | 📈 | 累计赚取100000金币 |
+| total_income_500000 | 富甲天下 | 📈 | 累计赚取500000金币 |
+| no_siege_24_months | 两年盛世 | 🕊️ | 连续24个月无攻城 |
+| wildcard_10_times | 天命所归 | ✨ | 累计触发10次彩蛋升级 |
+| build_6_buildings | 繁荣城市 | 🏛️ | 场上同时有6座建筑 |
+| siege_repelled_10 | 不破金城 | 🛡️ | 累计成功抵御10次攻城 |
+| buy_200_cards | 万卡宗师 | 🛒 | 累计购买200张卡牌 |
+| survive_60_months | 五年基业 | 📅 | 存活满5年 |
+| complete_5_years | 五载风云 | 📊 | 完成5份年度总结 |
+| first_ultimate_product | 神器诞生 | 🌟 | 首次制造终极成品（创世圣物/终焉神器）|
+| first_lv5_building | 神圣建筑 | ⚡ | 首次将Lv5建筑放到场上 |
+| lv5_cards_3 | 神明降临 | 🌠 | 场上同时有3张Lv5卡牌 |
+| all_human_wildcards | 人杰毕至 | ✨ | 历史上曾获得所有5种人物彩蛋卡 |
+| all_monster_wildcards | 群魔乱舞 | ✨ | 历史上曾获得所有5种怪物彩蛋卡 |
+
+---
+
+## 轮回系统
+
+**触发条件**：城镇达到最高等级（6级）后，顶栏"♻ 轮回"按钮解锁可点击。
+
+**轮回效果**：
+- **清零**：金币重置为 120、城镇等级重置为 1、所有卡牌/场上/手牌/库存/日志清空、时间回到 Y1·M1·W1。
+- **保留**：`achievements`（所有成就解锁状态永久保留）以及全部成就追踪计数器（`totalCardsBought`、`totalMonstersDefeated` 等），`reincarnationCount`（轮回次数累计）。
+
+**操作流程**：
+1. 点击顶栏"♻ 轮回"按钮 → 弹出确认弹窗（"轮回将清空所有卡牌、金币、时间进度，仅保留成就与轮回次数，确认吗？"）
+2. 点击"✅ 确认轮回" → 调用 `store.reincarnate()`，商店自动刷新，日志记录"第 N 次轮回！"
+3. 完成至少1次轮回后，顶栏额外显示"轮回 ♻ N"统计格（轮回次数归零时隐藏）。
+
+---
 
 ### 人物卡（主线，共18张）
 
@@ -741,6 +891,9 @@ totalCraftMult = buildingBonus × hasteBonus
 - ✅ **年度总结弹窗**（每12个月年末弹出，展示年度购买卡牌/升级次数/总收入/总支出/年度盈余）
 - ✅ **成就系统**（8条初始成就：建镇之始/初战告捷/购物达人/合成师/幸运降临/富甲一方/城镇繁荣/岁月悠长；事件驱动触发+月末统一检查；🏆标签页展示；解锁弹出动画+顶栏金色闪烁；存档版本升至6）
 - ✅ **亡灵系+野兽系高级怪物精灵补全**（新增11个像素绘制函数：史莱姆/骷髅/毒液史莱姆/骷髅骑士/巫妖/死灵君主/虚空之神/终焉之主（亡灵系Lv0-5）+ 远古龙/龙王/原初神龙（野兽系Lv3-5）；全部注册至 SpriteKey 类型联合及 spriteKeyForCard() 映射）
+- ✅ **成就系统扩展至100个**（按城镇等级分为5阶段：1级18个、2级17个、3级18个、4级19个、5级28个；新增完整追踪字段；存档版本升至7）
+- ✅ **轮回系统**（城镇6级满后解锁♻轮回按钮；轮回清空进度仅保留成就与轮回次数；顶栏显示轮回计数器；轮回弹窗二次确认）
+- ✅ **UI界面大小调节**（顶栏新增"缩放"按钮，循环切换小/中/大三档，分别对应 1×/1.25×/1.5× zoom；仅缩放DOM UI层，不影响Phaser canvas；设置持久化至 localStorage）
 
 ---
 
@@ -807,4 +960,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 ---
 
-*文档版本：v1.9 · 最后更新：亡灵系+野兽系高级怪物精灵补全（11个像素绘制函数 + SpriteKey 注册）*
+*文档版本：v3.0 · 最后更新：成就系统扩展至100个（5阶段）+ 轮回系统 + UI界面大小调节*
