@@ -16,14 +16,115 @@ export interface AchievementDef {
 }
 
 export const ACHIEVEMENT_DB: AchievementDef[] = [
-  { id: 'first_town',              name: '建镇之始', emoji: '🏰', description: '创建你的第一个城镇。' },
-  { id: 'first_monster_defeated',  name: '初战告捷', emoji: '⚔️', description: '首次击败一只怪物。' },
-  { id: 'buy_10_cards',            name: '购物达人', emoji: '🛒', description: '累计购买10张卡牌。' },
-  { id: 'first_upgrade',           name: '合成师',   emoji: '⬆️', description: '首次将3张卡牌合成升级。' },
-  { id: 'wildcard_upgrade',        name: '幸运降临', emoji: '✨', description: '触发彩蛋升级，获得传说卡牌。' },
-  { id: 'gold_500',                name: '富甲一方', emoji: '💰', description: '同时拥有500枚金币。' },
-  { id: 'town_level_3',            name: '城镇繁荣', emoji: '🎉', description: '城镇升至3级。' },
-  { id: 'survive_12_months',       name: '岁月悠长', emoji: '📅', description: '游戏进行满1年（12个月）。' },
+  // ── 第一阶段：城镇1级可解锁（18个）─────────────────────────────────────────
+  { id: 'first_town',             name: '建镇之始',  emoji: '🏰', description: '创建你的第一个城镇。' },
+  { id: 'buy_first_card',         name: '萌新报到',  emoji: '🛒', description: '累计购买1张卡牌。' },
+  { id: 'buy_3_cards',            name: '初窥门道',  emoji: '🛍️', description: '累计购买3张卡牌。' },
+  { id: 'buy_10_cards',           name: '购物达人',  emoji: '🛒', description: '累计购买10张卡牌。' },
+  { id: 'first_job_assigned',     name: '各司其职',  emoji: '👔', description: '首次为角色分配职业。' },
+  { id: 'first_monster_on_field', name: '引狼入室',  emoji: '👹', description: '首次将怪物放置到场上。' },
+  { id: 'first_monster_defeated', name: '初战告捷',  emoji: '⚔️', description: '首次击败一只怪物。' },
+  { id: 'defeat_3_monsters',      name: '三战三捷',  emoji: '⚔️', description: '累计击败3只怪物。' },
+  { id: 'defeat_5_monsters',      name: '战场新星',  emoji: '⚔️', description: '累计击败5只怪物。' },
+  { id: 'first_craft',            name: '初出茅庐',  emoji: '🔨', description: '首次制造成品。' },
+  { id: 'craft_5_products',       name: '小试牛刀',  emoji: '🔨', description: '累计制造5件成品。' },
+  { id: 'first_shop_sale',        name: '开张大吉',  emoji: '🏪', description: '首次通过商店售出成品。' },
+  { id: 'gold_100',               name: '小财初聚',  emoji: '💰', description: '同时持有100金币。' },
+  { id: 'gold_200',               name: '初有盈余',  emoji: '💰', description: '同时持有200金币。' },
+  { id: 'gold_500',               name: '富甲一方',  emoji: '💰', description: '同时拥有500枚金币。' },
+  { id: 'survive_3_months',       name: '三月立城',  emoji: '📅', description: '存活满3个月。' },
+  { id: 'survive_6_months',       name: '半年基业',  emoji: '📅', description: '存活满6个月。' },
+  { id: 'survive_12_months',      name: '岁月悠长',  emoji: '📅', description: '游戏进行满1年（12个月）。' },
+
+  // ── 第二阶段：城镇2级阶段可解锁（17个）─────────────────────────────────────
+  { id: 'town_level_2',           name: '城镇成形',   emoji: '🏘️', description: '城镇升至2级。' },
+  { id: 'first_upgrade',          name: '合成师',     emoji: '⬆️', description: '首次将3张卡牌合成升级。' },
+  { id: 'upgrade_3_times',        name: '初尝合成',   emoji: '⬆️', description: '累计完成3次升级。' },
+  { id: 'wildcard_upgrade',       name: '幸运降临',   emoji: '✨', description: '触发彩蛋升级，获得传说卡牌。' },
+  { id: 'first_lv1_card',         name: '精英驾到',   emoji: '🌟', description: '首次获得Lv1卡牌。' },
+  { id: 'defeat_10_monsters',     name: '百战老兵',   emoji: '⚔️', description: '累计击败10只怪物。' },
+  { id: 'buy_20_cards',           name: '卡牌收藏家', emoji: '🛍️', description: '累计购买20张卡牌。' },
+  { id: 'craft_10_products',      name: '小作坊主',   emoji: '🔨', description: '累计制造10件成品。' },
+  { id: 'first_sell_card',        name: '退而求其次', emoji: '💸', description: '首次出售一张卡牌。' },
+  { id: 'shop_monthly_300',       name: '初尝甜头',   emoji: '🏪', description: '单月商店收入超过300金币。' },
+  { id: 'gold_1000',              name: '千金之家',   emoji: '💰', description: '同时持有1000金币。' },
+  { id: 'full_field',             name: '满员出战',   emoji: '🃏', description: '场上同时放满所有槽位。' },
+  { id: 'assign_2_jobs',          name: '分工协作',   emoji: '👔', description: '场上同时有2种不同职业的人物。' },
+  { id: 'refresh_shop_5',         name: '货比三家',   emoji: '🔄', description: '累计手动刷新商店5次。' },
+  { id: 'survive_24_months',      name: '两年春秋',   emoji: '📅', description: '存活满2年。' },
+  { id: 'complete_year_1',        name: '年终盘账',   emoji: '📊', description: '完成第1份年度总结。' },
+  { id: 'total_income_5000',      name: '积少成多',   emoji: '📈', description: '累计赚取5000金币。' },
+
+  // ── 第三阶段：城镇3级阶段可解锁（18个）─────────────────────────────────────
+  { id: 'town_level_3',           name: '城镇繁荣',  emoji: '🎉', description: '城镇升至3级。' },
+  { id: 'first_building',         name: '大兴土木',  emoji: '🏗️', description: '首次将建筑卡放置到场上。' },
+  { id: 'first_lv2_card',         name: '精英升华',  emoji: '🌟', description: '首次获得Lv2卡牌。' },
+  { id: 'upgrade_10_times',       name: '合成达人',  emoji: '⬆️', description: '累计完成10次升级。' },
+  { id: 'defeat_20_monsters',     name: '讨伐先锋',  emoji: '⚔️', description: '累计击败20只怪物。' },
+  { id: 'defeat_lv1_monster',     name: '降伏精锐',  emoji: '⚔️', description: '首次击败Lv1怪物。' },
+  { id: 'craft_30_products',      name: '勤工巧匠',  emoji: '🔨', description: '累计制造30件成品。' },
+  { id: 'shop_monthly_500',       name: '商业小成',  emoji: '🏪', description: '单月商店收入超过500金币。' },
+  { id: 'gold_3000',              name: '腰缠万贯',  emoji: '💰', description: '同时持有3000金币。' },
+  { id: 'gold_5000',              name: '财富积累',  emoji: '💰', description: '同时持有5000金币。' },
+  { id: 'buy_50_cards',           name: '卡海冲浪',  emoji: '🛒', description: '累计购买50张卡牌。' },
+  { id: 'first_siege_survived',   name: '守土安邦',  emoji: '🛡️', description: '首次成功抵御攻城（怪物被击败而非城镇陷落）。' },
+  { id: 'no_siege_6_months',      name: '太平六月',  emoji: '🕊️', description: '连续6个月无攻城。' },
+  { id: 'wildcard_twice',         name: '好运连连',  emoji: '✨', description: '累计触发2次彩蛋升级。' },
+  { id: 'total_income_10000',     name: '万贯家财',  emoji: '📈', description: '累计赚取10000金币。' },
+  { id: 'sell_20_products',       name: '薄利多销',  emoji: '💸', description: '累计出售20件成品。' },
+  { id: 'build_2_buildings',      name: '基础建设',  emoji: '🏛️', description: '场上同时有2座建筑。' },
+  { id: 'survive_36_months',      name: '三年老将',  emoji: '📅', description: '存活满3年。' },
+
+  // ── 第四阶段：城镇4级阶段可解锁（19个）─────────────────────────────────────
+  { id: 'town_level_4',           name: '大城初成',  emoji: '🏙️', description: '城镇升至4级。' },
+  { id: 'first_lv3_card',         name: '传奇降临',  emoji: '👑', description: '首次获得Lv3卡牌。' },
+  { id: 'upgrade_20_times',       name: '合成大师',  emoji: '⬆️', description: '累计完成20次升级。' },
+  { id: 'defeat_30_monsters',     name: '怪物克星',  emoji: '⚔️', description: '累计击败30只怪物。' },
+  { id: 'defeat_50_monsters',     name: '降魔专家',  emoji: '⚔️', description: '累计击败50只怪物。' },
+  { id: 'defeat_lv2_monster',     name: '降妖除魔',  emoji: '⚔️', description: '首次击败Lv2怪物。' },
+  { id: 'craft_80_products',      name: '精工良品',  emoji: '🔨', description: '累计制造80件成品。' },
+  { id: 'shop_monthly_1000',      name: '日进斗金',  emoji: '🏪', description: '单月商店收入超过1000金币。' },
+  { id: 'gold_8000',              name: '大财到来',  emoji: '💰', description: '同时持有8000金币。' },
+  { id: 'gold_15000',             name: '万金之主',  emoji: '💰', description: '同时持有15000金币。' },
+  { id: 'no_siege_12_months',     name: '一年安定',  emoji: '🕊️', description: '连续12个月无攻城。' },
+  { id: 'total_income_30000',     name: '商界小成',  emoji: '📈', description: '累计赚取30000金币。' },
+  { id: 'build_4_buildings',      name: '城市建设',  emoji: '🏛️', description: '场上同时有4座建筑。' },
+  { id: 'wildcard_5_times',       name: '欧皇附体',  emoji: '✨', description: '累计触发5次彩蛋升级。' },
+  { id: 'siege_repelled_3',       name: '铜墙铁壁',  emoji: '🛡️', description: '累计成功抵御3次攻城。' },
+  { id: 'buy_100_cards',          name: '集邮达人',  emoji: '🛒', description: '累计购买100张卡牌。' },
+  { id: 'survive_48_months',      name: '四年岁月',  emoji: '📅', description: '存活满4年。' },
+  { id: 'complete_3_years',       name: '三年账本',  emoji: '📊', description: '完成3份年度总结。' },
+  { id: 'first_magic_card',       name: '法力无边',  emoji: '🔮', description: '首次获得魔法卡。' },
+
+  // ── 第五阶段：城镇5级及以上（28个）─────────────────────────────────────────
+  { id: 'town_level_5',           name: '传奇城镇',   emoji: '🏆', description: '城镇升至5级。' },
+  { id: 'first_lv4_card',         name: '史诗登场',   emoji: '💎', description: '首次获得Lv4卡牌。' },
+  { id: 'first_lv5_card',         name: '神话降世',   emoji: '🌌', description: '首次获得Lv5卡牌。' },
+  { id: 'defeat_100_monsters',    name: '百怪斩',     emoji: '⚔️', description: '累计击败100只怪物。' },
+  { id: 'defeat_200_monsters',    name: '降魔两百',   emoji: '⚔️', description: '累计击败200只怪物。' },
+  { id: 'defeat_lv3_monster',     name: '屠龙英雄',   emoji: '🔥', description: '首次击败Lv3怪物。' },
+  { id: 'defeat_lv4_monster',     name: '无惧强敌',   emoji: '👁️', description: '首次击败Lv4怪物。' },
+  { id: 'defeat_lv5_monster',     name: '神话终结',   emoji: '💥', description: '首次击败Lv5怪物。' },
+  { id: 'upgrade_50_times',       name: '炼金大师',   emoji: '⬆️', description: '累计完成50次升级。' },
+  { id: 'upgrade_100_times',      name: '无尽合成',   emoji: '⬆️', description: '累计完成100次升级。' },
+  { id: 'craft_200_products',     name: '工业先驱',   emoji: '🔨', description: '累计制造200件成品。' },
+  { id: 'shop_monthly_5000',      name: '商界翘楚',   emoji: '🏪', description: '单月商店收入超过5000金币。' },
+  { id: 'gold_30000',             name: '富可敌国',   emoji: '💰', description: '同时持有30000金币。' },
+  { id: 'gold_100000',            name: '国富民强',   emoji: '💰', description: '同时持有100000金币。' },
+  { id: 'total_income_100000',    name: '百万商会',   emoji: '📈', description: '累计赚取100000金币。' },
+  { id: 'total_income_500000',    name: '富甲天下',   emoji: '📈', description: '累计赚取500000金币。' },
+  { id: 'no_siege_24_months',     name: '两年盛世',   emoji: '🕊️', description: '连续24个月无攻城。' },
+  { id: 'wildcard_10_times',      name: '天命所归',   emoji: '✨', description: '累计触发10次彩蛋升级。' },
+  { id: 'build_6_buildings',      name: '繁荣城市',   emoji: '🏛️', description: '场上同时有6座建筑。' },
+  { id: 'siege_repelled_10',      name: '不破金城',   emoji: '🛡️', description: '累计成功抵御10次攻城。' },
+  { id: 'buy_200_cards',          name: '万卡宗师',   emoji: '🛒', description: '累计购买200张卡牌。' },
+  { id: 'survive_60_months',      name: '五年基业',   emoji: '📅', description: '存活满5年。' },
+  { id: 'complete_5_years',       name: '五载风云',   emoji: '📊', description: '完成5份年度总结。' },
+  { id: 'first_ultimate_product', name: '神器诞生',   emoji: '🌟', description: '首次制造终极成品（创世圣物/终焉神器）。' },
+  { id: 'first_lv5_building',     name: '神圣建筑',   emoji: '⚡', description: '首次将Lv5建筑放到场上。' },
+  { id: 'lv5_cards_3',            name: '神明降临',   emoji: '🌠', description: '场上同时有3张Lv5卡牌。' },
+  { id: 'all_human_wildcards',    name: '人杰毕至',   emoji: '✨', description: '历史上曾获得所有5种人物彩蛋卡。' },
+  { id: 'all_monster_wildcards',  name: '群魔乱舞',   emoji: '✨', description: '历史上曾获得所有5种怪物彩蛋卡。' },
 ];
 
 let _idCounter = 0;
@@ -84,8 +185,8 @@ export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 const SAVE_KEY     = 'town_legend_save';
-// ── 版本号升至 6：新增成就系统（achievements 字段） ──
-const SAVE_VERSION = 6;
+// ── 版本号升至 7：扩展成就系统至100个 ──
+const SAVE_VERSION = 7;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
@@ -192,42 +293,136 @@ export class GameStore {
   }
 
   checkAchievements(): void {
-    // 建镇之始（游戏启动时由constructor解锁）
+    // ── 第一阶段（18个）────────────────────────────────────────────────────────
+    if (this._totalCardsBought >= 1)  this.unlockAchievement('buy_first_card');
+    if (this._totalCardsBought >= 3)  this.unlockAchievement('buy_3_cards');
+    if (this._totalCardsBought >= 10) this.unlockAchievement('buy_10_cards');
+    if (this._firstJobAssigned)       this.unlockAchievement('first_job_assigned');
+    if (this._firstMonsterOnField)    this.unlockAchievement('first_monster_on_field');
+    if (this._totalMonstersDefeated >= 1) this.unlockAchievement('first_monster_defeated');
+    if (this._totalMonstersDefeated >= 3) this.unlockAchievement('defeat_3_monsters');
+    if (this._totalMonstersDefeated >= 5) this.unlockAchievement('defeat_5_monsters');
+    if (this._totalProductsCrafted >= 1)  this.unlockAchievement('first_craft');
+    if (this._totalProductsCrafted >= 5)  this.unlockAchievement('craft_5_products');
+    if (this._firstShopSaleDone)          this.unlockAchievement('first_shop_sale');
+    if (this.gold >= 100)  this.unlockAchievement('gold_100');
+    if (this.gold >= 200)  this.unlockAchievement('gold_200');
+    if (this.gold >= 500)  this.unlockAchievement('gold_500');
+    if (this.month >= 3)   this.unlockAchievement('survive_3_months');
+    if (this.month >= 6)   this.unlockAchievement('survive_6_months');
+    if (this.month >= 12)  this.unlockAchievement('survive_12_months');
 
-    // 首次击败怪物
-    if (this._totalMonstersDefeated > 0) {
-      this.unlockAchievement('first_monster_defeated');
+    // ── 第二阶段（17个）────────────────────────────────────────────────────────
+    if (this.townLevel >= 2) this.unlockAchievement('town_level_2');
+    if (this._totalUpgradesDone >= 1) this.unlockAchievement('first_upgrade');
+    if (this._totalUpgradesDone >= 3) this.unlockAchievement('upgrade_3_times');
+    if (this._wildcardCount >= 1)     this.unlockAchievement('wildcard_upgrade');
+    if (this._highestCardLevelAcquired >= 1) this.unlockAchievement('first_lv1_card');
+    if (this._totalMonstersDefeated >= 10)   this.unlockAchievement('defeat_10_monsters');
+    if (this._totalCardsBought >= 20)   this.unlockAchievement('buy_20_cards');
+    if (this._totalProductsCrafted >= 10) this.unlockAchievement('craft_10_products');
+    if (this._firstSellCardDone)          this.unlockAchievement('first_sell_card');
+    if (this._maxMonthlyShopIncome >= 300) this.unlockAchievement('shop_monthly_300');
+    if (this.gold >= 1000) this.unlockAchievement('gold_1000');
+    if (this.field.length >= this.fieldCapacity && this.field.length > 0) {
+      this.unlockAchievement('full_field');
     }
+    {
+      const activeJobs = new Set(
+        this.field
+          .filter(c => {
+            const d = defById(c.definitionId);
+            return d.type === CardType.Human && c.isActive
+              && c.jobAssignment !== undefined && c.jobAssignment !== JobType.Idle;
+          })
+          .map(c => c.jobAssignment)
+      );
+      if (activeJobs.size >= 2) this.unlockAchievement('assign_2_jobs');
+    }
+    if (this._shopRefreshCount >= 5)   this.unlockAchievement('refresh_shop_5');
+    if (this.month >= 24) this.unlockAchievement('survive_24_months');
+    if (this._yearsCompleted >= 1) this.unlockAchievement('complete_year_1');
+    if (this._totalGoldEarned >= 5000) this.unlockAchievement('total_income_5000');
 
-    // 购物达人：累计购买10张卡牌
-    if (this._totalCardsBought >= 10) {
-      this.unlockAchievement('buy_10_cards');
+    // ── 第三阶段（18个）────────────────────────────────────────────────────────
+    if (this.townLevel >= 3) this.unlockAchievement('town_level_3');
+    if (this._firstBuildingOnField)          this.unlockAchievement('first_building');
+    if (this._highestCardLevelAcquired >= 2) this.unlockAchievement('first_lv2_card');
+    if (this._totalUpgradesDone >= 10)       this.unlockAchievement('upgrade_10_times');
+    if (this._totalMonstersDefeated >= 20)   this.unlockAchievement('defeat_20_monsters');
+    if (this._highestMonsterLevelDefeated >= 1) this.unlockAchievement('defeat_lv1_monster');
+    if (this._totalProductsCrafted >= 30)  this.unlockAchievement('craft_30_products');
+    if (this._maxMonthlyShopIncome >= 500) this.unlockAchievement('shop_monthly_500');
+    if (this.gold >= 3000) this.unlockAchievement('gold_3000');
+    if (this.gold >= 5000) this.unlockAchievement('gold_5000');
+    if (this._totalCardsBought >= 50)  this.unlockAchievement('buy_50_cards');
+    if (this._siegesRepelled >= 1)     this.unlockAchievement('first_siege_survived');
+    if (this._consecutiveMonthsNoSiege >= 6) this.unlockAchievement('no_siege_6_months');
+    if (this._wildcardCount >= 2)      this.unlockAchievement('wildcard_twice');
+    if (this._totalGoldEarned >= 10000) this.unlockAchievement('total_income_10000');
+    if (this._totalProductsSold >= 20)  this.unlockAchievement('sell_20_products');
+    {
+      const buildingCount = this.field.filter(c => {
+        const d = defById(c.definitionId);
+        return d.type === CardType.Building && c.isActive;
+      }).length;
+      if (buildingCount >= 2) this.unlockAchievement('build_2_buildings');
+      if (buildingCount >= 4) this.unlockAchievement('build_4_buildings');
+      if (buildingCount >= 6) this.unlockAchievement('build_6_buildings');
     }
+    if (this.month >= 36) this.unlockAchievement('survive_36_months');
 
-    // 合成师：首次升级
-    if (this._totalUpgradesDone >= 1) {
-      this.unlockAchievement('first_upgrade');
-    }
+    // ── 第四阶段（19个）────────────────────────────────────────────────────────
+    if (this.townLevel >= 4) this.unlockAchievement('town_level_4');
+    if (this._highestCardLevelAcquired >= 3) this.unlockAchievement('first_lv3_card');
+    if (this._totalUpgradesDone >= 20)  this.unlockAchievement('upgrade_20_times');
+    if (this._totalMonstersDefeated >= 30) this.unlockAchievement('defeat_30_monsters');
+    if (this._totalMonstersDefeated >= 50) this.unlockAchievement('defeat_50_monsters');
+    if (this._highestMonsterLevelDefeated >= 2) this.unlockAchievement('defeat_lv2_monster');
+    if (this._totalProductsCrafted >= 80)  this.unlockAchievement('craft_80_products');
+    if (this._maxMonthlyShopIncome >= 1000) this.unlockAchievement('shop_monthly_1000');
+    if (this.gold >= 8000)  this.unlockAchievement('gold_8000');
+    if (this.gold >= 15000) this.unlockAchievement('gold_15000');
+    if (this._consecutiveMonthsNoSiege >= 12) this.unlockAchievement('no_siege_12_months');
+    if (this._totalGoldEarned >= 30000) this.unlockAchievement('total_income_30000');
+    if (this._wildcardCount >= 5)  this.unlockAchievement('wildcard_5_times');
+    if (this._siegesRepelled >= 3) this.unlockAchievement('siege_repelled_3');
+    if (this._totalCardsBought >= 100) this.unlockAchievement('buy_100_cards');
+    if (this.month >= 48) this.unlockAchievement('survive_48_months');
+    if (this._yearsCompleted >= 3) this.unlockAchievement('complete_3_years');
+    if (this._firstMagicCardObtained) this.unlockAchievement('first_magic_card');
 
-    // 幸运降临：首次彩蛋
-    if (this._wildcardEverTriggered) {
-      this.unlockAchievement('wildcard_upgrade');
+    // ── 第五阶段（28个）────────────────────────────────────────────────────────
+    if (this.townLevel >= 5) this.unlockAchievement('town_level_5');
+    if (this._highestCardLevelAcquired >= 4) this.unlockAchievement('first_lv4_card');
+    if (this._highestCardLevelAcquired >= 5) this.unlockAchievement('first_lv5_card');
+    if (this._totalMonstersDefeated >= 100) this.unlockAchievement('defeat_100_monsters');
+    if (this._totalMonstersDefeated >= 200) this.unlockAchievement('defeat_200_monsters');
+    if (this._highestMonsterLevelDefeated >= 3) this.unlockAchievement('defeat_lv3_monster');
+    if (this._highestMonsterLevelDefeated >= 4) this.unlockAchievement('defeat_lv4_monster');
+    if (this._highestMonsterLevelDefeated >= 5) this.unlockAchievement('defeat_lv5_monster');
+    if (this._totalUpgradesDone >= 50)  this.unlockAchievement('upgrade_50_times');
+    if (this._totalUpgradesDone >= 100) this.unlockAchievement('upgrade_100_times');
+    if (this._totalProductsCrafted >= 200) this.unlockAchievement('craft_200_products');
+    if (this._maxMonthlyShopIncome >= 5000) this.unlockAchievement('shop_monthly_5000');
+    if (this.gold >= 30000)  this.unlockAchievement('gold_30000');
+    if (this.gold >= 100000) this.unlockAchievement('gold_100000');
+    if (this._totalGoldEarned >= 100000) this.unlockAchievement('total_income_100000');
+    if (this._totalGoldEarned >= 500000) this.unlockAchievement('total_income_500000');
+    if (this._consecutiveMonthsNoSiege >= 24) this.unlockAchievement('no_siege_24_months');
+    if (this._wildcardCount >= 10)  this.unlockAchievement('wildcard_10_times');
+    if (this._siegesRepelled >= 10) this.unlockAchievement('siege_repelled_10');
+    if (this._totalCardsBought >= 200) this.unlockAchievement('buy_200_cards');
+    if (this.month >= 60) this.unlockAchievement('survive_60_months');
+    if (this._yearsCompleted >= 5) this.unlockAchievement('complete_5_years');
+    if (this._ultimateProductCrafted) this.unlockAchievement('first_ultimate_product');
+    if (this._lv5BuildingPlaced)     this.unlockAchievement('first_lv5_building');
+    {
+      const lv5OnField = this.field.filter(c => defById(c.definitionId).level === 5).length;
+      if (lv5OnField >= 3) this.unlockAchievement('lv5_cards_3');
     }
-
-    // 富甲一方：持有>=500金币
-    if (this.gold >= 500) {
-      this.unlockAchievement('gold_500');
-    }
-
-    // 城镇繁荣：城镇>=3级
-    if (this.townLevel >= 3) {
-      this.unlockAchievement('town_level_3');
-    }
-
-    // 岁月悠长：进行满12个月
-    if (this.month >= 12) {
-      this.unlockAchievement('survive_12_months');
-    }
+    if (this._humanWildcardsObtained.size >= 5)  this.unlockAchievement('all_human_wildcards');
+    if (this._monsterWildcardsObtained.size >= 5) this.unlockAchievement('all_monster_wildcards');
   }
 
   // ── 月度统计（每月初清零）──────────────────────────────────────────────────
@@ -263,10 +458,32 @@ export class GameStore {
   reincarnationCount = 0;
 
   // ── 成就用累计计数（永不清零）────────────────────────────────────────────────
-  private _totalCardsBought    = 0;
-  private _totalUpgradesDone   = 0;
+  private _totalCardsBought      = 0;
+  private _totalUpgradesDone     = 0;
   private _totalMonstersDefeated = 0;
   private _wildcardEverTriggered = false;
+  // ── v7 新增追踪字段 ──────────────────────────────────────────────────────────
+  private _wildcardCount               = 0;
+  private _totalProductsCrafted        = 0;
+  private _firstShopSaleDone           = false;
+  private _totalProductsSold           = 0;
+  private _totalGoldEarned             = 0;
+  private _maxMonthlyShopIncome        = 0;
+  private _consecutiveMonthsNoSiege    = 0;
+  private _siegesRepelled              = 0;
+  private _firstJobAssigned            = false;
+  private _firstMonsterOnField         = false;
+  private _firstBuildingOnField        = false;
+  private _firstMagicCardObtained      = false;
+  private _shopRefreshCount            = 0;
+  private _yearsCompleted              = 0;
+  private _highestMonsterLevelDefeated = -1;
+  private _highestCardLevelAcquired    = -1;
+  private _ultimateProductCrafted      = false;
+  private _lv5BuildingPlaced           = false;
+  private _humanWildcardsObtained: Set<string>  = new Set();
+  private _monsterWildcardsObtained: Set<string> = new Set();
+  private _firstSellCardDone           = false;
 
   takeCraftedEmoji(): string | null {
     const e = this._lastCraftedEmoji;
@@ -467,6 +684,8 @@ export class GameStore {
     this.hand.push(instantiate(def));
     this.yearStats.cardsBought++;
     this._totalCardsBought++;
+    if (def.level > this._highestCardLevelAcquired) this._highestCardLevelAcquired = def.level;
+    if (def.type === CardType.Magic) this._firstMagicCardObtained = true;
     this.addLog(`购买了 ${def.name}`, 'info');
     if (this.shopSlots.every(s => s.sold)) {
       this.refreshShopFull();
@@ -482,6 +701,8 @@ export class GameStore {
     if (this.gold < refCost) return { ok: false, reason: `刷新需要${refCost}金币` };
     this.gold -= refCost;
     this.refreshShopFull();
+    this._shopRefreshCount++;
+    this.checkAchievements();
     return { ok: true };
   }
 
@@ -493,7 +714,9 @@ export class GameStore {
       const refund = Math.max(1, Math.floor(def.cost * 0.3));
       this.hand.splice(handIdx, 1);
       this.gold += refund;
+      this._firstSellCardDone = true;
       this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
+      this.checkAchievements();
       this.emit('sell');
       return { ok: true, gold: refund };
     }
@@ -511,9 +734,11 @@ export class GameStore {
       }
       this.field.splice(fieldIdx, 1);
       this.gold += refund;
+      this._firstSellCardDone = true;
       if (def.type === CardType.Human && inst.jobAssignment === JobType.Combat) {
         this.checkSiegeTransition();
       }
+      this.checkAchievements();
       this.emit('sell');
       this.emit('field');
       return { ok: true, gold: refund };
@@ -542,10 +767,16 @@ export class GameStore {
         defById(c.definitionId).type === CardType.Monster
       ).length;
       inst.spawnZone = assignSpawnZone(monsterCount);
+      if (!this._firstMonsterOnField) this._firstMonsterOnField = true;
+    }
+    if (def.type === CardType.Building) {
+      if (!this._firstBuildingOnField) this._firstBuildingOnField = true;
+      if (def.level >= 5 && !this._lv5BuildingPlaced) this._lv5BuildingPlaced = true;
     }
     this.hand.splice(idx, 1);
     this.field.push(inst);
     this.addLog(`打出了 ${def.name}`, 'info');
+    this.checkAchievements();
     this.emit('field');
     return { ok: true };
   }
@@ -554,6 +785,8 @@ export class GameStore {
     const inst = this.field.find(c => c.instanceId === instanceId);
     if (!inst) return false;
     inst.jobAssignment = job;
+    if (!this._firstJobAssigned) this._firstJobAssigned = true;
+    this.checkAchievements();
     this.emit('field');
     return true;
   }
@@ -598,6 +831,10 @@ export class GameStore {
     if (isWildcard) {
       this.monthStats.wildcardTriggered = true;
       this._wildcardEverTriggered = true;
+      this._wildcardCount++;
+      // 记录彩蛋卡种类
+      if (def.type === CardType.Human)   this._humanWildcardsObtained.add(finalTargetId);
+      if (def.type === CardType.Monster) this._monsterWildcardsObtained.add(finalTargetId);
       this.addLog(
         `🎉✨ 奇迹！3张 ${def.name} 触发彩蛋，合成为传说中的 ${targetDef.name}！`,
         'good'
@@ -605,6 +842,10 @@ export class GameStore {
     } else {
       this.addLog(`⬆️ 3张 ${def.name} 合成为 ${targetDef.name}！`, 'good');
     }
+    if (targetDef.level > this._highestCardLevelAcquired) {
+      this._highestCardLevelAcquired = targetDef.level;
+    }
+    if (targetDef.type === CardType.Magic) this._firstMagicCardObtained = true;
 
     this.yearStats.upgradesDone++;
     this._totalUpgradesDone++;
@@ -614,9 +855,12 @@ export class GameStore {
   }
 
   // ── 对外暴露：怪物被击败时由场景调用，记录到月度统计 ──────────────────────
-  recordMonsterDefeated() {
+  recordMonsterDefeated(monsterLevel: number): void {
     this.monthStats.monstersDefeated++;
     this._totalMonstersDefeated++;
+    if (monsterLevel > this._highestMonsterLevelDefeated) {
+      this._highestMonsterLevelDefeated = monsterLevel;
+    }
     this.checkAchievements();
   }
 
@@ -646,6 +890,7 @@ export class GameStore {
   // ── 实时制造（接入建筑和魔法加速效果）──────────────────────────────────────
   private resolveRealtimeCraft() {
     if (this.isUnderSiege) {
+      this.monthStats.siegeOccurred = true;  // 记录本月有围城（每tick设置，幂等）
       this.craftPoints = 0;
       return;
     }
@@ -699,6 +944,12 @@ export class GameStore {
       const prod = productById(recipe.outputProductId);
       this._lastCraftedEmoji = prod.emoji;
       this.monthStats.productsCrafted += recipe.outputQty;
+      this._totalProductsCrafted += recipe.outputQty;
+      if (!this._ultimateProductCrafted &&
+          (recipe.outputProductId === 'prod_genesis_relic' ||
+           recipe.outputProductId === 'prod_end_artifact')) {
+        this._ultimateProductCrafted = true;
+      }
       this.addLog(`🔨 制造了 ${prod.emoji} ${prod.name} ×${recipe.outputQty}`, 'good');
       crafted = true;
     }
@@ -720,6 +971,7 @@ export class GameStore {
       const tax = Math.round(baseTax * (1 + prosperityBonus / 100) * palaceMult);
       this.gold += tax;
       this.monthStats.taxIncome += tax;
+      this._totalGoldEarned += tax;
       let taxNote = `🏛️ 税收 +${tax}💰`;
       if (prosperityBonus > 0) taxNote += `（繁荣咒 +${prosperityBonus}%）`;
       if (palaceMult > 1)      taxNote += `（神圣宫殿 ×${palaceMult}）`;
@@ -775,6 +1027,7 @@ export class GameStore {
 
     // 9. 年终结算（每12个月触发）
     if (this.month % 12 === 0) {
+      this._yearsCompleted++;
       const year = Math.floor(this.month / 12);
       this.lastYearSummary = {
         year,
@@ -788,10 +1041,20 @@ export class GameStore {
       this.yearStats = { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
     }
 
-    // 10. 成就检查（月末统一）
+    // 10. 围城连续月数 & 成功抵御统计（在成就检查前更新）
+    if (this.monthStats.siegeOccurred) {
+      this._consecutiveMonthsNoSiege = 0;
+      if (this.monthStats.monstersDefeated > 0) {
+        this._siegesRepelled++;
+      }
+    } else {
+      this._consecutiveMonthsNoSiege++;
+    }
+
+    // 11. 成就检查（月末统一）
     this.checkAchievements();
 
-    // 11. 重置月度统计
+    // 12. 重置月度统计
     this.monthStats = {
       taxIncome: 0, shopIncome: 0, upkeepCost: 0,
       monstersDefeated: 0, productsCrafted: 0,
@@ -840,10 +1103,16 @@ export class GameStore {
         this.gold   += income;
         totalIncome += income;
         remaining   -= sell;
+        this._totalProductsSold += sell;
         this.addLog(`💰 售出 ${prod.emoji}${prod.name}×${sell}，+${income}💰`, 'good');
       }
       if (totalIncome > 0) {
         this.monthStats.shopIncome += totalIncome;
+        this._firstShopSaleDone = true;
+        this._totalGoldEarned   += totalIncome;
+        if (totalIncome > this._maxMonthlyShopIncome) {
+          this._maxMonthlyShopIncome = totalIncome;
+        }
         this.addLog(`👥 本月行人 ${passersby} 人，商店总收入 +${totalIncome}💰`, 'good');
         this.emit('inventory');
       }
@@ -944,7 +1213,29 @@ export class GameStore {
         totalUpgradesDone:      this._totalUpgradesDone,
         totalMonstersDefeated:  this._totalMonstersDefeated,
         wildcardEverTriggered:  this._wildcardEverTriggered,
-        reincarnationCount:     this.reincarnationCount,
+        // ── v7 新增字段 ────────────────────────────────────────────────────────
+        wildcardCount:               this._wildcardCount,
+        totalProductsCrafted:        this._totalProductsCrafted,
+        firstShopSaleDone:           this._firstShopSaleDone,
+        totalProductsSold:           this._totalProductsSold,
+        totalGoldEarned:             this._totalGoldEarned,
+        maxMonthlyShopIncome:        this._maxMonthlyShopIncome,
+        consecutiveMonthsNoSiege:    this._consecutiveMonthsNoSiege,
+        siegesRepelled:              this._siegesRepelled,
+        firstJobAssigned:            this._firstJobAssigned,
+        firstMonsterOnField:         this._firstMonsterOnField,
+        firstBuildingOnField:        this._firstBuildingOnField,
+        firstMagicCardObtained:      this._firstMagicCardObtained,
+        shopRefreshCount:            this._shopRefreshCount,
+        yearsCompleted:              this._yearsCompleted,
+        highestMonsterLevelDefeated: this._highestMonsterLevelDefeated,
+        highestCardLevelAcquired:    this._highestCardLevelAcquired,
+        ultimateProductCrafted:      this._ultimateProductCrafted,
+        lv5BuildingPlaced:           this._lv5BuildingPlaced,
+        humanWildcardsObtained:      [...this._humanWildcardsObtained],
+        monsterWildcardsObtained:    [...this._monsterWildcardsObtained],
+        firstSellCardDone:           this._firstSellCardDone,
+        reincarnationCount:          this.reincarnationCount,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
     } catch (e) { console.warn('Save failed:', e); }
@@ -986,7 +1277,29 @@ export class GameStore {
       this._totalUpgradesDone     = snap.totalUpgradesDone     ?? 0;
       this._totalMonstersDefeated = snap.totalMonstersDefeated ?? 0;
       this._wildcardEverTriggered = snap.wildcardEverTriggered ?? false;
-      this.reincarnationCount     = snap.reincarnationCount    ?? 0;
+      // ── v7 新增字段（用 ?? 提供默认值保证存档兼容）──────────────────────────
+      this._wildcardCount               = snap.wildcardCount               ?? 0;
+      this._totalProductsCrafted        = snap.totalProductsCrafted        ?? 0;
+      this._firstShopSaleDone           = snap.firstShopSaleDone           ?? false;
+      this._totalProductsSold           = snap.totalProductsSold           ?? 0;
+      this._totalGoldEarned             = snap.totalGoldEarned             ?? 0;
+      this._maxMonthlyShopIncome        = snap.maxMonthlyShopIncome        ?? 0;
+      this._consecutiveMonthsNoSiege    = snap.consecutiveMonthsNoSiege    ?? 0;
+      this._siegesRepelled              = snap.siegesRepelled              ?? 0;
+      this._firstJobAssigned            = snap.firstJobAssigned            ?? false;
+      this._firstMonsterOnField         = snap.firstMonsterOnField         ?? false;
+      this._firstBuildingOnField        = snap.firstBuildingOnField        ?? false;
+      this._firstMagicCardObtained      = snap.firstMagicCardObtained      ?? false;
+      this._shopRefreshCount            = snap.shopRefreshCount            ?? 0;
+      this._yearsCompleted              = snap.yearsCompleted              ?? 0;
+      this._highestMonsterLevelDefeated = snap.highestMonsterLevelDefeated ?? -1;
+      this._highestCardLevelAcquired    = snap.highestCardLevelAcquired    ?? -1;
+      this._ultimateProductCrafted      = snap.ultimateProductCrafted      ?? false;
+      this._lv5BuildingPlaced           = snap.lv5BuildingPlaced           ?? false;
+      this._humanWildcardsObtained      = new Set(snap.humanWildcardsObtained  ?? []);
+      this._monsterWildcardsObtained    = new Set(snap.monsterWildcardsObtained ?? []);
+      this._firstSellCardDone           = snap.firstSellCardDone           ?? false;
+      this.reincarnationCount           = snap.reincarnationCount          ?? 0;
       // 清除构造器中可能遗留的 pending（加载存档时不触发解锁弹窗）
       this._pendingAchievement = null;
       const maxId = [...this.hand, ...this.field, ...this.discarded]
