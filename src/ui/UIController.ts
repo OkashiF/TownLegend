@@ -1,4 +1,4 @@
-import { store, defById, monthlyTax, shopRefreshCost, ACHIEVEMENT_DB } from '../systems/store';
+﻿import { store, defById, monthlyTax, shopRefreshCost, ACHIEVEMENT_DB } from '../systems/store';
 import { CardInstance, CardDefinition, CardType, JobType } from '../types';
 import { CARD_DB } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
@@ -427,7 +427,9 @@ function updateHUD() {
   ($('stat-month')    as HTMLElement).textContent = `Y${yr}·M${mo}·W${store.week}`;
   ($('stat-gold')     as HTMLElement).textContent = `💰 ${store.gold}`;
   ($('stat-level')    as HTMLElement).textContent = `⭐ ${store.townLevel}`;
-  ($('stat-progress') as HTMLElement).textContent = `${store.levelProgress}/${store.levelThreshold}`;
+  ($('stat-progress') as HTMLElement).textContent = store.levelMaxed
+    ? `${store.levelProgress}/∞`
+    : `${store.levelProgress}/${store.levelThreshold}`;
   ($('stat-field')    as HTMLElement).textContent = `${store.field.length}/${store.fieldCapacity}`;
   ($('stat-tax')      as HTMLElement).textContent = `🏛 ${monthlyTax(store.townLevel)}/月`;
 

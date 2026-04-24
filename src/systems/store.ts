@@ -1,4 +1,4 @@
-import {
+﻿import {
   CardInstance, CardDefinition, CardType, JobType, SpawnZone,
   HumanStats, MonsterStats, MagicStats, BuildingStats, ItemStack, SaveSnapshot, LootDef,
   AchievementRecord,
@@ -98,10 +98,10 @@ export { shopRefreshCost };
  * Lv3 卡贡献 9 单位（= 3张Lv2 = 9张Lv1）
  * ... Lv N 贡献 3^(N-1) 单位
  *
- * 城镇 x 级升级阈值 = 10x 单位（以Lv1为基准）
+ * 城镇 x 级升级阈值 = 10 × 3^(x-1) 单位（以Lv1为基准）
  * 即：1→2级 需要10单位（10张Lv1卡，或等价组合）
- *     2→3级 需要20单位
- *     3→4级 需要30单位
+ *     2→3级 需要30单位（对标10张Lv2卡）
+ *     3→4级 需要90单位（对标10张Lv3卡）
  */
 function computeCardRawValue(cards: CardInstance[]): number {
   return cards.reduce((sum, c) => {
@@ -112,9 +112,13 @@ function computeCardRawValue(cards: CardInstance[]): number {
   }, 0);
 }
 
-/** 升级阈值 = 10 × 城镇等级（以Lv1单位计） */
+/** 城镇等级上限 */
+export const MAX_TOWN_LEVEL = 6;
+
+/** 升级阈值 = 10 × 3^(townLevel-1)（以Lv1单位计）
+ *  1级→2级: 10, 2级→3级: 30, 3级→4级: 90, 4级→5级: 270, 5级→6级: 810 */
 function getLevelThreshold(townLevel: number): number {
-  return 10 * townLevel;
+  return 10 * Math.pow(3, townLevel - 1);
 }
 
 export function monthlyTax(level: number): number {
@@ -410,6 +414,8 @@ export class GameStore {
   }
   /** 升级阈值 */
   get levelThreshold(): number { return getLevelThreshold(this.townLevel); }
+  /** 是否已达等级上限 */
+  get levelMaxed(): boolean { return this.townLevel >= MAX_TOWN_LEVEL; }
 
   getLootDef(lootId: string): LootDef | undefined {
     return LOOT_DB.find(l => l.id === lootId);
@@ -752,7 +758,7 @@ export class GameStore {
 
     // 7. 升级检查
     const rawVal = computeCardRawValue([...this.hand, ...this.field]);
-    if (rawVal >= getLevelThreshold(this.townLevel)) {
+    if (this.townLevel < MAX_TOWN_LEVEL && rawVal >= getLevelThreshold(this.townLevel)) {
       this.townLevel++;
       this.monthStats.leveledUp = true;
       this.monthStats.newLevel  = this.townLevel;
