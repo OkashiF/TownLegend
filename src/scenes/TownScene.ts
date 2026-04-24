@@ -1456,10 +1456,12 @@ export class TownScene extends Phaser.Scene {
       position:absolute; right:0; top:40px; bottom:170px;
       width:220px; overflow-y:auto; overflow-x:hidden;
       background:rgba(10,5,2,0.82); border-left:2px solid #5a3a1a;
-      padding:8px 0; z-index:8; pointer-events:none;
+      padding:8px 0; z-index:8; pointer-events:auto;
       scrollbar-width:thin; scrollbar-color:#5a3a1a transparent;
       transition: width 0.2s ease;
     `;
+    // Stop wheel events from bubbling to the Phaser canvas (which would trigger camera zoom)
+    panel.addEventListener('wheel', e => { e.stopPropagation(); }, { passive: true });
     document.getElementById('game-container')!.appendChild(panel);
     this.sideLogEl = panel;
     for (const e of [...store.log].reverse()) this.pushLogEntry(e);

@@ -680,6 +680,7 @@ export class GameStore {
     const def = slot.def;
     if (this.gold < def.cost) return { ok: false, reason: `金币不足（需要 ${def.cost}）` };
     this.gold -= def.cost;
+    this.yearStats.totalExpenses += def.cost;
     slot.sold = true;
     this.hand.push(instantiate(def));
     this.yearStats.cardsBought++;
@@ -700,6 +701,7 @@ export class GameStore {
     const refCost = shopRefreshCost(this.townLevel);
     if (this.gold < refCost) return { ok: false, reason: `刷新需要${refCost}金币` };
     this.gold -= refCost;
+    this.yearStats.totalExpenses += refCost;
     this.refreshShopFull();
     this._shopRefreshCount++;
     this.checkAchievements();
@@ -714,6 +716,8 @@ export class GameStore {
       const refund = Math.max(1, Math.floor(def.cost * 0.3));
       this.hand.splice(handIdx, 1);
       this.gold += refund;
+      this.yearStats.totalIncome += refund;
+      this._totalGoldEarned += refund;
       this._firstSellCardDone = true;
       this.addLog(`💸 出售了 ${def.name}，回收 ${refund}💰`, 'info');
       this.checkAchievements();
@@ -734,6 +738,10 @@ export class GameStore {
       }
       this.field.splice(fieldIdx, 1);
       this.gold += refund;
+      if (refund > 0) {
+        this.yearStats.totalIncome += refund;
+        this._totalGoldEarned += refund;
+      }
       this._firstSellCardDone = true;
       if (def.type === CardType.Human && inst.jobAssignment === JobType.Combat) {
         this.checkSiegeTransition();
@@ -1236,6 +1244,7 @@ export class GameStore {
         monsterWildcardsObtained:    [...this._monsterWildcardsObtained],
         firstSellCardDone:           this._firstSellCardDone,
         reincarnationCount:          this.reincarnationCount,
+        yearStats:                   { ...this.yearStats },
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
     } catch (e) { console.warn('Save failed:', e); }
@@ -1300,6 +1309,9 @@ export class GameStore {
       this._monsterWildcardsObtained    = new Set(snap.monsterWildcardsObtained ?? []);
       this._firstSellCardDone           = snap.firstSellCardDone           ?? false;
       this.reincarnationCount           = snap.reincarnationCount          ?? 0;
+      this.yearStats = snap.yearStats
+        ? { ...snap.yearStats }
+        : { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
       // 清除构造器中可能遗留的 pending（加载存档时不触发解锁弹窗）
       this._pendingAchievement = null;
       const maxId = [...this.hand, ...this.field, ...this.discarded]
