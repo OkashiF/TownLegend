@@ -467,7 +467,7 @@
     }
 
     /* ── UI Scale（小/中/大三档，不影响 Phaser canvas）── */
-    #zoom-btn {
+    #zoom-btn, #reincarnate-btn {
       font-family: 'Silkscreen', monospace;
       font-size: 10px;
       background: rgba(0,0,0,0.4);
@@ -480,6 +480,69 @@
       transition: all .15s;
     }
     #zoom-btn:hover { background: rgba(90,58,26,0.7); color: var(--gold); }
+    #reincarnate-btn:not(:disabled):hover { background: rgba(90,58,26,0.7); color: var(--gold); }
+    #reincarnate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Reincarnate modal ── */
+    #reincarnate-modal {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+    }
+    #reincarnate-modal.open { display: flex; }
+    #reincarnate-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--gold);
+      border-radius: 6px;
+      padding: 24px;
+      min-width: 280px;
+      max-width: 420px;
+    }
+    #reincarnate-title {
+      font-family: 'Silkscreen', monospace;
+      font-size: 14px;
+      color: var(--gold);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    #reincarnate-desc {
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--parchment);
+      margin-bottom: 16px;
+    }
+    #reincarnate-actions {
+      display: flex;
+      gap: 8px;
+    }
+    #reincarnate-confirm {
+      flex: 1;
+      font-family: 'Silkscreen', monospace;
+      font-size: 11px;
+      background: #4a2a0a;
+      color: var(--gold-light);
+      border: 1px solid var(--gold);
+      padding: 8px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    #reincarnate-confirm:hover { background: #6a3a10; }
+    #reincarnate-cancel {
+      flex: 1;
+      font-family: 'Silkscreen', monospace;
+      font-size: 11px;
+      background: #333;
+      color: #999;
+      border: 1px solid #444;
+      padding: 8px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    #reincarnate-cancel:hover { background: #444; color: #bbb; }
 
     body.ui-md #hud,
     body.ui-md #card-panel,
@@ -487,7 +550,8 @@
     body.ui-md #log-toggle,
     body.ui-md #card-action-menu,
     body.ui-md #assign-modal,
-    body.ui-md #modal-overlay { zoom: 1.25; }
+    body.ui-md #modal-overlay,
+    body.ui-md #reincarnate-modal { zoom: 1.25; }
 
     body.ui-lg #hud,
     body.ui-lg #card-panel,
@@ -495,7 +559,8 @@
     body.ui-lg #log-toggle,
     body.ui-lg #card-action-menu,
     body.ui-lg #assign-modal,
-    body.ui-lg #modal-overlay { zoom: 1.5; }
+    body.ui-lg #modal-overlay,
+    body.ui-lg #reincarnate-modal { zoom: 1.5; }
   </style>
 </head>
 <body>
@@ -510,7 +575,9 @@
       <div class="hud-stat"><span class="label">等级</span><span class="value" id="stat-level">⭐ 1</span></div>
       <div class="hud-stat"><span class="label">升级</span><span class="value" id="stat-progress">0/10</span></div>
       <div class="hud-stat"><span class="label">场上</span><span class="value" id="stat-field">0/5</span></div>
+      <div class="hud-stat" id="stat-reincarnation" style="display:none"><span class="label">轮回</span><span class="value" id="stat-reincarnation-val">♻ 0</span></div>
       <div class="hud-spacer"></div>
+      <button id="reincarnate-btn" title="城镇达到6级后可触发轮回重生" disabled>♻ 轮回</button>
       <button id="zoom-btn" title="切换界面缩放：小/中/大">缩放:小</button>
       <div id="month-progress-wrap" title="本月进度">
         <div id="month-progress-bar"></div>
@@ -571,6 +638,18 @@
       <div id="modal-title"></div>
       <div id="modal-body"></div>
       <button id="modal-close">关闭</button>
+    </div>
+  </div>
+
+  <!-- Reincarnate modal -->
+  <div id="reincarnate-modal">
+    <div id="reincarnate-box">
+      <div id="reincarnate-title">♻ 轮回转世</div>
+      <div id="reincarnate-desc">轮回将清空所有卡牌、金币、时间进度，仅保留成就与轮回次数，确认吗？</div>
+      <div id="reincarnate-actions">
+        <button id="reincarnate-confirm">✅ 确认轮回</button>
+        <button id="reincarnate-cancel">❌ 取消</button>
+      </div>
     </div>
   </div>
 </div>

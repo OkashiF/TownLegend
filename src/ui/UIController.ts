@@ -1,4 +1,4 @@
-﻿import { store, defById, monthlyTax, shopRefreshCost, ACHIEVEMENT_DB } from '../systems/store';
+﻿import { store, defById, monthlyTax, shopRefreshCost, ACHIEVEMENT_DB, MAX_TOWN_LEVEL } from '../systems/store';
 import { CardInstance, CardDefinition, CardType, JobType } from '../types';
 import { CARD_DB } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
@@ -433,6 +433,19 @@ function updateHUD() {
   ($('stat-field')    as HTMLElement).textContent = `${store.field.length}/${store.fieldCapacity}`;
   ($('stat-tax')      as HTMLElement).textContent = `🏛 ${monthlyTax(store.townLevel)}/月`;
 
+  // 轮回次数
+  const reincStat = document.getElementById('stat-reincarnation');
+  const reincVal  = document.getElementById('stat-reincarnation-val');
+  if (reincStat && reincVal) {
+    reincVal.textContent = `♻ ${store.reincarnationCount}`;
+    reincStat.style.display = store.reincarnationCount >= 1 ? '' : 'none';
+  }
+  // 轮回按钮：仅城镇满级时可点击
+  const reincBtn = document.getElementById('reincarnate-btn') as HTMLButtonElement | null;
+  if (reincBtn) {
+    reincBtn.disabled = store.townLevel < MAX_TOWN_LEVEL;
+  }
+
   // 攻城中：顶栏变红提示
   const topBar = document.getElementById('top-bar');
   if (topBar) {
@@ -555,6 +568,22 @@ export function initUI() {
 
   $('modal-close').addEventListener('click',  () => $('modal-overlay').classList.remove('open'));
   $('assign-cancel').addEventListener('click', () => $('assign-modal').classList.remove('open'));
+
+  // ── Reincarnate modal ──────────────────────────────────────────────────────
+  $('reincarnate-btn').addEventListener('click', () => {
+    $('reincarnate-modal').classList.add('open');
+  });
+  $('reincarnate-confirm').addEventListener('click', () => {
+    $('reincarnate-modal').classList.remove('open');
+    store.reincarnate();
+    notify(`♻ 第 ${store.reincarnationCount} 次轮回！城镇重建完成。`, 'success');
+    setTab('shop');
+    updateHUD();
+    renderCurrentTab();
+  });
+  $('reincarnate-cancel').addEventListener('click', () => {
+    $('reincarnate-modal').classList.remove('open');
+  });
 
   store.subscribe(evt => {
     updateHUD();
