@@ -570,8 +570,9 @@ totalCraftMult = buildingBonus × hasteBonus
 ## 存档系统
 
 - 存档时机：每月末结算完成后自动写入 `localStorage`，key 为 `town_legend_save`。
-- 版本号：`7`（与旧版不兼容，升级后会忽略旧存档；v7 扩展成就系统至100个，新增轮回系统）。
-- 新增字段：`achievements`（成就解锁记录）、`totalCardsBought`、`totalUpgradesDone`、`totalMonstersDefeated`、`wildcardEverTriggered`、`wildcardCount`、`totalProductsCrafted`、`firstShopSaleDone`、`totalProductsSold`、`totalGoldEarned`、`maxMonthlyShopIncome`、`consecutiveMonthsNoSiege`、`siegesRepelled`、`firstJobAssigned`、`firstMonsterOnField`、`firstBuildingOnField`、`firstMagicCardObtained`、`shopRefreshCount`、`yearsCompleted`、`highestMonsterLevelDefeated`、`highestCardLevelAcquired`、`ultimateProductCrafted`、`lv5BuildingPlaced`、`humanWildcardsObtained`、`monsterWildcardsObtained`、`firstSellCardDone`（成就追踪计数，永不清零）；`reincarnationCount`（轮回次数，永不清零）。
+- 版本号：`7`（v7 扩展成就系统至100个，新增轮回系统）。
+- **向后兼容迁移**：加载时检测到版本号不一致时不再忽略旧存档，而是原地迁移——所有新增字段以 `?? defaultValue` 提供安全默认值；成就记录以 `ACHIEVEMENT_DB` 为准与旧存档合并（已解锁的成就保留，旧存档中没有的新成就补充为未解锁）；迁移完成后自动用新版本号重新写入存档，日志提示"📦 已从旧版本迁移存档，部分字段已补充默认值。"
+- 字段说明：`achievements`（成就解锁记录）；`totalCardsBought`、`totalUpgradesDone`、`totalMonstersDefeated`、`wildcardEverTriggered`、`wildcardCount`、`totalProductsCrafted`、`firstShopSaleDone`、`totalProductsSold`、`totalGoldEarned`、`maxMonthlyShopIncome`、`consecutiveMonthsNoSiege`、`siegesRepelled`、`firstJobAssigned`、`firstMonsterOnField`、`firstBuildingOnField`、`firstMagicCardObtained`、`shopRefreshCount`、`yearsCompleted`、`highestMonsterLevelDefeated`、`highestCardLevelAcquired`、`ultimateProductCrafted`、`lv5BuildingPlaced`、`humanWildcardsObtained`、`monsterWildcardsObtained`、`firstSellCardDone`（成就追踪计数，永不清零）；`reincarnationCount`（轮回次数，永不清零）。
 
 ---
 
@@ -894,6 +895,7 @@ totalCraftMult = buildingBonus × hasteBonus
 - ✅ **成就系统扩展至100个**（按城镇等级分为5阶段：1级18个、2级17个、3级18个、4级19个、5级28个；新增完整追踪字段；存档版本升至7）
 - ✅ **轮回系统**（城镇6级满后解锁♻轮回按钮；轮回清空进度仅保留成就与轮回次数；顶栏显示轮回计数器；轮回弹窗二次确认）
 - ✅ **UI界面大小调节**（顶栏新增"缩放"按钮，循环切换小/中/大三档，分别对应 1×/1.25×/1.5× zoom；仅缩放DOM UI层，不影响Phaser canvas；设置持久化至 localStorage）
+- ✅ **存档向后兼容迁移**（旧版存档不再被忽略，所有新增字段以默认值补全，成就记录合并保留已解锁状态，迁移后自动重写新版本号存档）
 
 ---
 
@@ -960,4 +962,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 ---
 
-*文档版本：v3.0 · 最后更新：成就系统扩展至100个（5阶段）+ 轮回系统 + UI界面大小调节*
+*文档版本：v3.1 · 最后更新：成就系统扩展至100个（5阶段）+ 轮回系统 + UI界面大小调节 + 存档向后兼容迁移*
