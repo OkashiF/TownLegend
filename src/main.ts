@@ -3,7 +3,6 @@ import { TownScene } from './scenes/TownScene';
 import { initUI } from './ui/UIController';
 
 // ── World dimensions ───────────────────────────────────────────────────────────
-export const WORLD_WIDTH  = 3600;   // logical world width in px
 export const WORLD_HEIGHT = 600;    // will be overridden at runtime by scene height
 
 function getGameHeight(): number {
