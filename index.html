@@ -465,6 +465,37 @@
       overflow-x: auto;
       padding-bottom: 4px;
     }
+
+    /* ── UI Scale（小/中/大三档，不影响 Phaser canvas）── */
+    #zoom-btn {
+      font-family: 'Silkscreen', monospace;
+      font-size: 10px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--panel-border);
+      border-radius: 3px;
+      padding: 3px 7px;
+      color: #9a7a50;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    #zoom-btn:hover { background: rgba(90,58,26,0.7); color: var(--gold); }
+
+    body.ui-md #hud,
+    body.ui-md #card-panel,
+    body.ui-md #notifications,
+    body.ui-md #log-toggle,
+    body.ui-md #card-action-menu,
+    body.ui-md #assign-modal,
+    body.ui-md #modal-overlay { zoom: 1.25; }
+
+    body.ui-lg #hud,
+    body.ui-lg #card-panel,
+    body.ui-lg #notifications,
+    body.ui-lg #log-toggle,
+    body.ui-lg #card-action-menu,
+    body.ui-lg #assign-modal,
+    body.ui-lg #modal-overlay { zoom: 1.5; }
   </style>
 </head>
 <body>
@@ -480,6 +511,7 @@
       <div class="hud-stat"><span class="label">升级</span><span class="value" id="stat-progress">0/10</span></div>
       <div class="hud-stat"><span class="label">场上</span><span class="value" id="stat-field">0/5</span></div>
       <div class="hud-spacer"></div>
+      <button id="zoom-btn" title="切换界面缩放：小/中/大">缩放:小</button>
       <div id="month-progress-wrap" title="本月进度">
         <div id="month-progress-bar"></div>
       </div>
@@ -545,6 +577,39 @@
 
 <script>
   (function () {
+    /* ── UI Zoom ── */
+    var ZOOM_LEVELS = ['sm', 'md', 'lg'];
+    var ZOOM_LABELS = { sm: '缩放:小', md: '缩放:中', lg: '缩放:大' };
+    var ZOOM_KEY    = 'ui-zoom';
+
+    function applyZoom(level) {
+      document.body.classList.remove('ui-sm', 'ui-md', 'ui-lg');
+      if (level === 'md' || level === 'lg') {
+        document.body.classList.add('ui-' + level);
+      }
+      var btn = document.getElementById('zoom-btn');
+      if (btn) btn.textContent = ZOOM_LABELS[level];
+      localStorage.setItem(ZOOM_KEY, level);
+      window.dispatchEvent(new Event('resize'));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var saved = localStorage.getItem(ZOOM_KEY);
+      var initial = (saved === 'md' || saved === 'lg') ? saved : 'sm';
+      applyZoom(initial);
+
+      var btn = document.getElementById('zoom-btn');
+      if (btn) {
+        btn.addEventListener('click', function () {
+          var current = localStorage.getItem(ZOOM_KEY) || 'sm';
+          var idx     = ZOOM_LEVELS.indexOf(current);
+          var next    = ZOOM_LEVELS[(idx + 1) % ZOOM_LEVELS.length];
+          applyZoom(next);
+        });
+      }
+    });
+
+    /* ── Log toggle ── */
     let logOpen = true;
     const LOG_WIDTH = 220;
 
