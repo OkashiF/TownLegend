@@ -84,6 +84,10 @@ export class TownScene extends Phaser.Scene {
 
   private zoneConfig!: ZoneConfig;
 
+  /** UIController sets this true during card drag to suppress camera movement */
+  isCardDragActive = false;
+  private dropZoneOverlays: Phaser.GameObjects.GameObject[] = [];
+
   private sprites:      Map<string, FieldSprite> = new Map();
   private lootDrops:    Map<string, LootDrop>    = new Map();
   private passerbyList: PasserbySprite[] = [];
@@ -175,6 +179,9 @@ export class TownScene extends Phaser.Scene {
       }
     });
     this.syncSprites();
+
+    // Expose reference so UIController can access without circular imports
+    (window as any).__townScene = this;
   }
 
   update(_t: number, delta: number) {
@@ -191,11 +198,13 @@ export class TownScene extends Phaser.Scene {
   private setupCameraControls() {
     const cam = this.cameras.main;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.isCardDragActive) return;
       this.isDragging = true;
       this.dragStartX = p.x;
       this.dragCamX   = cam.scrollX;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.isCardDragActive) return;
       if (!this.isDragging) return;
       const dx = (p.x - this.dragStartX) / cam.zoom;
       cam.scrollX = Phaser.Math.Clamp(this.dragCamX - dx, 0, this.zoneConfig.worldWidth - cam.width / cam.zoom);
@@ -1513,6 +1522,99 @@ export class TownScene extends Phaser.Scene {
     requestAnimationFrame(() => { el.style.opacity = '1'; });
     while (this.sideLogEl.children.length > 60)
       this.sideLogEl.removeChild(this.sideLogEl.lastChild!);
+  }
+
+  // ── Drag-and-drop support (called by UIController) ───────────────────────────
+
+  /** Highlight valid drop areas for the given card type. */
+  showDropZones(cardType: CardType, _defId: string) {
+    this.hideDropZones();
+    const z  = this.zoneConfig;
+    const gy = this.groundY;
+    const H  = this.sceneH;
+
+    const labelStyle = {
+      fontFamily: '"Silkscreen", monospace',
+      fontSize: '9px',
+      color: '#ffd040',
+      stroke: '#000000',
+      strokeThickness: 2,
+    };
+
+    const addZone = (x: number, w: number, label: string) => {
+      const g = this.add.graphics();
+      g.fillStyle(0xffd040, 0.18);
+      g.fillRect(x, 0, w, H - 20);
+      g.lineStyle(1.5, 0xffd040, 0.65);
+      g.strokeRect(x, 0, w, H - 20);
+      const t = this.add.text(x + w / 2, gy - 90, label, labelStyle).setOrigin(0.5, 1);
+      this.fxLayer.add(g);
+      this.fxLayer.add(t);
+      this.dropZoneOverlays.push(g, t);
+    };
+
+    if (cardType === CardType.Human) {
+      addZone(z.shop    - 120, 240, '商店');
+      addZone(z.craft   - 120, 240, '制造');
+      addZone(z.barracks - 120, 240, '兵营');
+      addZone(z.town    - 120, 240, '大厅');
+    } else if (cardType === CardType.Monster) {
+      addZone(z.wallLeft  - 300, 200, '左侧出生');
+      addZone(z.wallRight + 100, 200, '右侧出生');
+    } else if (cardType === CardType.Building || cardType === CardType.Magic) {
+      addZone(z.wallLeft, z.wallRight - z.wallLeft, '放置区域');
+    }
+  }
+
+  /** Remove all drop zone highlights. */
+  hideDropZones() {
+    for (const obj of this.dropZoneOverlays) {
+      obj.destroy();
+    }
+    this.dropZoneOverlays = [];
+  }
+
+  /** Convert a CSS-pixel screen position to Phaser world coordinates. */
+  screenToWorld(clientX: number, clientY: number): { worldX: number; worldY: number } {
+    const rect = this.game.canvas.getBoundingClientRect();
+    const cam  = this.cameras.main;
+    const sx   = this.game.canvas.width  / rect.width;
+    const sy   = this.game.canvas.height / rect.height;
+    return {
+      worldX: (clientX - rect.left) * sx / cam.zoom + cam.scrollX,
+      worldY: (clientY - rect.top)  * sy / cam.zoom + cam.scrollY,
+    };
+  }
+
+  /** Return the best matching drop zone for the given world X, or null if none. */
+  hitTestDropZone(worldX: number, cardType: CardType): { job?: JobType } | null {
+    const z = this.zoneConfig;
+
+    if (cardType === CardType.Human) {
+      const centers: [number, JobType][] = [
+        [z.shop,     JobType.Shop],
+        [z.craft,    JobType.Craft],
+        [z.barracks, JobType.Combat],
+        [z.town,     JobType.Idle],
+      ];
+      let best: [number, JobType] | null = null;
+      let bestDist = Infinity;
+      for (const [cx, job] of centers) {
+        const d = Math.abs(worldX - cx);
+        if (d < bestDist) { bestDist = d; best = [cx, job]; }
+      }
+      if (best && bestDist < 150) return { job: best[1] };
+      return null;
+    }
+
+    if (cardType === CardType.Monster) {
+      if (worldX < z.wallLeft - 60 || worldX > z.wallRight + 60) return {};
+      return null;
+    }
+
+    // Building / Magic: anywhere inside the walls
+    if (worldX >= z.wallLeft && worldX <= z.wallRight) return {};
+    return null;
   }
 }
 
