@@ -1638,18 +1638,16 @@ export class TownScene extends Phaser.Scene {
       addZone(z.barracks - 120, 240, '兵营');
       addZone(z.town    - 120, 240, '大厅');
     } else if (cardType === CardType.Monster) {
-      const GAP = 160;
-      const occupiedXs = store.field
-        .filter(c => defById(c.definitionId).type === CardType.Monster && c.fieldX != null)
-        .map(c => c.fieldX!);
-      const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+      // Monster spawn zones are off-screen (world coords ~700 and ~2900) while the
+      // camera shows the town center (~1800). Draw viewport-relative overlay panels
+      // so the player always sees the drop guides regardless of camera position.
+      const cam    = this.cameras.main;
+      const vpLeft = cam.scrollX;
+      const vpW    = cam.width / cam.zoom;
+      const vpZoneW = vpW * 0.28;  // each guide covers ~28% of visible width
 
-      for (const side of ['left', 'right'] as const) {
-        const cells = this.generateMonsterCells(side);
-        for (const cx of cells) {
-          if (!isOccupied(cx)) addCellHighlight(cx);
-        }
-      }
+      addZone(vpLeft,                vpZoneW, '← 怪物区（左侧）');
+      addZone(vpLeft + vpW - vpZoneW, vpZoneW, '怪物区（右侧）→');
     } else if (cardType === CardType.Building) {
       const GAP = 140;
       const occupiedXs = store.field
@@ -1708,38 +1706,29 @@ export class TownScene extends Phaser.Scene {
     }
 
     if (cardType === CardType.Monster) {
-      // Snap to nearest empty monster cell regardless of where the card was dropped.
-      // The initial camera is centered on the town, so the monster cells outside the
-      // walls may be off-screen; removing the zone guard lets the user simply drag
-      // the card anywhere on the canvas and have it land on the closest valid cell.
-      const GAP = 160;
-      const leftCells  = this.generateMonsterCells('left');
-      const rightCells = this.generateMonsterCells('right');
-      const allCells   = [...leftCells, ...rightCells];
+      // Determine side by whether the drop is left or right of the world mid-point.
+      // This maps naturally to screen position: drag to left half of the canvas →
+      // left monster zone, drag to right half → right monster zone.
+      const midX  = z.worldWidth / 2;
+      const side  = worldX < midX ? 'left' : 'right';
+      const GAP   = 160;
 
+      const sideCells  = this.generateMonsterCells(side);
       const occupiedXs = store.field
         .filter(c => defById(c.definitionId).type === CardType.Monster && c.fieldX != null)
         .map(c => c.fieldX!);
       const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
-      const emptyCells = allCells.filter(x => !isOccupied(x));
+      const emptyCells = sideCells.filter(x => !isOccupied(x));
 
       if (emptyCells.length === 0) {
-        // All cells full: extend by one more cell on the side nearest the drop point
-        const side = worldX < z.wallLeft ? 'left' : 'right';
-        const baseCells = side === 'left' ? leftCells : rightCells;
+        // All cells full on chosen side: extend one more cell outward
         const start = side === 'left' ? z.wallLeft - 200 : z.wallRight + 200;
         const dir   = side === 'left' ? -1 : 1;
-        return { fieldX: start + dir * baseCells.length * GAP };
+        return { fieldX: start + dir * sideCells.length * GAP };
       }
 
-      // Snap to nearest empty cell
-      let best = emptyCells[0];
-      let bestDist = Math.abs(worldX - best);
-      for (const x of emptyCells.slice(1)) {
-        const d = Math.abs(worldX - x);
-        if (d < bestDist) { bestDist = d; best = x; }
-      }
-      return { fieldX: best };
+      // Place at the first (closest-to-wall) empty cell on the chosen side
+      return { fieldX: emptyCells[0] };
     }
 
     if (cardType === CardType.Building) {
