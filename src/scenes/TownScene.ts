@@ -1197,6 +1197,7 @@ export class TownScene extends Phaser.Scene {
     const W  = this.zoneConfig.worldWidth;
     const H  = this.sceneH;
     const gy = this.groundY;
+    const lv = store.townLevel;
     const g  = this.add.graphics();
     this.bgLayer.add(g);
 
@@ -1215,25 +1216,134 @@ export class TownScene extends Phaser.Scene {
     const wallLeft  = this.zoneConfig.wallLeft;
     const wallRight = this.zoneConfig.wallRight;
     const roadW = wallRight - wallLeft;
-    g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy, roadW, 40);
-    g.fillStyle(0x9a8a70); g.fillRect(wallLeft, gy + 2, roadW, 32);
-    g.fillStyle(0x6a5a48);
-    for (let rx = wallLeft; rx < wallRight; rx += 48) {
-      g.fillRect(rx, gy + 2, 2, 32);
+
+    // Road appearance by level
+    if (lv >= 6) {
+      // Lv6: 发光星纹地板 — 蓝紫色魔法铺路
+      g.fillStyle(0x282048); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0x383060); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // glowing grid lines (blue-purple)
+      g.fillStyle(0x6060c8);
+      for (let rx = wallLeft; rx < wallRight; rx += 40) {
+        g.fillRect(rx, gy + 2, 1, 32);
+      }
+      for (let ry = gy + 8; ry < gy + 36; ry += 8) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      // star sparkles
+      g.fillStyle(0xa0b0ff);
+      for (let i = 0; i < 30; i++) {
+        const rx = wallLeft + 8 + (i * 61 % (roadW - 16));
+        const ry = gy + 6 + (i * 41 % 22);
+        g.fillRect(rx, ry, 2, 2);
+      }
+    } else if (lv >= 5) {
+      // Lv5: 大理石铺路，金色路石
+      g.fillStyle(0xd0c8a8); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0xe0d8b8); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // marble grid
+      g.fillStyle(0xb8b098);
+      for (let rx = wallLeft; rx < wallRight; rx += 48) {
+        g.fillRect(rx, gy + 2, 2, 32);
+      }
+      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      // golden accent stones
+      g.fillStyle(0xd4a017);
+      for (let i = 0; i < 20; i++) {
+        const rx = wallLeft + 12 + (i * 73 % (roadW - 24));
+        const ry = gy + 6 + (i * 43 % 22);
+        g.fillRect(rx, ry, 4, 2);
+      }
+    } else if (lv >= 4) {
+      // Lv4: 精雕石板路，路石高光
+      g.fillStyle(0xa8a090); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0xb8b0a0); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      g.fillStyle(0x888070);
+      for (let rx = wallLeft; rx < wallRight; rx += 48) {
+        g.fillRect(rx, gy + 2, 2, 32);
+      }
+      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      // polished stone highlights
+      g.fillStyle(0xc8c0a8);
+      for (let i = 0; i < 30; i++) {
+        const rx = wallLeft + 8 + (i * 59 % (roadW - 16));
+        const ry = gy + 4 + (i * 37 % 22);
+        g.fillRect(rx, ry, 6, 2);
+      }
+    } else if (lv >= 3) {
+      // Lv3: 石板路 + 路沿
+      g.fillStyle(0x8a8878); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0x9a9888); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // stone tile joints
+      g.fillStyle(0x686858);
+      for (let rx = wallLeft; rx < wallRight; rx += 48) {
+        g.fillRect(rx, gy + 2, 2, 32);
+      }
+      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      // curb edges
+      g.fillStyle(0xb0a898); g.fillRect(wallLeft, gy, 4, 40);
+      g.fillStyle(0xb0a898); g.fillRect(wallRight - 4, gy, 4, 40);
+      // pebble details
+      g.fillStyle(0xb8b0a0);
+      for (let i = 0; i < 25; i++) {
+        const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
+        const ry = gy + 6 + (i * 37 % 22);
+        g.fillRect(rx, ry, 3, 2);
+      }
+    } else if (lv >= 2) {
+      // Lv2: 夯土路 + 草边
+      g.fillStyle(0x7a6a50); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      g.fillStyle(0x6a5a48);
+      for (let rx = wallLeft; rx < wallRight; rx += 48) {
+        g.fillRect(rx, gy + 2, 2, 32);
+      }
+      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      g.fillStyle(0xa89878);
+      for (let i = 0; i < 30; i++) {
+        const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
+        const ry = gy + 6 + (i * 37 % 22);
+        g.fillRect(rx, ry, 4, 2);
+      }
+    } else {
+      // Lv1: 泥土小道 (original)
+      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy, roadW, 40);
+      g.fillStyle(0x9a8a70); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      g.fillStyle(0x6a5a48);
+      for (let rx = wallLeft; rx < wallRight; rx += 48) {
+        g.fillRect(rx, gy + 2, 2, 32);
+      }
+      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+        g.fillRect(wallLeft, ry, roadW, 1);
+      }
+      g.fillStyle(0x5a8a40);
+      for (let rx = wallLeft; rx < wallRight; rx += 18) {
+        const h2 = 3 + (rx % 3);
+        g.fillRect(rx, gy - h2, 4, h2);
+      }
+      g.fillStyle(0xb0a088);
+      for (let i = 0; i < 40; i++) {
+        const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
+        const ry = gy + 6 + (i * 37 % 22);
+        g.fillRect(rx, ry, 3, 2);
+      }
     }
-    for (let ry = gy + 12; ry < gy + 36; ry += 12) {
-      g.fillRect(wallLeft, ry, roadW, 1);
-    }
-    g.fillStyle(0x5a8a40);
-    for (let rx = wallLeft; rx < wallRight; rx += 18) {
-      const h2 = 3 + (rx % 3);
-      g.fillRect(rx, gy - h2, 4, h2);
-    }
-    g.fillStyle(0xb0a088);
-    for (let i = 0; i < 40; i++) {
-      const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
-      const ry = gy + 6 + (i * 37 % 22);
-      g.fillRect(rx, ry, 3, 2);
+
+    // Lv3+: grass tufts along road edge
+    if (lv >= 2) {
+      g.fillStyle(0x5a8a40);
+      for (let rx = wallLeft; rx < wallRight; rx += 18) {
+        const h2 = 3 + (rx % 3);
+        g.fillRect(rx, gy - h2, 4, h2);
+      }
     }
 
     g.fillStyle(0x7a6050); g.fillRect(0, gy, wallLeft, 30);
@@ -1313,13 +1423,34 @@ export class TownScene extends Phaser.Scene {
       this.bgLayer.add(t);
     }
 
-    this.buildWalls(g, gy, H);
+    this.buildWalls(g, gy, H, lv);
   }
 
-  private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number) {
-    const wallH = 70, wallW = 28, gateW = 36, crenH = 10, crenW = 10, crenGap = 8;
-    const stoneLight = 0xa09070, stoneMid = 0x806850, stoneDark = 0x604830;
-    const gateColor = 0x3a2010, gateHigh = 0x5a3820;
+  private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number, townLevel: number) {
+    // Dimensions scale up with town level
+    const wallH  = [55, 70, 82, 97, 114, 134][townLevel - 1] ?? 70;
+    const wallW  = [22, 28, 33, 39, 46,  54][townLevel - 1]  ?? 28;
+    const gateW  = [30, 36, 42, 46, 50,  56][townLevel - 1]  ?? 36;
+    const crenH  = [ 7, 10, 13, 15, 17,  20][townLevel - 1]  ?? 10;
+    const crenW  = [ 8, 10, 11, 12, 14,  16][townLevel - 1]  ?? 10;
+    const crenGap = [6,  8,  9, 10, 11,  12][townLevel - 1]  ?? 8;
+
+    // Colour palette varies by level
+    const palettes: [number, number, number, number, number][] = [
+      // stoneLight,  stoneMid,   stoneDark,  gateColor,  gateHigh      — wood/rough for Lv1
+      [0xa09060, 0x806840, 0x585020, 0x4a2c10, 0x6a4220],
+      // Lv2 — stone (original)
+      [0xa09070, 0x806850, 0x604830, 0x3a2010, 0x5a3820],
+      // Lv3 — heavier castle stone
+      [0x9a9080, 0x707060, 0x504840, 0x382810, 0x584030],
+      // Lv4 — dark fortress stone + iron gate
+      [0x9a9888, 0x787068, 0x585048, 0x282020, 0x484040],
+      // Lv5 — noble stone with gold trim
+      [0xb0a888, 0x888070, 0x605848, 0x2a1808, 0x4a3020],
+      // Lv6 — legendary dark stone with magic glow
+      [0x9090a8, 0x686878, 0x484858, 0x181018, 0x383048],
+    ];
+    const [stoneLight, stoneMid, stoneDark, gateColor, gateHigh] = palettes[townLevel - 1] ?? palettes[1];
 
     for (const wallX of [this.zoneConfig.wallLeft, this.zoneConfig.wallRight]) {
       const wx = wallX - wallW / 2;
@@ -1338,29 +1469,70 @@ export class TownScene extends Phaser.Scene {
           g.fillStyle(stoneDark); g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
         }
         g.fillStyle(stoneDark); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - wallH - 10, 3, 8);
+
+        // Lv3+: extra horizontal belt on tower
+        if (townLevel >= 3) {
+          g.fillStyle(stoneDark); g.fillRect(tx, gy - wallH - 20 + Math.floor((wallH + 20) / 2), towerW, 3);
+        }
+        // Lv5+: decorative spire on tower top
+        if (townLevel >= 5) {
+          const spireX = tx + Math.floor(towerW / 2) - 2;
+          g.fillStyle(0xd4a017); g.fillRect(spireX, gy - wallH - 20 - crenH - 10, 4, 10);
+          g.fillStyle(0xffd040); g.fillRect(spireX + 1, gy - wallH - 20 - crenH - 12, 2, 4);
+        }
+        // Lv6: magic glow on battlements
+        if (townLevel >= 6) {
+          for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
+            g.fillStyle(0x8060ff, 0.7);
+            g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
+          }
+        }
       }
+
       g.fillStyle(gateColor); g.fillRect(wx + wallW, gy - 44, gateW, 44);
       g.fillStyle(gateHigh); g.fillRect(wx + wallW + 2, gy - 42, gateW - 4, 5);
       g.fillStyle(gateColor); g.fillRect(wx + wallW + 4, gy - 50, gateW - 8, 8);
       g.fillRect(wx + wallW + 2, gy - 48, gateW - 4, 4);
-      g.fillStyle(0x484030);
-      for (let bar = 0; bar < 4; bar++) {
-        g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
+
+      // Lv4+: iron portcullis bars
+      if (townLevel >= 4) {
+        g.fillStyle(0x484040);
+        for (let bar = 0; bar < 4; bar++) {
+          g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
+        }
+        g.fillStyle(0x484040);
+        for (let row = 0; row < 3; row++) {
+          g.fillRect(wx + wallW + 4, gy - 44 + row * 14, gateW - 8, 2);
+        }
+      } else {
+        g.fillStyle(0x484030);
+        for (let bar = 0; bar < 4; bar++) {
+          g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
+        }
       }
+
       g.fillStyle(0x201000, 0.4); g.fillRect(wx + wallW, gy, gateW, 8);
+
+      // Lv5+: gold crest emblem above gate
+      if (townLevel >= 5) {
+        const gcx = wx + wallW + Math.floor(gateW / 2) - 4;
+        g.fillStyle(0xd4a017); g.fillRect(gcx, gy - wallH - 6, 8, 6);
+        g.fillStyle(0xffd040); g.fillRect(gcx + 2, gy - wallH - 8, 4, 4);
+      }
     }
   }
 
   private buildZoneBuildings() {
     const gy = this.groundY;
     const scale = 3;
+    const lv = store.townLevel;
 
     type DrawFnType = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void;
     const zones: [string, DrawFnType, number][] = [
-      ['bldg_shop',     drawShopBuilding,   this.zoneConfig.shop],
-      ['bldg_craft',    drawCraftBuilding,  this.zoneConfig.craft],
-      ['bldg_townhall', drawTownHall,       this.zoneConfig.town],
-      ['bldg_barracks', drawCombatBuilding, this.zoneConfig.barracks],
+      [`bldg_shop_lv${lv}`,     (g, x, y, s) => drawShopBuilding(g, x, y, s, lv),   this.zoneConfig.shop],
+      [`bldg_craft_lv${lv}`,    (g, x, y, s) => drawCraftBuilding(g, x, y, s, lv),  this.zoneConfig.craft],
+      [`bldg_townhall_lv${lv}`, (g, x, y, s) => drawTownHall(g, x, y, s, lv),       this.zoneConfig.town],
+      [`bldg_barracks_lv${lv}`, (g, x, y, s) => drawCombatBuilding(g, x, y, s, lv), this.zoneConfig.barracks],
     ];
 
     for (const [key, fn, cx] of zones) {
@@ -1774,19 +1946,144 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
+function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1) {
   function px(c: number, px2: number, py: number, w: number, h: number) {
     g.fillStyle(c, 1); g.fillRect(px2 * s, py * s, w * s, h * s);
   }
-  px(0x8a7060, x+1,  y+5,  10, 12);
-  px(0x7a6050, x+1,  y+15, 10, 2);
-  px(0x8a3030, x,    y+2,  12, 4);
-  px(0xa04040, x+1,  y+1,  10, 1);
-  px(0xa04040, x+2,  y+0,   8, 1);
-  px(0x5a3010, x+4,  y+9,   4, 8);
-  px(0x8a5020, x+4,  y+10,  1, 1);
-  px(0xd0c090, x+2,  y+6,   2, 3);
-  px(0xd0c090, x+8,  y+6,   2, 3);
-  px(0xd4a017, x+5,  y+2,   2, 3);
-  px(0xcc3030, x+6,  y+1,   3, 2);
+  if (townLevel >= 6) {
+    // Lv6: 神圣议政殿 — 光环，金柱，华盖
+    px(0x706080, x+1,  y+2,  10, 15); // divine purple walls
+    px(0x504060, x+1,  y+15, 10,  2); // base
+    px(0x906090, x,    y+0,  12,  3); // divine canopy roof
+    px(0xffd040, x,    y+0,  12,  1); // gold rim
+    // golden columns
+    px(0xd4a017, x+1,  y+2,   1, 13);
+    px(0xd4a017, x+10, y+2,   1, 13);
+    // halo / glow ring at top
+    px(0xffd040, x+2,  y+0,   8,  1);
+    px(0xffffff, x+5,  y+0,   2,  1); // shine
+    // central spire
+    px(0xd4a017, x+5,  y+0,   2,  2);
+    px(0xffffff, x+5,  y+0,   1,  1);
+    // tall ornate door
+    px(0x3a2010, x+4,  y+9,   4,  8);
+    px(0xd4a017, x+3,  y+8,   6,  2); // arch
+    px(0xd4a017, x+4,  y+10,  1,  1); // knob
+    // glowing windows
+    px(0xe0d0ff, x+2,  y+4,   2,  4);
+    px(0xe0d0ff, x+8,  y+4,   2,  4);
+    px(0xffd040, x+2,  y+4,   2,  1);
+    px(0xffd040, x+8,  y+4,   2,  1);
+    // flag
+    px(0x5a3010, x+6,  y+1,   1,  4);
+    px(0xd4a017, x+6,  y+1,   3,  2);
+    px(0xffffff, x+7,  y+2,   1,  1);
+  } else if (townLevel >= 5) {
+    // Lv5: 王宫正殿 — 多柱廊，双尖塔
+    px(0x908070, x+1,  y+3,  10, 14); // palatial stone walls
+    px(0x706050, x+1,  y+15, 10,  2); // base
+    px(0x8a3030, x,    y+1,  12,  3); // red palace roof
+    px(0xd4a017, x,    y+1,  12,  1); // gold roof trim
+    // side spires
+    px(0xd4a017, x,    y+0,   2,  2);
+    px(0xd4a017, x+10, y+0,   2,  2);
+    px(0xffd040, x,    y+0,   1,  1);
+    px(0xffd040, x+11, y+0,   1,  1);
+    // columns
+    px(0xd4a017, x+1,  y+3,   1, 12);
+    px(0xd4a017, x+10, y+3,   1, 12);
+    // flag
+    px(0x5a3010, x+6,  y+2,   1,  4);
+    px(0xaa3020, x+6,  y+2,   4,  3);
+    px(0xd4a017, x+7,  y+3,   2,  1);
+    // ornate door
+    px(0x3a2010, x+4,  y+9,   4,  8);
+    px(0xd4a017, x+3,  y+8,   6,  1); // arch
+    px(0xd4a017, x+4,  y+10,  1,  1); // knob
+    // windows
+    px(0xd0c898, x+2,  y+4,   2,  4);
+    px(0xd0c898, x+8,  y+4,   2,  4);
+    px(0xd4a017, x+2,  y+4,   2,  1);
+    px(0xd4a017, x+8,  y+4,   2,  1);
+  } else if (townLevel >= 4) {
+    // Lv4: 领主殿堂 — 双侧小塔
+    px(0x9a8878, x+1,  y+3,  10, 14); // lord's manor walls (taller)
+    px(0x686050, x+1,  y+15, 10,  2); // base
+    px(0x8a3030, x,    y+1,  12,  3); // red roof
+    // side towers
+    px(0x888070, x-1,  y+3,   4, 14);
+    px(0x888070, x+9,  y+3,   4, 14);
+    // tower battlements
+    px(0xaa4040, x-1,  y+3,   2,  2);
+    px(0xaa4040, x+1,  y+3,   2,  2);
+    px(0xaa4040, x+9,  y+3,   2,  2);
+    px(0xaa4040, x+11, y+3,   2,  2);
+    // flag
+    px(0x5a3010, x+6,  y+1,   1,  5);
+    px(0xaa3020, x+6,  y+2,   4,  3);
+    px(0xd4a017, x+7,  y+3,   2,  1); // emblem
+    // double door
+    px(0x5a3010, x+4,  y+9,   2,  8);
+    px(0x5a3010, x+6,  y+9,   2,  8);
+    px(0x8a5020, x+4,  y+10,  1,  1); // knob L
+    px(0x8a5020, x+7,  y+10,  1,  1); // knob R
+    // windows (4 total)
+    px(0xd0c090, x+2,  y+4,   2,  3);
+    px(0xd0c090, x+8,  y+4,   2,  3);
+    px(0xd0c090, x+2,  y+10,  2,  3);
+    px(0xd0c090, x+8,  y+10,  2,  3);
+  } else if (townLevel >= 3) {
+    // Lv3: 石制市政厅 — 拱门
+    px(0x808878, x+1,  y+4,  10, 13); // stone walls (taller)
+    px(0x606858, x+1,  y+15, 10,  2); // stone base
+    px(0x8a3030, x,    y+2,  12,  3); // red roof
+    px(0xa04040, x+1,  y+2,  10,  1); // roof highlight
+    // stone arch over entrance
+    px(0x909880, x+3,  y+8,   6,  2);
+    // flag
+    px(0x5a3010, x+6,  y+1,   1,  4);
+    px(0xaa3020, x+6,  y+2,   4,  2);
+    px(0xd4a017, x+7,  y+2,   2,  1); // emblem
+    // door
+    px(0x5a3010, x+4,  y+9,   4,  8);
+    px(0x8a5020, x+4,  y+10,  1,  1); // knob
+    // windows
+    px(0xd0c090, x+2,  y+5,   2,  3);
+    px(0xd0c090, x+8,  y+5,   2,  3);
+    // gold sign/emblem
+    px(0xd4a017, x+2,  y+0,   8,  2);
+  } else if (townLevel >= 2) {
+    // Lv2: 二层木楼 + 旗帜
+    px(0x9a8070, x+1,  y+5,  10, 12); // warmer wood walls
+    px(0x7a6050, x+1,  y+15, 10,  2); // base
+    px(0x8a3030, x,    y+2,  12,  4); // red roof
+    px(0xa04040, x+1,  y+2,  10,  1); // roof highlight
+    // floor divider
+    px(0x7a6050, x+1,  y+10, 10,  1);
+    // flag (bigger)
+    px(0x5a3010, x+6,  y+1,   1,  4);
+    px(0xaa3020, x+6,  y+1,   4,  3);
+    px(0xd4a017, x+7,  y+2,   2,  1); // emblem
+    // door + knob
+    px(0x5a3010, x+4,  y+9,   4,  8);
+    px(0x8a5020, x+4,  y+10,  1,  1);
+    // windows (2 upper, 2 lower)
+    px(0xd0c090, x+2,  y+6,   2,  3);
+    px(0xd0c090, x+8,  y+6,   2,  3);
+    px(0xd0c090, x+2,  y+11,  2,  3);
+    px(0xd0c090, x+8,  y+11,  2,  3);
+  } else {
+    // Lv1: 村委木屋 + 小旗 (original design)
+    px(0x8a7060, x+1,  y+5,  10, 12);
+    px(0x7a6050, x+1,  y+15, 10,  2);
+    px(0x8a3030, x,    y+2,  12,  4);
+    px(0xa04040, x+1,  y+1,  10,  1);
+    px(0xa04040, x+2,  y+0,   8,  1);
+    px(0x5a3010, x+4,  y+9,   4,  8);
+    px(0x8a5020, x+4,  y+10,  1,  1);
+    px(0xd0c090, x+2,  y+6,   2,  3);
+    px(0xd0c090, x+8,  y+6,   2,  3);
+    px(0xd4a017, x+5,  y+2,   2,  3);
+    px(0xcc3030, x+6,  y+1,   3,  2);
+  }
 }
