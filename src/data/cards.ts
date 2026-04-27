@@ -1,7 +1,7 @@
 ﻿import { CardType, CardDefinition } from '../types';
 
 // ── 等级价格表 ────────────────────────────────────────────────────────────────
-// Lv0=20, Lv1=50, Lv2=100, Lv3=180, Lv4=300, Lv5=480
+// Lv0=20, Lv1=50, Lv2=100, Lv3=180, Lv4=300, Lv5=480, Lv6=960
 export const LEVEL_COST: Record<number, number> = {
   0: 20,
   1: 50,
@@ -9,6 +9,7 @@ export const LEVEL_COST: Record<number, number> = {
   3: 180,
   4: 300,
   5: 480,
+  6: 960,
 };
 
 // ── 等级维护费表 ──────────────────────────────────────────────────────────────
