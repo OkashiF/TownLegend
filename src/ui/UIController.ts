@@ -159,6 +159,17 @@ function onDragEnd(e: PointerEvent) {
     return;
   }
 
+  // Only attempt a drop if the pointer was released over the game canvas.
+  // If the user wobbled in the hand area or dragged back from the canvas,
+  // the release point will be outside the canvas bounds — cancel silently.
+  const canvasRect = scene!.game.canvas.getBoundingClientRect();
+  const overCanvas = e.clientX >= canvasRect.left && e.clientX <= canvasRect.right &&
+                     e.clientY >= canvasRect.top  && e.clientY <= canvasRect.bottom;
+  if (!overCanvas) {
+    cleanupDrag();
+    return;
+  }
+
   const { worldX } = scene!.screenToWorld(e.clientX, e.clientY);
   const hit = scene!.hitTestDropZone(worldX, dragState.def.type);
 
