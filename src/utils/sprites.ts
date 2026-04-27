@@ -898,37 +898,350 @@ export const drawBuilding: DrawFn = (g, x, y, s) => {
   px(g, bldgD,   x+9,  y+6,   1, 3,  s);
 };
 
-export function drawShopBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
-  px(g, 0x8a7060, x+1, y+5,  10, 12, s);   // walls
-  px(g, 0x6a5040, x+1, y+15, 10, 2,  s);   // base
-  px(g, 0x2a70c0, x,   y+1,  12, 5,  s);   // awning
-  px(g, 0x1a50a0, x,   y+1,  12, 1,  s);
-  px(g, 0xd4a017, x+3, y+0,   6, 2,  s);   // sign
-  px(g, 0x5a3010, x+4, y+10,  4, 7,  s);   // door
-  px(g, 0xd0c090, x+2, y+6,   2, 3,  s);   // windows
-  px(g, 0xd0c090, x+8, y+6,   2, 3,  s);
+export function drawShopBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1): void {
+  if (townLevel >= 6) {
+    // Lv6: 传奇交易所 — 魔法石墙，水晶尖顶，星纹窗
+    px(g, 0x504878, x+1, y+2,  10, 15, s);  // arcane blue-purple walls
+    px(g, 0x383060, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x7060a8, x,   y+0,  12,  3, s);  // magic arch roof
+    px(g, 0x9080c8, x+2, y+0,   8,  1, s);  // roof highlight
+    // crystal spire (centre)
+    px(g, 0xa0c8ff, x+5, y+0,   2,  2, s);
+    px(g, 0xffffff, x+5, y+0,   1,  1, s);  // shine
+    // gold friezes and columns
+    px(g, 0xd4a017, x+0, y+3,  12,  1, s);  // gold frieze
+    px(g, 0xd4a017, x+1, y+3,   1, 12, s);  // left column
+    px(g, 0xd4a017, x+10,y+3,   1, 12, s);  // right column
+    // ornate double door with gold arch
+    px(g, 0x2a1808, x+4, y+9,   2,  8, s);
+    px(g, 0x2a1808, x+6, y+9,   2,  8, s);
+    px(g, 0xd4a017, x+3, y+8,   6,  2, s);  // arch
+    // star-glow windows
+    px(g, 0xa0d8ff, x+2, y+4,   2,  4, s);
+    px(g, 0xa0d8ff, x+8, y+4,   2,  4, s);
+    px(g, 0xffffff, x+2, y+4,   1,  1, s);
+    px(g, 0xffffff, x+8, y+4,   1,  1, s);
+  } else if (townLevel >= 5) {
+    // Lv5: 王室商行 — 金色招牌，尖塔顶，廊柱
+    px(g, 0x908070, x+1, y+3,  10, 14, s);  // noble stone walls
+    px(g, 0x705850, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x206090, x,   y+1,  12,  3, s);  // deep-blue awning
+    px(g, 0xd4a017, x,   y+1,  12,  1, s);  // gold top edge
+    // gold spire
+    px(g, 0xd4a017, x+5, y+0,   2,  2, s);
+    px(g, 0xffd040, x+5, y+0,   1,  1, s);
+    // gold columns
+    px(g, 0xd4a017, x+1, y+3,   1, 12, s);
+    px(g, 0xd4a017, x+10,y+3,   1, 12, s);
+    // large gold sign
+    px(g, 0xd4a017, x+2, y+0,   8,  2, s);
+    px(g, 0x3a2010, x+3, y+0,   6,  1, s);
+    // ornate door with arch
+    px(g, 0x3a1808, x+4, y+9,   4,  8, s);
+    px(g, 0xd4a017, x+3, y+8,   6,  1, s);  // arch
+    // large windows with arch tops
+    px(g, 0xd0c898, x+2, y+4,   2,  4, s);
+    px(g, 0xd0c898, x+8, y+4,   2,  4, s);
+    px(g, 0xd4a017, x+2, y+4,   2,  1, s);
+    px(g, 0xd4a017, x+8, y+4,   2,  1, s);
+  } else if (townLevel >= 4) {
+    // Lv4: 大商场 — 两层楼，立柱门廊
+    px(g, 0x9a8878, x+1, y+3,  10, 14, s);  // tall stone walls
+    px(g, 0x686050, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x5a4838, x+1, y+8,  10,  1, s);  // 2nd floor divider
+    // columns (drawn before awning so awning overlaps top)
+    px(g, 0xb0a090, x+1, y+3,   2, 12, s);
+    px(g, 0xb0a090, x+9, y+3,   2, 12, s);
+    px(g, 0x3a70c0, x,   y+1,  12,  3, s);  // wide awning
+    px(g, 0x2860a8, x,   y+1,  12,  1, s);  // awning shadow
+    // sign
+    px(g, 0xd4a017, x+3, y+0,   6,  2, s);
+    // double door
+    px(g, 0x5a3010, x+4, y+9,   2,  8, s);
+    px(g, 0x5a3010, x+6, y+9,   2,  8, s);
+    // 4 windows (2 per floor)
+    px(g, 0xd0c090, x+2, y+4,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+4,   2,  3, s);
+    px(g, 0xd0c090, x+2, y+10,  2,  3, s);
+    px(g, 0xd0c090, x+8, y+10,  2,  3, s);
+  } else if (townLevel >= 3) {
+    // Lv3: 石砌商馆 — 石拱门洞
+    px(g, 0x808878, x+1, y+4,  10, 13, s);  // stone walls (taller)
+    px(g, 0x606858, x+1, y+15, 10,  2, s);  // stone base
+    px(g, 0x2a68b0, x,   y+2,  12,  3, s);  // awning
+    px(g, 0x1a58a0, x,   y+2,  12,  1, s);  // awning shadow
+    // stone arch over door
+    px(g, 0x909880, x+3, y+8,   6,  2, s);
+    // door
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    // sign (prominent)
+    px(g, 0xd4a017, x+2, y+0,   8,  2, s);
+    // stone-framed windows
+    px(g, 0xd0c898, x+2, y+4,   2,  4, s);
+    px(g, 0xd0c898, x+8, y+4,   2,  4, s);
+    px(g, 0x606858, x+1, y+4,   1,  4, s);  // stone frame L
+    px(g, 0x606858, x+10,y+4,   1,  4, s);  // stone frame R
+  } else if (townLevel >= 2) {
+    // Lv2: 砖砌小铺 — 加招牌，砖纹
+    px(g, 0x9a7868, x+1, y+5,  10, 12, s);  // brick walls (warmer)
+    px(g, 0x785848, x+1, y+15, 10,  2, s);  // brick base
+    px(g, 0x2a70c0, x,   y+1,  12,  5, s);  // wider awning
+    px(g, 0x1a50a0, x,   y+1,  12,  1, s);  // awning shadow
+    // horizontal brick lines
+    px(g, 0x786050, x+1, y+9,  10,  1, s);
+    px(g, 0x786050, x+1, y+13, 10,  1, s);
+    // bigger sign
+    px(g, 0xd4a017, x+2, y+0,   8,  2, s);
+    px(g, 0x3a2010, x+3, y+0,   6,  1, s);
+    // door + knob
+    px(g, 0x5a3010, x+4, y+10,  4,  7, s);
+    px(g, 0x8a5020, x+4, y+11,  1,  1, s);
+    // windows
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+6,   2,  3, s);
+  } else {
+    // Lv1: 木棚 + 蓝布遮阳 (original design)
+    px(g, 0x8a7060, x+1, y+5,  10, 12, s);
+    px(g, 0x6a5040, x+1, y+15, 10,  2, s);
+    px(g, 0x2a70c0, x,   y+1,  12,  5, s);
+    px(g, 0x1a50a0, x,   y+1,  12,  1, s);
+    px(g, 0xd4a017, x+3, y+0,   6,  2, s);
+    px(g, 0x5a3010, x+4, y+10,  4,  7, s);
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+6,   2,  3, s);
+  }
 }
 
-export function drawCraftBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
-  px(g, 0x707060, x+1, y+5,  10, 12, s);   // walls
-  px(g, 0x505040, x+1, y+15, 10, 2,  s);   // base
-  px(g, 0x606050, x,   y+2,  12, 4,  s);   // roof
-  px(g, 0x505040, x+9, y-2,   3, 9,  s);   // chimney (sticks up)
-  px(g, 0x303030, x+10,y-2,   2, 2,  s);   // smoke hole
-  px(g, 0x5a3010, x+4, y+9,   4, 8,  s);   // door
-  px(g, 0xd0c090, x+2, y+6,   2, 3,  s);   // window
+export function drawCraftBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1): void {
+  if (townLevel >= 6) {
+    // Lv6: 神话熔炉 — 熔岩裂纹，三大烟囱，魔法火焰
+    px(g, 0x5a4830, x+1, y+2,  10, 15, s);  // dark forge walls
+    px(g, 0x3a2810, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x483820, x,   y+1,  12,  2, s);  // roof
+    // lava cracks on walls
+    px(g, 0xff4400, x+3, y+4,   1,  6, s);
+    px(g, 0xff6600, x+7, y+6,   1,  4, s);
+    // three tall chimneys
+    px(g, 0x3a2810, x+2, y-1,   2, 10, s);
+    px(g, 0x282008, x+2, y-1,   1,  2, s);  // smoke hole
+    px(g, 0x3a2810, x+5, y+0,   2,  9, s);
+    px(g, 0x282008, x+5, y+0,   1,  2, s);
+    px(g, 0x3a2810, x+8, y+1,   2,  8, s);
+    px(g, 0x282008, x+8, y+1,   1,  2, s);
+    // magic fire (orange+red) at chimney tops
+    px(g, 0xff6600, x+2, y-1,   2,  1, s);
+    px(g, 0xff4400, x+5, y+0,   2,  1, s);
+    px(g, 0xff2200, x+8, y+1,   2,  1, s);
+    // door + forge glow window
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    px(g, 0xff6030, x+2, y+5,   2,  4, s);  // lava window
+    px(g, 0xff8050, x+2, y+5,   1,  1, s);  // glow highlight
+  } else if (townLevel >= 5) {
+    // Lv5: 皇家铸造所 — 蓝色魔法火焰
+    px(g, 0x686050, x+1, y+3,  10, 14, s);  // noble forge walls
+    px(g, 0x484030, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x585040, x,   y+1,  12,  3, s);  // wide roof
+    // two chimneys (taller)
+    px(g, 0x4a3820, x+7, y-1,   3, 10, s);
+    px(g, 0x382808, x+8, y-1,   1,  2, s);
+    px(g, 0x4a3820, x+3, y+0,   3,  9, s);
+    px(g, 0x382808, x+4, y+0,   1,  2, s);
+    // blue magic flame at chimneys
+    px(g, 0x4080ff, x+7, y-1,   3,  1, s);
+    px(g, 0x80c0ff, x+8, y-1,   1,  1, s);
+    px(g, 0x4080ff, x+3, y+0,   3,  1, s);
+    px(g, 0x80c0ff, x+4, y+0,   1,  1, s);
+    // door
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    // magic glow window
+    px(g, 0x80b0ff, x+2, y+4,   2,  4, s);
+    px(g, 0xc0e0ff, x+2, y+4,   1,  1, s);
+    // shoulder plates (forge fittings)
+    px(g, 0x606850, x+0, y+3,   1, 10, s);
+    px(g, 0x606850, x+11,y+3,   1, 10, s);
+  } else if (townLevel >= 4) {
+    // Lv4: 大型工坊 — 三烟囱，熔炉红光窗
+    px(g, 0x646055, x+1, y+3,  10, 14, s);  // wider stone forge walls
+    px(g, 0x444035, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x545045, x,   y+1,  12,  3, s);  // roof
+    // three chimneys
+    px(g, 0x4a3820, x+9, y+0,   2,  9, s);
+    px(g, 0x302010, x+9, y+0,   1,  2, s);
+    px(g, 0x4a3820, x+6, y+1,   2,  8, s);
+    px(g, 0x302010, x+6, y+1,   1,  2, s);
+    px(g, 0x4a3820, x+3, y+2,   2,  7, s);
+    px(g, 0x302010, x+3, y+2,   1,  2, s);
+    // door
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    // red forge glow windows
+    px(g, 0xff6030, x+2, y+4,   2,  4, s);
+    px(g, 0xff8050, x+2, y+4,   1,  1, s);
+  } else if (townLevel >= 3) {
+    // Lv3: 炼铁坊 — 两节烟囱，炉光红窗
+    px(g, 0x707060, x+1, y+4,  10, 13, s);  // iron-gray walls (taller)
+    px(g, 0x505040, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x606050, x,   y+2,  12,  3, s);  // roof
+    // taller chimney (two-section)
+    px(g, 0x505040, x+9, y-1,   3,  4, s);  // upper chimney
+    px(g, 0x5a4a30, x+9, y+3,   3,  6, s);  // lower chimney (wider)
+    px(g, 0x303030, x+9, y-1,   2,  2, s);  // smoke hole
+    // forge glow window (red/orange)
+    px(g, 0xff6030, x+2, y+5,   2,  4, s);
+    px(g, 0xff9060, x+2, y+5,   1,  1, s);  // highlight
+    // door
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    // sign
+    px(g, 0xd4a017, x+2, y+0,   8,  2, s);
+  } else if (townLevel >= 2) {
+    // Lv2: 砖炉 + 两节烟囱
+    px(g, 0x787060, x+1, y+5,  10, 12, s);  // brick-forge walls
+    px(g, 0x585040, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x686058, x,   y+2,  12,  4, s);  // roof
+    // second chimney (shorter)
+    px(g, 0x505040, x+9, y-1,   3,  9, s);
+    px(g, 0x303030, x+10,y-1,   2,  2, s);
+    px(g, 0x4a4030, x+5, y+1,   3,  8, s);  // second chimney
+    px(g, 0x282020, x+5, y+1,   2,  2, s);
+    // door
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    // window
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    // horizontal brick line
+    px(g, 0x585040, x+1, y+10, 10,  1, s);
+  } else {
+    // Lv1: 小锻炉 + 细烟囱 (original design)
+    px(g, 0x707060, x+1, y+5,  10, 12, s);
+    px(g, 0x505040, x+1, y+15, 10,  2, s);
+    px(g, 0x606050, x,   y+2,  12,  4, s);
+    px(g, 0x505040, x+9, y-2,   3,  9, s);
+    px(g, 0x303030, x+10,y-2,   2,  2, s);
+    px(g, 0x5a3010, x+4, y+9,   4,  8, s);
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+  }
 }
 
-export function drawCombatBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
-  px(g, 0x8a7060, x+1, y+5,  10, 12, s);
-  px(g, 0x6a5040, x+1, y+15, 10, 2,  s);
-  px(g, 0x8a3030, x,   y+2,  12, 4,  s);   // red roof
-  px(g, 0xaa4040, x+1, y+1,   2, 2,  s);   // battlements
-  px(g, 0xaa4040, x+5, y+1,   2, 2,  s);
-  px(g, 0xaa4040, x+9, y+1,   2, 2,  s);
-  px(g, 0x5a3010, x+4, y+10,  4, 7,  s);
-  px(g, 0xd0c090, x+2, y+6,   2, 3,  s);
-  px(g, 0xd0c090, x+8, y+6,   2, 3,  s);
+export function drawCombatBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1): void {
+  if (townLevel >= 6) {
+    // Lv6: 神话战神堡 — 魔法护盾光环，双高塔
+    px(g, 0x504868, x+1, y+2,  10, 15, s);  // dark magic walls
+    px(g, 0x383048, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x603050, x,   y+0,  12,  3, s);  // dark-red magic roof
+    // side towers (tall)
+    px(g, 0x484060, x-1, y+0,   4, 17, s);  // left tower
+    px(g, 0x484060, x+9, y+0,   4, 17, s);  // right tower
+    // tower battlements
+    px(g, 0x6050a0, x-1, y-1,   2,  2, s);
+    px(g, 0x6050a0, x+1, y-1,   2,  2, s);
+    px(g, 0x6050a0, x+9, y-1,   2,  2, s);
+    px(g, 0x6050a0, x+11,y-1,   2,  2, s);
+    // magic shield glow (purple ring at top)
+    px(g, 0x8060c8, x,   y+0,  12,  1, s);  // glow frieze
+    // wide battlements on main wall
+    px(g, 0x603050, x+1, y+0,   2,  3, s);
+    px(g, 0x603050, x+5, y+0,   2,  3, s);
+    px(g, 0x603050, x+9, y+0,   2,  3, s);
+    // gate with portcullis
+    px(g, 0x181018, x+4, y+9,   4,  8, s);  // dark gate
+    px(g, 0x6050a0, x+3, y+8,   6,  2, s);  // magic arch
+    // flag with star
+    px(g, 0x5a3010, x+6, y+1,   1,  6, s);  // flagpole
+    px(g, 0x8060c8, x+6, y+1,   3,  3, s);  // magic flag
+    px(g, 0xffffff, x+7, y+2,   1,  1, s);  // star
+    // windows
+    px(g, 0xc0b0d8, x+2, y+5,   2,  3, s);
+    px(g, 0xc0b0d8, x+8, y+5,   2,  3, s);
+  } else if (townLevel >= 5) {
+    // Lv5: 王家卫队城堡 — 双塔，尖顶
+    px(g, 0x908070, x+1, y+3,  10, 14, s);  // heavy stone walls
+    px(g, 0x706050, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x8a3030, x,   y+1,  12,  3, s);  // red roof
+    // side towers with spires
+    px(g, 0x807060, x-1, y+1,   4, 16, s);  // left tower
+    px(g, 0x807060, x+9, y+1,   4, 16, s);  // right tower
+    // spires on towers
+    px(g, 0x8a3030, x,   y+1,   2,  2, s);
+    px(g, 0x8a3030, x+10,y+1,   2,  2, s);
+    // gold crests on spires
+    px(g, 0xd4a017, x,   y+1,   1,  1, s);
+    px(g, 0xd4a017, x+11,y+1,   1,  1, s);
+    // wall battlements (main)
+    px(g, 0xaa4040, x+2, y+1,   2,  3, s);
+    px(g, 0xaa4040, x+6, y+1,   2,  3, s);
+    // flagpole + banner
+    px(g, 0x5a3010, x+6, y+2,   1,  5, s);
+    px(g, 0xaa3020, x+6, y+2,   3,  3, s);
+    // door
+    px(g, 0x3a2010, x+4, y+9,   4,  8, s);
+    px(g, 0x8a3030, x+3, y+8,   6,  2, s);  // arch
+    // windows
+    px(g, 0xd0c090, x+2, y+5,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+5,   2,  3, s);
+  } else if (townLevel >= 4) {
+    // Lv4: 要塞式兵营 — 城堡顶，铁门
+    px(g, 0x8a7a68, x+1, y+3,  10, 14, s);  // fortress walls (taller)
+    px(g, 0x685848, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x8a3030, x,   y+1,  12,  3, s);  // red roof
+    // wider battlements
+    px(g, 0xaa4040, x+1, y+1,   2,  3, s);
+    px(g, 0xaa4040, x+5, y+1,   2,  3, s);
+    px(g, 0xaa4040, x+9, y+1,   2,  3, s);
+    // iron gate (portcullis bars)
+    px(g, 0x3a2010, x+4, y+9,   4,  8, s);
+    px(g, 0x484040, x+4, y+9,   1,  8, s);
+    px(g, 0x484040, x+6, y+9,   1,  8, s);
+    px(g, 0x484040, x+4, y+11,  4,  1, s);
+    px(g, 0x484040, x+4, y+14,  4,  1, s);
+    // flagpole + flag
+    px(g, 0x5a3010, x+6, y+1,   1,  5, s);
+    px(g, 0xaa3020, x+6, y+2,   3,  2, s);
+    // windows
+    px(g, 0xd0c090, x+2, y+5,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+5,   2,  3, s);
+  } else if (townLevel >= 3) {
+    // Lv3: 城堡式营房 — 雉堞，旗杆
+    px(g, 0x8a7060, x+1, y+4,  10, 13, s);  // stone walls (taller)
+    px(g, 0x6a5040, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x8a3030, x,   y+2,  12,  3, s);  // red roof
+    // three battlements
+    px(g, 0xaa4040, x+1, y+2,   2,  2, s);
+    px(g, 0xaa4040, x+5, y+2,   2,  2, s);
+    px(g, 0xaa4040, x+9, y+2,   2,  2, s);
+    // flagpole with banner
+    px(g, 0x5a3010, x+6, y+2,   1,  5, s);
+    px(g, 0xaa3020, x+6, y+2,   3,  3, s);  // flag
+    px(g, 0xffd040, x+7, y+3,   1,  1, s);  // emblem
+    // door
+    px(g, 0x5a3010, x+4, y+10,  4,  7, s);
+    // windows
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+6,   2,  3, s);
+  } else if (townLevel >= 2) {
+    // Lv2: 石基兵房 + 木门，宽雉堞
+    px(g, 0x8a7060, x+1, y+5,  10, 12, s);  // stone walls
+    px(g, 0x6a5040, x+1, y+15, 10,  2, s);  // base
+    px(g, 0x8a3030, x,   y+2,  12,  4, s);  // red roof
+    // wider battlements
+    px(g, 0xaa4040, x+1, y+2,   2,  2, s);
+    px(g, 0xaa4040, x+5, y+2,   2,  2, s);
+    px(g, 0xaa4040, x+9, y+2,   2,  2, s);
+    // wooden door
+    px(g, 0x5a3010, x+4, y+10,  4,  7, s);
+    px(g, 0x8a5020, x+4, y+10,  4,  1, s);  // door top
+    // windows
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+6,   2,  3, s);
+  } else {
+    // Lv1: 简陋营地房 (original design)
+    px(g, 0x8a7060, x+1, y+5,  10, 12, s);
+    px(g, 0x6a5040, x+1, y+15, 10,  2, s);
+    px(g, 0x8a3030, x,   y+2,  12,  4, s);
+    px(g, 0xaa4040, x+1, y+1,   2,  2, s);
+    px(g, 0xaa4040, x+5, y+1,   2,  2, s);
+    px(g, 0xaa4040, x+9, y+1,   2,  2, s);
+    px(g, 0x5a3010, x+4, y+10,  4,  7, s);
+    px(g, 0xd0c090, x+2, y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8, y+6,   2,  3, s);
+  }
 }
 
 export function drawRestBuilding(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) {
