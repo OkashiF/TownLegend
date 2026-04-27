@@ -1783,21 +1783,55 @@ export class TownScene extends Phaser.Scene {
       this.dropZoneOverlays.push(g, t);
     };
 
-    /** Draw a per-cell glowing highlight with pulsing alpha. */
-    const addCellHighlight = (cx: number) => {
-      const W = 90, cellH = 160;
+    /**
+     * Draw a per-cell glowing highlight with pulsing alpha.
+     * cellWidth should be (gridGAP - 12) so cells nearly fill the gap with only a
+     * small margin on each side (~6 px world units ≈ ~2 mm on screen).
+     */
+    const addCellHighlight = (cx: number, cellWidth: number) => {
+      const W = cellWidth, cellH = 170;
+      const x0 = cx - W / 2;
+      const y0 = gy - cellH;
+      const arm = 10; // corner bracket arm length
+
       const g = this.add.graphics();
+
+      // Main semi-transparent fill
       g.fillStyle(0xffd040, 1);
-      g.fillRect(cx - W / 2, gy - cellH, W, cellH);
-      g.lineStyle(2, 0xffd040, 1);
-      g.strokeRect(cx - W / 2, gy - cellH, W, cellH);
-      g.setAlpha(0.15);
+      g.fillRect(x0, y0, W, cellH);
+
+      // Subtle inner shine strip
+      g.fillStyle(0xfffff0, 0.12);
+      g.fillRect(x0 + 4, y0 + 4, W - 8, cellH - 12);
+
+      // Ground-level emphasis band
+      g.fillStyle(0xffe870, 1);
+      g.fillRect(x0, gy - 7, W, 7);
+
+      // Outer border
+      g.lineStyle(2, 0xffe060, 1);
+      g.strokeRect(x0, y0, W, cellH);
+
+      // Corner bracket accents (L-shapes)
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(x0,           y0,       arm, 2); g.fillRect(x0,           y0,       2, arm);
+      g.fillRect(x0 + W - arm, y0,       arm, 2); g.fillRect(x0 + W - 2,   y0,       2, arm);
+      g.fillRect(x0,           gy - 2,   arm, 2); g.fillRect(x0,           gy - arm, 2, arm);
+      g.fillRect(x0 + W - arm, gy - 2,   arm, 2); g.fillRect(x0 + W - 2,   gy - arm, 2, arm);
+
+      // Downward chevron "drop here" indicator near top centre
+      const chevY = y0 + 18;
+      g.fillRect(cx - 9, chevY,      18, 3);
+      g.fillRect(cx - 6, chevY + 5,  12, 3);
+      g.fillRect(cx - 3, chevY + 10,  6, 3);
+
+      g.setAlpha(0.18);
       this.fxLayer.add(g);
       this.dropZoneOverlays.push(g);
       this.tweens.add({
         targets: g,
-        alpha: { from: 0.15, to: 0.45 },
-        duration: 800,
+        alpha: { from: 0.18, to: 0.50 },
+        duration: 900,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.InOut',
@@ -1819,7 +1853,7 @@ export class TownScene extends Phaser.Scene {
       for (const side of ['left', 'right'] as const) {
         const cells = this.generateMonsterCells(side);
         for (const cx of cells) {
-          if (!isOccupied(cx)) addCellHighlight(cx);
+          if (!isOccupied(cx)) addCellHighlight(cx, GAP - 12);
         }
       }
     } else if (cardType === CardType.Building) {
@@ -1831,7 +1865,7 @@ export class TownScene extends Phaser.Scene {
 
       const cells = this.generateBuildingCells();
       for (const cx of cells) {
-        if (!isOccupied(cx)) addCellHighlight(cx);
+        if (!isOccupied(cx)) addCellHighlight(cx, GAP - 12);
       }
     } else if (cardType === CardType.Magic) {
       addZone(z.wallLeft, z.wallRight - z.wallLeft, '放置区域');
