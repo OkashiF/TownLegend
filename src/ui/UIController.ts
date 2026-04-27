@@ -176,8 +176,9 @@ function onDragEnd(e: PointerEvent) {
     }
   } else if (store.field.length >= store.fieldCapacity) {
     notify('场上已满！', 'danger');
+  } else if (!hit) {
+    notify('请拖放到场地上', 'danger');
   }
-  // hit === null: silently cancel
 
   cleanupDrag();
 }

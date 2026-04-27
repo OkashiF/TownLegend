@@ -1708,9 +1708,10 @@ export class TownScene extends Phaser.Scene {
     }
 
     if (cardType === CardType.Monster) {
-      // Only valid if drop is in the outside-walls zone
-      if (worldX >= z.wallLeft - 60 && worldX <= z.wallRight + 60) return null;
-
+      // Snap to nearest empty monster cell regardless of where the card was dropped.
+      // The initial camera is centered on the town, so the monster cells outside the
+      // walls may be off-screen; removing the zone guard lets the user simply drag
+      // the card anywhere on the canvas and have it land on the closest valid cell.
       const GAP = 160;
       const leftCells  = this.generateMonsterCells('left');
       const rightCells = this.generateMonsterCells('right');
@@ -1723,7 +1724,7 @@ export class TownScene extends Phaser.Scene {
       const emptyCells = allCells.filter(x => !isOccupied(x));
 
       if (emptyCells.length === 0) {
-        // All cells full: extend by one more cell on the nearest side
+        // All cells full: extend by one more cell on the side nearest the drop point
         const side = worldX < z.wallLeft ? 'left' : 'right';
         const baseCells = side === 'left' ? leftCells : rightCells;
         const start = side === 'left' ? z.wallLeft - 200 : z.wallRight + 200;
@@ -1742,9 +1743,7 @@ export class TownScene extends Phaser.Scene {
     }
 
     if (cardType === CardType.Building) {
-      // Only valid inside the walls
-      if (worldX < z.wallLeft || worldX > z.wallRight) return null;
-
+      // Snap to nearest empty building cell regardless of drop position.
       const GAP = 140;
       const cells = this.generateBuildingCells();
 
