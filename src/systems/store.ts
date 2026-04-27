@@ -745,7 +745,7 @@ export class GameStore {
     return { ok: false, reason: '找不到该卡牌' };
   }
 
-  playCard(instanceId: string, opts?: { job?: JobType }): { ok: boolean; reason?: string } {
+  playCard(instanceId: string, opts?: { job?: JobType; fieldX?: number }): { ok: boolean; reason?: string } {
     const idx = this.hand.findIndex(c => c.instanceId === instanceId);
     if (idx === -1) return { ok: false, reason: '找不到卡牌' };
     if (this.field.length >= this.fieldCapacity)
@@ -762,11 +762,21 @@ export class GameStore {
       const delayBonus = this.getMagicBonus('delay_aggression');
       if (delayBonus > 0) inst.aggressionCountdown += delayBonus;
 
-      const monsterCount = this.field.filter(c =>
-        defById(c.definitionId).type === CardType.Monster
-      ).length;
-      inst.spawnZone = assignSpawnZone(monsterCount);
+      if (opts?.fieldX != null) {
+        // 新存档：使用拖放位置的格子坐标
+        inst.fieldX = opts.fieldX;
+      } else {
+        // 旧逻辑回退：自动按顺序分配 spawnZone
+        const monsterCount = this.field.filter(c =>
+          defById(c.definitionId).type === CardType.Monster
+        ).length;
+        inst.spawnZone = assignSpawnZone(monsterCount);
+      }
       if (!this._firstMonsterOnField) this._firstMonsterOnField = true;
+    }
+    if ((def.type === CardType.Building) && opts?.fieldX != null) {
+      // 新存档：建筑也记录格子坐标
+      inst.fieldX = opts.fieldX;
     }
     if (def.type === CardType.Building) {
       if (!this._firstBuildingOnField) this._firstBuildingOnField = true;

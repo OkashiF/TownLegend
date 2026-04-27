@@ -726,6 +726,8 @@
       btn.style.right = (logOpen ? LOG_WIDTH * zoom : 0) + 'px';
       btn.textContent = logOpen ? '▶' : '◀';
       btn.title       = logOpen ? '收起日志' : '展开日志';
+      const sideLog = document.getElementById('side-log');
+      if (sideLog) sideLog.style.bottom = panelH + 'px';
     }
 
     document.addEventListener('DOMContentLoaded', function () {
