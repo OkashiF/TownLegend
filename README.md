@@ -79,8 +79,10 @@ src/
 │   └── store.ts          # 游戏状态机（含彩蛋合成、攻城判断、出售、升级逻辑、成就系统）
 ├── scenes/
 │   └── TownScene.ts      # 场景：巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗、成就解锁弹窗、拖拽放卡区域高亮
-└── ui/
-    └── UIController.ts   # 出售按钮、商店刷新价格动态显示、成就面板、手牌拖拽放卡状态机
+├── ui/
+│   └── UIController.ts   # 出售按钮、商店刷新价格动态显示、成就面板、手牌拖拽放卡状态机
+└── utils/
+    └── sprites.ts        # 纯代码像素绘制：人物/怪物/建筑精灵；drawShopBuilding / drawCraftBuilding / drawTownHall / drawCombatBuilding（四座固定建筑，含 Lv1-6 侧翼）；bldgTexSize(level) 纹理尺寸查询
 ```
 
 ---
@@ -1046,4 +1048,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 特别鸣谢：感谢玩家 ***万亿核爆*** 的测试反馈和建议！
 
-*文档版本：v4.0 · 最后更新：建筑纹理按等级扩展（Lv2-6 新增侧翼；bldgTexSize 统一尺寸；drawTownHall 迁移至 sprites.ts）*
+*文档版本：v4.1 · 最后更新：补充源码结构中 utils/sprites.ts 条目（四座固定建筑绘制函数 + bldgTexSize 均位于此模块）*
