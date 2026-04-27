@@ -1567,6 +1567,250 @@ export function drawRestBuilding(g: Phaser.GameObjects.Graphics, x: number, y: n
   px(g, 0xd0c090, x+8, y+6,   2, 3,  s);
 }
 
+export function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1) {
+  if (townLevel >= 6) {
+    // Lv6: 神圣议政殿扩展 (156×87, mo=20, r=29)
+    const mo = 20, r = 29, dT = 22;
+    // ── Main building (cols mo..mo+11) ──
+    px(g, 0x706080, x+mo+1, y+4,  10, r-4, s); // divine purple walls
+    px(g, 0x504060, x+mo+1, y+r-2,10,  2, s);  // base
+    px(g, 0x906090, x+mo,   y+0,  12,  4, s);  // divine canopy roof
+    px(g, 0xffd040, x+mo,   y+0,  12,  1, s);  // gold rim
+    px(g, 0xd4a017, x+mo+1, y+4,   1, r-6, s); // gold column L
+    px(g, 0xd4a017, x+mo+10,y+4,   1, r-6, s); // gold column R
+    px(g, 0xffd040, x+mo+2, y+0,   8,  1, s);  // halo glow
+    px(g, 0xffffff, x+mo+5, y+0,   2,  1, s);  // halo shine
+    px(g, 0xd4a017, x+mo+5, y+0,   2,  2, s);  // central spire
+    px(g, 0xffffff, x+mo+5, y+0,   1,  1, s);  // spire tip
+    px(g, 0x3a2010, x+mo+4, y+dT,  4,  7, s);  // tall ornate door
+    px(g, 0xd4a017, x+mo+3, y+dT-1,6,  2, s);  // door arch
+    px(g, 0xd4a017, x+mo+4, y+dT+1,1,  1, s);  // knob
+    px(g, 0xe0d0ff, x+mo+2, y+5,   2,  6, s);  // glowing window L
+    px(g, 0xe0d0ff, x+mo+8, y+5,   2,  6, s);  // glowing window R
+    px(g, 0xffd040, x+mo+2, y+5,   2,  1, s);
+    px(g, 0xffd040, x+mo+8, y+5,   2,  1, s);
+    px(g, 0xe0d0ff, x+mo+2, y+14,  2,  5, s);  // 2nd floor windows
+    px(g, 0xe0d0ff, x+mo+8, y+14,  2,  5, s);
+    px(g, 0x5a3010, x+mo+6, y+1,   1,  4, s);  // flagpole
+    px(g, 0xd4a017, x+mo+6, y+1,   3,  2, s);  // flag
+    px(g, 0xffffff, x+mo+7, y+2,   1,  1, s);  // star
+    // ── Left wing: sacred hall (cols 0..mo-1) ──
+    px(g, 0x605070, x+0,    y+3,  mo,  r-5, s); // sacred hall walls
+    px(g, 0x403050, x+0,    y+r-2,mo,  2, s);   // base
+    px(g, 0x806090, x+0,    y+0,  mo,  4, s);   // roof
+    px(g, 0xffd040, x+2,    y+0,  mo-4,1, s);   // gold rim on roof
+    px(g, 0xd4a017, x+9,    y+0,   1,  3, s);   // gold cross vertical
+    px(g, 0xd4a017, x+7,    y+1,   5,  1, s);   // gold cross horizontal
+    px(g, 0xe0d0ff, x+2,    y+5,   3,  5, s);   // rose window 1
+    px(g, 0xe0d0ff, x+8,    y+5,   3,  5, s);   // rose window 2
+    px(g, 0xe0d0ff, x+14,   y+5,   3,  5, s);   // rose window 3
+    px(g, 0xffd040, x+2,    y+5,   3,  1, s);
+    px(g, 0xffd040, x+8,    y+5,   3,  1, s);
+    px(g, 0xffd040, x+14,   y+5,   3,  1, s);
+    px(g, 0xe0d0ff, x+4,    y+13,  3,  5, s);   // floor 2 windows
+    px(g, 0xe0d0ff, x+11,   y+13,  3,  5, s);
+    px(g, 0x3a2010, x+8,    y+dT,  4,  7, s);   // sacred hall door
+    px(g, 0xd4a017, x+7,    y+dT-1,6,  1, s);   // arch
+    // ── Right wing: divine library (cols mo+12..mo+31) ──
+    px(g, 0x605070, x+mo+12,y+3,  20,  r-5, s); // library walls
+    px(g, 0x403050, x+mo+12,y+r-2,20,  2, s);   // base
+    px(g, 0x806090, x+mo+12,y+0,  20,  4, s);   // roof
+    px(g, 0xffd040, x+mo+12,y+0,  20,  1, s);   // gold rim
+    px(g, 0xe0d0ff, x+mo+14,y+5,   3,  5, s);   // windows floor 1
+    px(g, 0xe0d0ff, x+mo+20,y+5,   3,  5, s);
+    px(g, 0xffd040, x+mo+14,y+5,   3,  1, s);
+    px(g, 0xffd040, x+mo+20,y+5,   3,  1, s);
+    px(g, 0xe0d0ff, x+mo+14,y+13,  3,  5, s);   // windows floor 2
+    px(g, 0xe0d0ff, x+mo+20,y+13,  3,  5, s);
+    px(g, 0xe0d0ff, x+mo+14,y+21,  3,  4, s);   // windows floor 3
+    px(g, 0xd4a017, x+mo+17,y+0,   1,  4, s);   // library spire
+    px(g, 0xffd040, x+mo+17,y+0,   1,  1, s);   // spire tip
+    px(g, 0x3a2010, x+mo+22,y+dT,  4,  7, s);   // library door
+    px(g, 0xd4a017, x+mo+21,y+dT-1,6,  1, s);
+  } else if (townLevel >= 5) {
+    // Lv5: 王宫正殿扩展 (132×78, mo=16, r=26)
+    const mo = 16, r = 26, dT = 19;
+    // ── Main building ──
+    px(g, 0x908070, x+mo+1, y+4,  10, r-4, s); // palatial stone walls
+    px(g, 0x706050, x+mo+1, y+r-2,10,  2, s);  // base
+    px(g, 0x8a3030, x+mo,   y+0,  12,  4, s);  // red palace roof
+    px(g, 0xd4a017, x+mo,   y+0,  12,  1, s);  // gold roof trim
+    px(g, 0xd4a017, x+mo,   y+0,   2,  2, s);  // left spire
+    px(g, 0xd4a017, x+mo+10,y+0,   2,  2, s);  // right spire
+    px(g, 0xffd040, x+mo,   y+0,   1,  1, s);
+    px(g, 0xffd040, x+mo+11,y+0,   1,  1, s);
+    px(g, 0xd4a017, x+mo+1, y+4,   1, r-6, s); // column L
+    px(g, 0xd4a017, x+mo+10,y+4,   1, r-6, s); // column R
+    px(g, 0x5a3010, x+mo+6, y+2,   1,  4, s);  // flagpole
+    px(g, 0xaa3020, x+mo+6, y+2,   4,  3, s);  // flag
+    px(g, 0xd4a017, x+mo+7, y+3,   2,  1, s);  // emblem
+    px(g, 0x3a2010, x+mo+4, y+dT,  4,  7, s);  // ornate door
+    px(g, 0xd4a017, x+mo+3, y+dT-1,6,  1, s);  // arch
+    px(g, 0xd4a017, x+mo+4, y+dT+1,1,  1, s);  // knob
+    px(g, 0xd0c898, x+mo+2, y+5,   2,  6, s);  // windows L upper
+    px(g, 0xd0c898, x+mo+8, y+5,   2,  6, s);  // windows R upper
+    px(g, 0xd4a017, x+mo+2, y+5,   2,  1, s);
+    px(g, 0xd4a017, x+mo+8, y+5,   2,  1, s);
+    px(g, 0xd0c898, x+mo+2, y+13,  2,  4, s);  // 2nd floor windows
+    px(g, 0xd0c898, x+mo+8, y+13,  2,  4, s);
+    // ── Left wing: royal garden (cols 0..mo-1) ──
+    px(g, 0x5a6a48, x+0,    y+3,  mo,  r-5, s); // garden walls (green tinted)
+    px(g, 0x3a4a28, x+0,    y+r-2,mo,  2, s);   // base
+    px(g, 0x8a3030, x+0,    y+0,  mo,  4, s);   // roof
+    px(g, 0xd4a017, x+0,    y+0,  mo,  1, s);   // gold trim
+    px(g, 0x3a7a38, x+3,    y+r-8, 4,  6, s);   // garden tree L (round crown)
+    px(g, 0x4a9a4a, x+3,    y+r-9, 4,  3, s);   // tree highlight
+    px(g, 0x5a3010, x+4,    y+r-5, 2,  5, s);   // tree trunk L
+    px(g, 0x3a7a38, x+10,   y+r-8, 4,  6, s);   // garden tree R
+    px(g, 0x4a9a4a, x+10,   y+r-9, 4,  3, s);   // tree highlight R
+    px(g, 0x5a3010, x+11,   y+r-5, 2,  5, s);   // tree trunk R
+    px(g, 0xd0c090, x+2,    y+5,   3,  5, s);   // garden window 1
+    px(g, 0xd0c090, x+9,    y+5,   3,  5, s);   // garden window 2
+    px(g, 0xd4a017, x+2,    y+5,   3,  1, s);
+    px(g, 0xd4a017, x+9,    y+5,   3,  1, s);
+    // ── Right wing: guard quarters (cols mo+12..mo+27) ──
+    px(g, 0x9a8a78, x+mo+12,y+3,  16,  r-5, s); // quarters walls
+    px(g, 0x786858, x+mo+12,y+r-2,16,  2, s);   // base
+    px(g, 0x8a3030, x+mo+12,y+0,  16,  4, s);   // roof
+    px(g, 0xd4a017, x+mo+12,y+0,  16,  1, s);   // gold trim
+    px(g, 0xd0c090, x+mo+14,y+5,   3,  5, s);   // windows floor 1
+    px(g, 0xd0c090, x+mo+20,y+5,   3,  5, s);
+    px(g, 0xd4a017, x+mo+14,y+5,   3,  1, s);
+    px(g, 0xd4a017, x+mo+20,y+5,   3,  1, s);
+    px(g, 0xd0c090, x+mo+14,y+12,  3,  4, s);   // windows floor 2
+    px(g, 0xd0c090, x+mo+20,y+12,  3,  4, s);
+    px(g, 0x5a3010, x+mo+17,y+dT,  4,  7, s);   // guard door
+    px(g, 0x8a3030, x+mo+16,y+dT-1,6,  1, s);   // arch
+  } else if (townLevel >= 4) {
+    // Lv4: 领主殿堂扩展 (108×69, mo=12, r=23)
+    const mo = 12, r = 23, dT = 16;
+    // ── Main building + side towers ──
+    px(g, 0x9a8878, x+mo+1, y+4,  10, r-4, s); // lord's manor walls
+    px(g, 0x686050, x+mo+1, y+r-2,10,  2, s);  // base
+    px(g, 0x8a3030, x+mo,   y+1,  12,  3, s);  // red roof
+    px(g, 0x888070, x+mo,   y+1,   4,  r, s);  // left tower
+    px(g, 0x888070, x+mo+8, y+1,   4,  r, s);  // right tower
+    px(g, 0xaa4040, x+mo,   y+1,   2,  2, s);  // tower battlements
+    px(g, 0xaa4040, x+mo+2, y+1,   2,  2, s);
+    px(g, 0xaa4040, x+mo+8, y+1,   2,  2, s);
+    px(g, 0xaa4040, x+mo+10,y+1,   2,  2, s);
+    px(g, 0x5a3010, x+mo+6, y+1,   1,  5, s);  // flagpole
+    px(g, 0xaa3020, x+mo+6, y+2,   4,  3, s);  // flag
+    px(g, 0xd4a017, x+mo+7, y+3,   2,  1, s);  // emblem
+    px(g, 0x5a3010, x+mo+4, y+dT,  2,  7, s);  // double door L
+    px(g, 0x5a3010, x+mo+6, y+dT,  2,  7, s);  // double door R
+    px(g, 0x8a5020, x+mo+4, y+dT+1,1,  1, s);  // knob L
+    px(g, 0x8a5020, x+mo+7, y+dT+1,1,  1, s);  // knob R
+    px(g, 0xd0c090, x+mo+2, y+5,   2,  3, s);  // windows
+    px(g, 0xd0c090, x+mo+8, y+5,   2,  3, s);
+    px(g, 0xd0c090, x+mo+2, y+10,  2,  3, s);
+    px(g, 0xd0c090, x+mo+8, y+10,  2,  3, s);
+    // ── Left wing: guard post (cols 0..mo-1) ──
+    px(g, 0x8a7868, x+0,    y+3,  mo,  r-5, s); // guard post walls
+    px(g, 0x685848, x+0,    y+r-2,mo,  2, s);   // base
+    px(g, 0x7a3020, x+0,    y+0,  mo,  4, s);   // roof
+    px(g, 0xaa4040, x+1,    y+0,   2,  3, s);   // battlements
+    px(g, 0xaa4040, x+5,    y+0,   2,  3, s);
+    px(g, 0xaa4040, x+9,    y+0,   2,  3, s);
+    px(g, 0xd0c090, x+2,    y+5,   2,  3, s);   // windows
+    px(g, 0xd0c090, x+8,    y+5,   2,  3, s);
+    px(g, 0x5a3010, x+4,    y+dT,  4,  7, s);   // guard door
+    // ── Right wing: council annex (cols mo+12..mo+23) ──
+    px(g, 0x8a7868, x+mo+12,y+3,  12,  r-5, s); // annex walls
+    px(g, 0x685848, x+mo+12,y+r-2,12,  2, s);   // base
+    px(g, 0x8a3030, x+mo+12,y+0,  12,  4, s);   // roof
+    px(g, 0xaa4040, x+mo+13,y+0,   2,  3, s);   // battlements
+    px(g, 0xaa4040, x+mo+17,y+0,   2,  3, s);
+    px(g, 0xaa4040, x+mo+21,y+0,   2,  3, s);
+    px(g, 0xd0c090, x+mo+14,y+5,   2,  3, s);   // windows
+    px(g, 0xd0c090, x+mo+20,y+5,   2,  3, s);
+    px(g, 0xd0c090, x+mo+14,y+10,  2,  3, s);
+    px(g, 0xd0c090, x+mo+20,y+10,  2,  3, s);
+    px(g, 0x5a3010, x+mo+16,y+dT,  4,  7, s);   // council door
+    px(g, 0x8a3030, x+mo+15,y+dT-1,6,  1, s);   // arch
+  } else if (townLevel >= 3) {
+    // Lv3: 石制市政厅扩展 (84×63, mo=8, r=21)
+    const mo = 8, r = 21, dT = 14;
+    // ── Main building ──
+    px(g, 0x808878, x+mo+1, y+4,  10, r-4, s); // stone walls
+    px(g, 0x606858, x+mo+1, y+r-2,10,  2, s);  // stone base
+    px(g, 0x8a3030, x+mo,   y+2,  12,  3, s);  // red roof
+    px(g, 0xa04040, x+mo+1, y+2,  10,  1, s);  // roof highlight
+    px(g, 0x909880, x+mo+3, y+dT-1,6,  2, s);  // stone arch over entrance
+    px(g, 0x5a3010, x+mo+6, y+1,   1,  4, s);  // flag
+    px(g, 0xaa3020, x+mo+6, y+2,   4,  2, s);
+    px(g, 0xd4a017, x+mo+7, y+2,   2,  1, s);  // emblem
+    px(g, 0x5a3010, x+mo+4, y+dT,  4,  7, s);  // door
+    px(g, 0x8a5020, x+mo+4, y+dT+1,1,  1, s);  // knob
+    px(g, 0xd0c090, x+mo+2, y+5,   2,  3, s);  // windows
+    px(g, 0xd0c090, x+mo+8, y+5,   2,  3, s);
+    px(g, 0xd4a017, x+mo+2, y+0,   8,  2, s);  // gold sign
+    // ── Left wing: garden path (cols 0..mo-1) ──
+    px(g, 0x758878, x+0,    y+4,   mo, r-6, s); // garden wall
+    px(g, 0x556858, x+0,    y+r-2, mo,  2, s);  // base
+    px(g, 0x8a3030, x+0,    y+0,   mo,  4, s);  // roof
+    px(g, 0x3a7a38, x+1,    y+r-7,  4,  5, s); // small tree
+    px(g, 0x4a9a4a, x+1,    y+r-8,  4,  3, s); // tree crown
+    px(g, 0x5a3010, x+2,    y+r-5,  2,  5, s); // trunk
+    px(g, 0xd0c090, x+2,    y+5,    3,  3, s); // window
+    // ── Right wing: announcement hall (cols mo+12..mo+19) ──
+    px(g, 0x758878, x+mo+12,y+4,   8,  r-6, s); // hall wall
+    px(g, 0x556858, x+mo+12,y+r-2, 8,  2, s);   // base
+    px(g, 0x8a3030, x+mo+12,y+0,   8,  4, s);   // roof
+    px(g, 0xd4a017, x+mo+12,y+0,   8,  2, s);   // gold sign
+    px(g, 0xd0c090, x+mo+14,y+5,   3,  3, s);   // windows
+    px(g, 0x5a3010, x+mo+14,y+dT,  4,  7, s);   // hall door
+    px(g, 0xa04040, x+mo+13,y+0,   2,  2, s);   // roof battlement
+    px(g, 0xa04040, x+mo+17,y+0,   2,  2, s);
+  } else if (townLevel >= 2) {
+    // Lv2: 二层木楼扩展 (60×57, mo=4, r=19)
+    const mo = 4, r = 19, dT = 12;
+    // ── Main building ──
+    px(g, 0x9a8070, x+mo+1, y+4,  10, r-4, s); // warmer wood walls
+    px(g, 0x7a6050, x+mo+1, y+r-2,10,  2, s);  // base
+    px(g, 0x8a3030, x+mo,   y+2,  12,  4, s);  // red roof
+    px(g, 0xa04040, x+mo+1, y+2,  10,  1, s);  // roof highlight
+    px(g, 0x7a6050, x+mo+1, y+9,  10,  1, s);  // floor divider
+    px(g, 0x5a3010, x+mo+6, y+1,   1,  4, s);  // flag
+    px(g, 0xaa3020, x+mo+6, y+1,   4,  3, s);  // banner
+    px(g, 0xd4a017, x+mo+7, y+2,   2,  1, s);  // emblem
+    px(g, 0x5a3010, x+mo+4, y+dT,  4,  7, s);  // door
+    px(g, 0x8a5020, x+mo+4, y+dT+1,1,  1, s);  // knob
+    px(g, 0xd0c090, x+mo+2, y+5,   2,  3, s);  // windows floor 1
+    px(g, 0xd0c090, x+mo+8, y+5,   2,  3, s);
+    px(g, 0xd0c090, x+mo+2, y+11,  2,  3, s);  // windows floor 2
+    px(g, 0xd0c090, x+mo+8, y+11,  2,  3, s);
+    // ── Left wing: small storage (cols 0..mo-1) ──
+    px(g, 0x8a7060, x+0,    y+r-8,  3,  6, s); // storage body
+    px(g, 0x8a3030, x+0,    y+r-8,  3,  2, s); // storage roof
+    px(g, 0x5a3010, x+1,    y+r-3,  1,  3, s); // storage door
+    // ── Right wing: notice board (cols mo+12..mo+15) ──
+    px(g, 0x5a3010, x+mo+12,y+3,    1, r-5, s); // board post
+    px(g, 0x5a3010, x+mo+12,y+3,    4,  1, s);  // frame top
+    px(g, 0x5a3010, x+mo+12,y+r-2,  4,  1, s);  // frame bottom
+    px(g, 0x5a3010, x+mo+12,y+3,    1, r-5, s); // frame left
+    px(g, 0x5a3010, x+mo+15,y+3,    1, r-5, s); // frame right
+    px(g, 0xd4c8a0, x+mo+13,y+4,    2,  r-7, s);// notice board fill
+    px(g, 0x5a4030, x+mo+13,y+5,    2,  1, s);  // notice line 1
+    px(g, 0x5a4030, x+mo+13,y+7,    2,  1, s);  // notice line 2
+    px(g, 0x5a4030, x+mo+13,y+9,    2,  1, s);  // notice line 3
+    px(g, 0x5a4030, x+mo+13,y+11,   2,  1, s);  // notice line 4
+  } else {
+    // Lv1: 村委木屋 + 小旗 (original design)
+    px(g, 0x8a7060, x+1,  y+5,  10, 12, s);
+    px(g, 0x7a6050, x+1,  y+15, 10,  2, s);
+    px(g, 0x8a3030, x,    y+2,  12,  4, s);
+    px(g, 0xa04040, x+1,  y+1,  10,  1, s);
+    px(g, 0xa04040, x+2,  y+0,   8,  1, s);
+    px(g, 0x5a3010, x+4,  y+9,   4,  8, s);
+    px(g, 0x8a5020, x+4,  y+10,  1,  1, s);
+    px(g, 0xd0c090, x+2,  y+6,   2,  3, s);
+    px(g, 0xd0c090, x+8,  y+6,   2,  3, s);
+    px(g, 0xd4a017, x+5,  y+2,   2,  3, s);
+    px(g, 0xcc3030, x+6,  y+1,   3,  2, s);
+  }
+}
+
 // ── Magic ─────────────────────────────────────────────────────────────────────
 
 export const drawMagic: DrawFn = (g, x, y, s) => {
