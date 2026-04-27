@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TownScene } from './scenes/TownScene';
 import { initUI } from './ui/UIController';
+import { store } from './systems/store';
 
 // ── World dimensions ───────────────────────────────────────────────────────────
 export const WORLD_HEIGHT = 600;    // will be overridden at runtime by scene height
@@ -60,4 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   requestAnimationFrame(() => { syncLayout(); });
   window.addEventListener('resize', syncLayout);
+
+  (window as any).cheat = {
+    addGold: (n: number): void => { store.gold += n; store.emit('tick'); },
+  };
 });
