@@ -66,7 +66,7 @@ interface PasserbySprite {
 }
 
 interface DenSprite {
-  spawnZone: SpawnZone;
+  instanceId: string;
   worldX: number;
   img: Phaser.GameObjects.Graphics;
   restPulse: Phaser.GameObjects.Graphics;
@@ -833,27 +833,29 @@ export class TownScene extends Phaser.Scene {
     );
 
     for (const monster of monsters) {
-      if (!monster.spawnZone) continue;
-      const zone   = monster.spawnZone as SpawnZone;
-      const worldX = this.spawnZoneX(zone);
+      // 需要 fieldX 或 spawnZone 才能确定巢穴位置
+      if (monster.fieldX == null && !monster.spawnZone) continue;
+      const worldX = monster.fieldX != null
+        ? monster.fieldX
+        : this.spawnZoneX(monster.spawnZone as SpawnZone);
 
-      let den = this.dens.find(d => d.spawnZone === zone);
+      let den = this.dens.find(d => d.instanceId === monster.instanceId);
       if (!den) {
         const img = this.add.graphics();
         this.drawDen(img, worldX, this.groundY, monster.definitionId);
         this.denLayer.add(img);
         const restPulse = this.add.graphics();
         this.denLayer.add(restPulse);
-        den = { spawnZone: zone, worldX, img, restPulse, pulseTimer: 0, occupantId: null };
+        den = { instanceId: monster.instanceId, worldX, img, restPulse, pulseTimer: 0, occupantId: null };
         this.dens.push(den);
       }
 
       den.occupantId = !monster.isActive ? monster.instanceId : null;
     }
 
-    const activeZones = new Set(monsters.map(m => m.spawnZone));
+    const activeIds = new Set(monsters.map(m => m.instanceId));
     this.dens = this.dens.filter(den => {
-      if (!activeZones.has(den.spawnZone)) {
+      if (!activeIds.has(den.instanceId)) {
         den.img.destroy(); den.restPulse.destroy(); return false;
       }
       return true;
@@ -951,7 +953,7 @@ export class TownScene extends Phaser.Scene {
       if (sp.dyingTimer > 0) continue;
       const def = defById(inst.definitionId);
       if (def.type === CardType.Building) {
-        const bx = this.buildingFieldX(inst.instanceId, inst.definitionId);
+        const bx = inst.fieldX != null ? inst.fieldX : this.buildingFieldX(inst.instanceId, inst.definitionId);
         sp.x = bx; sp.y = this.groundY;
         sp.targetX = bx; sp.targetY = this.groundY;
         sp.sprite.setPosition(bx, this.groundY);
@@ -1000,10 +1002,10 @@ export class TownScene extends Phaser.Scene {
 
       let sx = this.zoneConfig.town, sy = this.groundY;
       if (isBuilding) {
-        sx = this.buildingFieldX(inst.instanceId, inst.definitionId);
+        sx = inst.fieldX != null ? inst.fieldX : this.buildingFieldX(inst.instanceId, inst.definitionId);
         sy = this.groundY;
-      } else if (isMonster && inst.spawnZone) {
-        sx = this.spawnZoneX(inst.spawnZone as SpawnZone);
+      } else if (isMonster) {
+        sx = this.monsterSpawnX(inst);
         sy = this.groundY;
       } else if (def.type === CardType.Human) {
         const job = inst.jobAssignment ?? JobType.Idle;
@@ -1175,6 +1177,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private monsterSpawnX(inst: CardInstance): number {
+    if (inst.fieldX != null) return inst.fieldX;
     if (!inst.spawnZone) return this.zoneConfig.monsterSpawn.left[0];
     return this.spawnZoneX(inst.spawnZone as SpawnZone);
   }
@@ -1526,6 +1529,61 @@ export class TownScene extends Phaser.Scene {
 
   // ── Drag-and-drop support (called by UIController) ───────────────────────────
 
+  /**
+   * Generate grid cell X-coordinates for monster placement on one side.
+   * Generates cells outward from the wall until at least one empty cell exists.
+   */
+  private generateMonsterCells(side: 'left' | 'right'): number[] {
+    const { wallLeft, wallRight } = this.zoneConfig;
+    const GAP   = 160;
+    const start = side === 'left' ? wallLeft  - 200 : wallRight + 200;
+    const dir   = side === 'left' ? -1 : 1;
+
+    const occupiedXs = store.field
+      .filter(c => defById(c.definitionId).type === CardType.Monster && c.fieldX != null)
+      .map(c => c.fieldX!);
+    const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+
+    const cells: number[] = [];
+    // Generate at least 3 cells, and enough so there is at least one empty
+    while (cells.length < 3 || cells.every(x => isOccupied(x))) {
+      cells.push(start + dir * cells.length * GAP);
+      if (cells.length > 12) break; // safety cap
+    }
+    return cells;
+  }
+
+  /**
+   * Generate grid cell X-coordinates for building placement inside the walls.
+   * Regular cells fill wallLeft+100 → wallRight-100 with 140px gaps.
+   * If all regular cells are occupied, up to 3 overflow cells extend to the right.
+   */
+  private generateBuildingCells(): number[] {
+    const { wallLeft, wallRight } = this.zoneConfig;
+    const GAP   = 140;
+    const start = wallLeft  + 100;
+    const end   = wallRight - 100;
+
+    const occupiedXs = store.field
+      .filter(c => defById(c.definitionId).type === CardType.Building && c.fieldX != null)
+      .map(c => c.fieldX!);
+    const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+
+    const regularCount = Math.max(1, Math.floor((end - start) / GAP) + 1);
+    const cells: number[] = [];
+    for (let i = 0; i < regularCount; i++) {
+      cells.push(start + i * GAP);
+    }
+
+    // If all regular slots occupied, add up to 3 overflow slots
+    if (cells.every(x => isOccupied(x))) {
+      for (let i = 0; i < 3; i++) {
+        cells.push(start + (regularCount + i) * GAP);
+      }
+    }
+    return cells;
+  }
+
   /** Highlight valid drop areas for the given card type. */
   showDropZones(cardType: CardType, _defId: string) {
     this.hideDropZones();
@@ -1553,15 +1611,57 @@ export class TownScene extends Phaser.Scene {
       this.dropZoneOverlays.push(g, t);
     };
 
+    /** Draw a per-cell glowing highlight with pulsing alpha. */
+    const addCellHighlight = (cx: number) => {
+      const W = 90, cellH = 160;
+      const g = this.add.graphics();
+      g.fillStyle(0xffd040, 1);
+      g.fillRect(cx - W / 2, gy - cellH, W, cellH);
+      g.lineStyle(2, 0xffd040, 1);
+      g.strokeRect(cx - W / 2, gy - cellH, W, cellH);
+      g.setAlpha(0.15);
+      this.fxLayer.add(g);
+      this.dropZoneOverlays.push(g);
+      this.tweens.add({
+        targets: g,
+        alpha: { from: 0.15, to: 0.45 },
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.InOut',
+      });
+    };
+
     if (cardType === CardType.Human) {
       addZone(z.shop    - 120, 240, '商店');
       addZone(z.craft   - 120, 240, '制造');
       addZone(z.barracks - 120, 240, '兵营');
       addZone(z.town    - 120, 240, '大厅');
     } else if (cardType === CardType.Monster) {
-      addZone(z.wallLeft  - 300, 200, '左侧出生');
-      addZone(z.wallRight + 100, 200, '右侧出生');
-    } else if (cardType === CardType.Building || cardType === CardType.Magic) {
+      const GAP = 160;
+      const occupiedXs = store.field
+        .filter(c => defById(c.definitionId).type === CardType.Monster && c.fieldX != null)
+        .map(c => c.fieldX!);
+      const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+
+      for (const side of ['left', 'right'] as const) {
+        const cells = this.generateMonsterCells(side);
+        for (const cx of cells) {
+          if (!isOccupied(cx)) addCellHighlight(cx);
+        }
+      }
+    } else if (cardType === CardType.Building) {
+      const GAP = 140;
+      const occupiedXs = store.field
+        .filter(c => defById(c.definitionId).type === CardType.Building && c.fieldX != null)
+        .map(c => c.fieldX!);
+      const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+
+      const cells = this.generateBuildingCells();
+      for (const cx of cells) {
+        if (!isOccupied(cx)) addCellHighlight(cx);
+      }
+    } else if (cardType === CardType.Magic) {
       addZone(z.wallLeft, z.wallRight - z.wallLeft, '放置区域');
     }
   }
@@ -1587,7 +1687,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   /** Return the best matching drop zone for the given world X, or null if none. */
-  hitTestDropZone(worldX: number, cardType: CardType): { job?: JobType } | null {
+  hitTestDropZone(worldX: number, cardType: CardType): { job?: JobType; fieldX?: number } | null {
     const z = this.zoneConfig;
 
     if (cardType === CardType.Human) {
@@ -1608,11 +1708,67 @@ export class TownScene extends Phaser.Scene {
     }
 
     if (cardType === CardType.Monster) {
-      if (worldX < z.wallLeft - 60 || worldX > z.wallRight + 60) return {};
-      return null;
+      // Only valid if drop is in the outside-walls zone
+      if (worldX >= z.wallLeft - 60 && worldX <= z.wallRight + 60) return null;
+
+      const GAP = 160;
+      const leftCells  = this.generateMonsterCells('left');
+      const rightCells = this.generateMonsterCells('right');
+      const allCells   = [...leftCells, ...rightCells];
+
+      const occupiedXs = store.field
+        .filter(c => defById(c.definitionId).type === CardType.Monster && c.fieldX != null)
+        .map(c => c.fieldX!);
+      const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+      const emptyCells = allCells.filter(x => !isOccupied(x));
+
+      if (emptyCells.length === 0) {
+        // All cells full: extend by one more cell on the nearest side
+        const side = worldX < z.wallLeft ? 'left' : 'right';
+        const baseCells = side === 'left' ? leftCells : rightCells;
+        const start = side === 'left' ? z.wallLeft - 200 : z.wallRight + 200;
+        const dir   = side === 'left' ? -1 : 1;
+        return { fieldX: start + dir * baseCells.length * GAP };
+      }
+
+      // Snap to nearest empty cell
+      let best = emptyCells[0];
+      let bestDist = Math.abs(worldX - best);
+      for (const x of emptyCells.slice(1)) {
+        const d = Math.abs(worldX - x);
+        if (d < bestDist) { bestDist = d; best = x; }
+      }
+      return { fieldX: best };
     }
 
-    // Building / Magic: anywhere inside the walls
+    if (cardType === CardType.Building) {
+      // Only valid inside the walls
+      if (worldX < z.wallLeft || worldX > z.wallRight) return null;
+
+      const GAP = 140;
+      const cells = this.generateBuildingCells();
+
+      const occupiedXs = store.field
+        .filter(c => defById(c.definitionId).type === CardType.Building && c.fieldX != null)
+        .map(c => c.fieldX!);
+      const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
+      const emptyCells = cells.filter(x => !isOccupied(x));
+
+      if (emptyCells.length === 0) {
+        return { fieldX: cells[cells.length - 1] + GAP };
+      }
+
+      // Snap to nearest empty cell
+      let best = emptyCells[0];
+      let bestDist = Math.abs(worldX - best);
+      for (const x of emptyCells.slice(1)) {
+        const d = Math.abs(worldX - x);
+        if (d < bestDist) { bestDist = d; best = x; }
+      }
+      return { fieldX: best };
+    }
+
+    // Magic: anywhere inside the walls
     if (worldX >= z.wallLeft && worldX <= z.wallRight) return {};
     return null;
   }

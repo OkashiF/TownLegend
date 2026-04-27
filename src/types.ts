@@ -121,6 +121,8 @@ export interface CardInstance {
   restMonthsLeft: number;
   aggressionCountdown: number;
   runtimeStats: HumanStats | MonsterStats | BuildingStats | MagicStats;
+  /** 怪物/建筑的实际落点格子X坐标（新存档使用；旧存档回退到 spawnZone / buildingFieldX） */
+  fieldX?: number;
   /** 怪物是否正在攻城（aggressionCountdown=0 且 isActive） */
   isAttacking?: boolean;
   /** 怪物休息进度（0~restMonthsLeft，用于巢穴动画） */

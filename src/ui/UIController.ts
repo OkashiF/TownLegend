@@ -163,7 +163,10 @@ function onDragEnd(e: PointerEvent) {
   const hit = scene!.hitTestDropZone(worldX, dragState.def.type);
 
   if (hit && store.field.length < store.fieldCapacity) {
-    const r = store.playCard(dragState.inst.instanceId, hit.job != null ? { job: hit.job } : undefined);
+    const opts: { job?: JobType; fieldX?: number } = {};
+    if (hit.job   != null) opts.job   = hit.job;
+    if (hit.fieldX != null) opts.fieldX = hit.fieldX;
+    const r = store.playCard(dragState.inst.instanceId, opts);
     if (r.ok) {
       notify(`打出了 ${dragState.def.name}`, 'success');
       updateHUD();
