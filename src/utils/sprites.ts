@@ -1,350 +1,18 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
+import {
+  DrawFn, CardSpriteEntry, JOB_COLORS,
+  drawShopWorker, drawCraftWorker, drawCombatWorker, drawIdleWorker,
+  CARD_SPRITE_REGISTRY as HUMAN_SPRITE_REGISTRY,
+} from './cardSprites';
+
+export type { DrawFn, CardSpriteEntry };
+export { JOB_COLORS };
 
 // ── px helper ─────────────────────────────────────────────────────────────────
 function px(g: Phaser.GameObjects.Graphics, c: number,
             x: number, y: number, w = 1, h = 1, s = 1) {
   g.fillStyle(c, 1);
   g.fillRect(x * s, y * s, w * s, h * s);
-}
-
-export type DrawFn = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void;
-
-/** A single entry in the card-sprite registry. */
-export interface CardSpriteEntry {
-  draw: DrawFn;
-  w: number;
-  h: number;
-}
-
-// ── Job colour tints ──────────────────────────────────────────────────────────
-// depth 0–5 correspond to card levels 0–5
-export const JOB_COLORS = {
-  shop:   [0x4ab0e0, 0x2a80c0, 0x1050a0, 0x7030c0, 0xc89010, 0xf8f0c0],
-  craft:  [0xe0a020, 0xc07010, 0x804800, 0x503000, 0x1840a0, 0xd0d0e8],
-  combat: [0xe04040, 0xb02020, 0x801010, 0xb81818, 0x1038a8, 0xd4a017],
-  idle:   [0x80a060, 0x608040, 0x406020],
-} as const;
-
-// ── Human sprites ─────────────────────────────────────────────────────────────
-// 纹理尺寸 32x54px (s=3, logical 10.6x18)
-// 图形在 y=0..17 (logical)，s=3 → 像素 y=0..51，剩余 3px 留白
-// setOrigin(0.5, 1) → 纹理底部(y=54)对准 groundY，图形底部(y=51)贴地
-
-function drawHumanColored(g: Phaser.GameObjects.Graphics,
-                          x: number, y: number, s: number,
-                          shirt: number, shirt2: number) {
-  const skin = 0xf0c080, skin2 = 0xd4a060,
-        hair = 0x4a2800,
-        pants = 0x2a4a6a, pants2 = 0x1a3050,
-        shoe  = 0x3a2010;
-  // head  (logical y+1..4)
-  px(g, skin,   x+2, y+1, 4, 4, s);
-  px(g, hair,   x+2, y+1, 4, 1, s);
-  px(g, hair,   x+1, y+2, 1, 2, s);
-  px(g, skin2,  x+3, y+3, 1, 1, s);
-  px(g, skin2,  x+5, y+3, 1, 1, s);
-  // body  (y+5..8)
-  px(g, shirt,  x+1, y+5, 6, 4, s);
-  px(g, shirt2, x+1, y+6, 6, 1, s);
-  px(g, shirt,  x,   y+5, 1, 3, s);   // arms
-  px(g, shirt,  x+7, y+5, 1, 3, s);
-  px(g, skin,   x,   y+8, 1, 1, s);   // hands
-  px(g, skin,   x+7, y+8, 1, 1, s);
-  // legs  (y+9..12)
-  px(g, pants,  x+1, y+9,  2, 4, s);
-  px(g, pants,  x+5, y+9,  2, 4, s);
-  px(g, pants2, x+1, y+12, 2, 1, s);
-  px(g, pants2, x+5, y+12, 2, 1, s);
-  // shoes (y+13..14) — logical bottom = y+14, pixel = (y+14)*3=42+offset
-  px(g, shoe,   x+1, y+13, 2, 2, s);
-  px(g, shoe,   x+5, y+13, 2, 2, s);
-}
-
-function drawShopWorker(g: Phaser.GameObjects.Graphics,
-                        x: number, y: number, s: number, depth: number) {
-  const c  = JOB_COLORS.shop[depth] ?? JOB_COLORS.shop[0];
-  const c2 = Math.max(0, c - 0x202020);
-  drawHumanColored(g, x, y, s, c, c2);
-
-  if (depth >= 3) {
-    // Fancy merchant coat: gold collar + belt + chest badge
-    px(g, 0xd4a017, x+1, y+5, 6, 1, s);  // gold collar
-    px(g, 0xd4a017, x+1, y+8, 6, 1, s);  // gold belt
-    px(g, 0xd4a017, x+3, y+6, 2, 2, s);  // chest badge
-  } else {
-    // Basic apron overlay on body
-    px(g, 0xffffff, x+2, y+6, 4, 3, s);
-    px(g, c2,       x+2, y+6, 4, 1, s);
-  }
-  if (depth >= 4) {
-    // Top hat overwrites hair area
-    px(g, 0x1a1208, x+2, y+0, 4, 2, s);  // hat crown
-    px(g, 0xd4a017, x+3, y+0, 2, 1, s);  // gold hatband
-    px(g, 0x1a1208, x+1, y+2, 6, 1, s);  // hat brim
-  }
-  if (depth >= 5) {
-    // Divine glow trim on sides of body
-    px(g, 0xffffc0, x+0, y+5, 1, 4, s);  // left glow
-    px(g, 0xffffc0, x+7, y+5, 1, 4, s);  // right glow
-  }
-}
-
-function drawCraftWorker(g: Phaser.GameObjects.Graphics,
-                         x: number, y: number, s: number, depth: number) {
-  const c  = JOB_COLORS.craft[depth] ?? JOB_COLORS.craft[0];
-  const c2 = Math.max(0, c - 0x202020);
-  drawHumanColored(g, x, y, s, c, c2);
-
-  if (depth >= 3) {
-    // Heavy leather apron
-    px(g, 0x3a1800, x+2, y+5, 4, 5, s);  // dark apron
-    px(g, 0x5a2800, x+2, y+6, 4, 1, s);  // apron highlight
-    // Larger hammer head
-    px(g, 0x888888, x+8, y+4, 3, 3, s);  // big head
-    px(g, 0x666666, x+8, y+5, 3, 1, s);  // shadow
-    px(g, 0x5a3010, x+8, y+7, 1, 5, s);  // handle
-  } else {
-    // Basic hammer accessory
-    px(g, 0x888888, x+8, y+5, 2, 2, s);  // head
-    px(g, 0x5a3010, x+8, y+7, 1, 4, s);  // handle
-  }
-  if (depth >= 4) {
-    // Forge-work shoulder plate
-    px(g, 0x608090, x+0, y+5, 1, 3, s);  // shoulder L
-    px(g, 0x608090, x+7, y+5, 1, 3, s);  // shoulder R
-    // Tool belt details
-    px(g, 0x888888, x+2, y+9, 1, 1, s);  // tool L
-    px(g, 0x888888, x+5, y+9, 1, 1, s);  // tool R
-  }
-  if (depth >= 5) {
-    // Legendary silver hammer with glow
-    px(g, 0xe8e8ff, x+8, y+4, 3, 3, s);  // divine hammer head
-    px(g, 0xc0c0ff, x+9, y+4, 1, 1, s);  // glow highlight
-    px(g, 0xc0c0ff, x+0, y+5, 1, 3, s);  // divine shoulder glow L
-    px(g, 0xc0c0ff, x+7, y+5, 1, 3, s);  // divine shoulder glow R
-  }
-}
-
-function drawCombatWorker(g: Phaser.GameObjects.Graphics,
-                          x: number, y: number, s: number, depth: number) {
-  const armC  = JOB_COLORS.combat[depth] ?? JOB_COLORS.combat[0];
-  const armC2 = Math.max(0, armC - 0x202020);
-  const eyeW  = 0xffffff;
-  const shoe  = 0x2a1808;
-  // helmet (y+1..4)
-  px(g, armC,  x+2, y+1, 4, 4, s);
-  px(g, armC2, x+1, y+2, 1, 2, s);
-  px(g, armC2, x+6, y+2, 1, 2, s);
-  px(g, eyeW,  x+3, y+3, 1, 1, s);
-  px(g, eyeW,  x+5, y+3, 1, 1, s);
-  // armour body (y+5..9)
-  px(g, armC,  x+1, y+5, 6, 5, s);
-  px(g, 0xd4a017,x+3, y+6, 2, 3, s);  // gold trim
-  px(g, armC2, x+1, y+9, 6, 1, s);
-  // sword
-  px(g, 0x8a6020, x+8, y+5, 1, 2, s);  // guard
-  px(g, 0xc0c0c0, x+8, y+7, 1, 5, s);  // blade
-  px(g, 0xd4a017, x+7, y+6, 2, 1, s);  // crossguard
-  // legs (y+10..12)
-  px(g, armC,  x+1, y+10, 2, 3, s);
-  px(g, armC,  x+5, y+10, 2, 3, s);
-  // boots (y+13..14)
-  px(g, shoe,  x+1, y+13, 2, 2, s);
-  px(g, shoe,  x+5, y+13, 2, 2, s);
-
-  if (depth >= 3) {
-    // Battle-worn plate: shoulder guards
-    px(g, armC2, x+0, y+5, 1, 3, s);   // pauldron L
-    px(g, armC2, x+7, y+5, 1, 3, s);   // pauldron R
-    // Wider sword guard
-    px(g, 0xd4a017, x+7, y+5, 2, 1, s);
-    // Visor detail on helmet
-    px(g, armC2, x+3, y+2, 2, 1, s);   // visor slit
-  }
-  if (depth >= 4) {
-    // Royal blue with cape hint (red strip behind body)
-    px(g, 0x8a1010, x+0, y+6, 1, 5, s);  // cape L
-    px(g, 0x8a1010, x+7, y+6, 1, 5, s);  // cape R
-    // Bigger blade
-    px(g, 0xd0d0d0, x+8, y+7, 2, 5, s);  // wide blade
-    px(g, 0xe8e8e8, x+8, y+7, 1, 1, s);  // blade tip highlight
-  }
-  if (depth >= 5) {
-    // Divine gold gleam on armor
-    px(g, 0xffd040, x+1, y+5, 6, 1, s);  // top armor glow
-    px(g, 0xffd040, x+1, y+9, 6, 1, s);  // bottom armor glow
-    // Radiant sword blade
-    px(g, 0xffffc0, x+8, y+7, 2, 1, s);  // sword glow
-    px(g, 0xffffc0, x+8, y+10, 2, 1, s);
-  }
-}
-
-function drawIdleWorker(g: Phaser.GameObjects.Graphics,
-                        x: number, y: number, s: number) {
-  drawHumanColored(g, x, y, s, 0x80a060, 0x608040);
-}
-
-// ── Human egg-card sprites ─────────────────────────────────────────────────────
-
-function drawHumanMage(g: Phaser.GameObjects.Graphics,
-                       x: number, y: number, s: number) {
-  const skin = 0xf0c080, skin2 = 0xd4a060;
-  const robe = 0x5028b0, robe2 = 0x3010a0;
-  const hat  = 0x1a1060;
-  // wizard hat brim overwrites hair
-  px(g, hat,    x+2, y+0, 4, 2, s);   // hat crown
-  px(g, 0x8040f0, x+3, y+0, 2, 1, s); // hat band
-  px(g, hat,    x+1, y+2, 6, 1, s);   // hat brim
-  // head (y+3..5)
-  px(g, skin,   x+2, y+3, 4, 3, s);
-  px(g, skin2,  x+3, y+5, 1, 1, s);
-  px(g, 0x2020c0, x+3, y+4, 1, 1, s); // left eye (magical)
-  px(g, 0x2020c0, x+5, y+4, 1, 1, s); // right eye
-  // robe body (y+6..12)
-  px(g, robe,   x+1, y+6, 6, 7, s);
-  px(g, robe2,  x+1, y+7, 6, 1, s);   // robe highlight stripe
-  px(g, robe,   x+0, y+6, 1, 5, s);   // wide sleeves
-  px(g, robe,   x+7, y+6, 1, 5, s);
-  px(g, skin,   x+0, y+11, 1, 1, s);  // hands
-  px(g, skin,   x+7, y+11, 1, 1, s);
-  // robe hem + shoes
-  px(g, robe2,  x+1, y+13, 6, 1, s);
-  px(g, robe,   x+1, y+14, 6, 1, s);
-  // staff (right side)
-  px(g, 0x5a3010, x+8, y+6, 1, 7, s);  // staff shaft
-  px(g, 0x60c0ff, x+8, y+5, 2, 2, s);  // magic orb
-  px(g, 0xa0e0ff, x+8, y+5, 1, 1, s);  // orb highlight
-}
-
-function drawHumanSage(g: Phaser.GameObjects.Graphics,
-                       x: number, y: number, s: number) {
-  const skin  = 0xe8b870, skin2 = 0xc09050;
-  const robe  = 0xe8e0c0, robe2 = 0xc0b890;
-  const beard = 0xd8d8d8;
-  // white hair
-  px(g, beard, x+2, y+1, 4, 1, s);
-  px(g, beard, x+1, y+2, 1, 2, s);
-  // head (y+1..4)
-  px(g, skin,  x+2, y+1, 4, 4, s);
-  px(g, 0x505050, x+3, y+3, 1, 1, s);  // eye L
-  px(g, 0x505050, x+5, y+3, 1, 1, s);  // eye R
-  // beard (y+4..5)
-  px(g, beard, x+2, y+4, 4, 2, s);
-  px(g, skin2, x+3, y+4, 2, 1, s);     // face behind beard
-  // cream robe body
-  px(g, robe,  x+1, y+5, 6, 8, s);
-  px(g, robe2, x+1, y+6, 6, 1, s);     // robe stripe
-  px(g, 0xd4a017, x+1, y+5, 6, 1, s);  // gold collar
-  px(g, robe,  x+0, y+5, 1, 5, s);     // sleeves
-  px(g, robe,  x+7, y+5, 1, 5, s);
-  px(g, skin,  x+0, y+10, 1, 1, s);    // hands
-  px(g, skin,  x+7, y+10, 1, 1, s);
-  // scroll held in left hand
-  px(g, 0xf0e0b0, x-1, y+8, 2, 4, s);  // scroll body
-  px(g, 0xd4a017, x-1, y+8, 2, 1, s);  // scroll top
-  px(g, 0xd4a017, x-1, y+11, 2, 1, s); // scroll bottom
-  // robe legs/hem
-  px(g, robe2, x+1, y+13, 6, 1, s);
-  px(g, robe,  x+1, y+14, 6, 1, s);
-}
-
-function drawHumanHero(g: Phaser.GameObjects.Graphics,
-                       x: number, y: number, s: number) {
-  const armr = 0xc8c8d8, armr2 = 0x9090a8;
-  const gold = 0xd4a017;
-  const cape = 0xb01010;
-  // helmet (y+1..4) — bright silver
-  px(g, armr,  x+2, y+1, 4, 4, s);
-  px(g, armr2, x+1, y+2, 1, 2, s);
-  px(g, armr2, x+6, y+2, 1, 2, s);
-  px(g, 0x60a0ff, x+3, y+3, 1, 1, s);  // blue eye-glow L
-  px(g, 0x60a0ff, x+5, y+3, 1, 1, s);  // blue eye-glow R
-  px(g, gold,  x+2, y+1, 4, 1, s);     // gold crown on helmet
-  // cape behind body (drawn before body so body is on top)
-  px(g, cape,  x+0, y+5, 1, 8, s);     // cape L edge
-  px(g, cape,  x+7, y+5, 1, 8, s);     // cape R edge
-  // shining armor body
-  px(g, armr,  x+1, y+5, 6, 5, s);
-  px(g, gold,  x+3, y+6, 2, 3, s);     // gold chest emblem
-  px(g, armr2, x+1, y+9, 6, 1, s);
-  // large sword (right side)
-  px(g, gold,  x+8, y+4, 2, 1, s);     // crossguard
-  px(g, armr,  x+9, y+5, 1, 7, s);     // big blade
-  px(g, 0xffffff, x+9, y+5, 1, 1, s);  // blade shine
-  px(g, 0x8a6020, x+8, y+3, 1, 2, s);  // grip
-  // legs
-  px(g, armr,  x+1, y+10, 2, 3, s);
-  px(g, armr,  x+5, y+10, 2, 3, s);
-  // boots
-  px(g, 0x2a1808, x+1, y+13, 2, 2, s);
-  px(g, 0x2a1808, x+5, y+13, 2, 2, s);
-}
-
-function drawHumanDragonborn(g: Phaser.GameObjects.Graphics,
-                              x: number, y: number, s: number) {
-  const scales = 0x3a8040, scales2 = 0x206030;
-  const gold   = 0xd4a017;
-  const eye    = 0xff8800;
-  // dragon horns (y+0..1)
-  px(g, 0x206030, x+2, y+0, 1, 2, s);   // horn L
-  px(g, 0x206030, x+5, y+0, 1, 2, s);   // horn R
-  // head with scales
-  px(g, scales,  x+2, y+1, 4, 4, s);
-  px(g, scales2, x+2, y+1, 4, 1, s);    // scale row top
-  px(g, scales2, x+2, y+3, 4, 1, s);    // scale row mid
-  px(g, eye,     x+3, y+3, 1, 1, s);    // slit eye L
-  px(g, eye,     x+5, y+3, 1, 1, s);    // slit eye R
-  // scaled armor body
-  px(g, scales,  x+1, y+5, 6, 5, s);
-  px(g, scales2, x+1, y+5, 6, 1, s);    // scale row
-  px(g, scales2, x+1, y+7, 6, 1, s);    // scale row
-  px(g, gold,    x+3, y+6, 2, 2, s);    // gold chest plate
-  // clawed arms
-  px(g, scales,  x+0, y+5, 1, 3, s);
-  px(g, scales,  x+7, y+5, 1, 3, s);
-  px(g, 0x1a4020, x+0, y+8, 1, 1, s);   // claw L
-  px(g, 0x1a4020, x+7, y+8, 1, 1, s);   // claw R
-  // wing tips (y+5..9, behind body)
-  px(g, 0x2a5530, x-1, y+5, 2, 5, s);   // wing L
-  px(g, 0x2a5530, x+7, y+5, 2, 5, s);   // wing R
-  // legs + feet
-  px(g, scales,  x+1, y+10, 2, 4, s);
-  px(g, scales,  x+5, y+10, 2, 4, s);
-  px(g, 0x1a4020, x+1, y+13, 2, 2, s);  // feet
-  px(g, 0x1a4020, x+5, y+13, 2, 2, s);
-}
-
-function drawHumanDemigod(g: Phaser.GameObjects.Graphics,
-                          x: number, y: number, s: number) {
-  const skin = 0xfce8c0, skin2 = 0xe8c890;
-  const robe = 0xf8f8f0, robe2 = 0xe0d8c0;
-  const gold = 0xd4a017;
-  const glow = 0xffff80;
-  // divine halo (y+0) — golden ring above head
-  px(g, gold, x+2, y+0, 4, 1, s);       // halo arc top
-  px(g, gold, x+1, y+1, 1, 1, s);       // halo L
-  px(g, gold, x+6, y+1, 1, 1, s);       // halo R
-  // head (y+1..4) — slightly luminous skin
-  px(g, skin,  x+2, y+1, 4, 4, s);
-  px(g, skin2, x+3, y+3, 1, 1, s);
-  px(g, 0xd0a040, x+3, y+3, 1, 1, s);   // golden eye L
-  px(g, 0xd0a040, x+5, y+3, 1, 1, s);   // golden eye R
-  // divine white robe body
-  px(g, robe,  x+1, y+5, 6, 8, s);
-  px(g, gold,  x+1, y+5, 6, 1, s);      // gold collar
-  px(g, gold,  x+1, y+8, 6, 1, s);      // gold belt
-  px(g, robe2, x+3, y+6, 2, 2, s);      // robe detail
-  // glowing sleeves
-  px(g, glow,  x+0, y+5, 1, 5, s);      // divine light L
-  px(g, glow,  x+7, y+5, 1, 5, s);      // divine light R
-  px(g, skin,  x+0, y+10, 1, 1, s);     // hands
-  px(g, skin,  x+7, y+10, 1, 1, s);
-  // robe hem
-  px(g, robe2, x+1, y+13, 6, 1, s);
-  px(g, robe,  x+1, y+14, 6, 1, s);
-  // divine glow on shoes
-  px(g, glow,  x+1, y+13, 2, 2, s);
-  px(g, glow,  x+5, y+13, 2, 2, s);
 }
 
 // ── Monster egg-card sprites ───────────────────────────────────────────────────
@@ -1863,18 +1531,8 @@ export const drawTree: DrawFn = (g, x, y, s) => {
   px(g, 0x3a8a3a, x+2, y+2, 2, 2, s);
 };
 
-// ── Card sprite registry ──────────────────────────────────────────────────────
-// Maps each card definitionId that has a dedicated sprite to its entry.
-// Cards NOT listed here fall back to job-based sprite selection in spriteKeyForCard().
-
-export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
-  // Human egg cards (32×45px)
-  human_mage:       { draw: drawHumanMage       as DrawFn, w: 32, h: 45 },
-  human_sage:       { draw: drawHumanSage       as DrawFn, w: 32, h: 45 },
-  human_hero:       { draw: drawHumanHero       as DrawFn, w: 32, h: 45 },
-  human_dragonborn: { draw: drawHumanDragonborn as DrawFn, w: 32, h: 45 },
-  human_demigod:    { draw: drawHumanDemigod    as DrawFn, w: 32, h: 45 },
-
+// ── Monster sprite registry ───────────────────────────────────────────────────
+const MONSTER_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   // Monsters — beast route
   monster_rat:                { draw: drawRat,              w: 32, h: 42 },
   monster_wolf:               { draw: drawWolf,             w: 32, h: 39 },
@@ -1903,6 +1561,12 @@ export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   monster_world_ender: { draw: drawMonsterWorldEnder,  w: 54, h: 69 },
 };
 
+// Combined registry — human cards from cardSprites.ts + monsters
+export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
+  ...HUMAN_SPRITE_REGISTRY,
+  ...MONSTER_SPRITE_REGISTRY,
+};
+
 // ── Texture generation ────────────────────────────────────────────────────────
 
 export type SpriteKey =
@@ -1913,6 +1577,12 @@ export type SpriteKey =
   | 'human_combat_0'| 'human_combat_1'| 'human_combat_2'
   | 'human_combat_3'| 'human_combat_4'| 'human_combat_5'
   | 'human_idle'
+  | 'human_farmer' | 'human_peddler' | 'human_guard'
+  | 'human_blacksmith' | 'human_merchant' | 'human_knight'
+  | 'human_master_blacksmith' | 'human_guild_master' | 'human_paladin'
+  | 'human_grandmaster' | 'human_tycoon' | 'human_warlord'
+  | 'human_legend_smith' | 'human_legend_tycoon' | 'human_immortal'
+  | 'human_divine_smith' | 'human_divine_merchant' | 'human_divine_warrior'
   | 'human_mage' | 'human_sage' | 'human_hero' | 'human_dragonborn' | 'human_demigod'
   | 'monster_rat' | 'monster_wolf' | 'monster_troll'
   | 'monster_harpy' | 'monster_dragon'
