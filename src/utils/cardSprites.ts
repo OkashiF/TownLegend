@@ -161,15 +161,187 @@ const drawHumanGuard:   DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 0)
 // Lv1
 const drawHumanBlacksmith: DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 1);
 const drawHumanMerchant:   DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 1);
-const drawHumanKnight:     DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 1);
+const drawHumanKnight: DrawFn = (g, x, y, s) => {
+  const armor  = 0xb02020;
+  const armor2 = 0x801818;
+  const helm   = 0x707080;
+  const helm2  = 0x484858;
+  const skin   = 0xf0c080;
+  const gold   = 0xd4a017;
+  const silver = 0xc0c0d0;
+  const dark   = 0x181820;
+  const boot   = 0x2a1808;
+  // Helmet
+  px(g, helm,  x+2, y+0, 4, 1, s);
+  px(g, helm,  x+1, y+1, 6, 3, s);
+  px(g, helm2, x+1, y+2, 6, 1, s);
+  px(g, dark,  x+2, y+2, 4, 1, s);
+  px(g, skin,  x+3, y+3, 2, 1, s);
+  // Chest plate
+  px(g, armor,  x+1, y+4, 6, 5, s);
+  px(g, armor2, x+1, y+5, 6, 1, s);
+  px(g, armor2, x+1, y+8, 6, 1, s);
+  // Gold cross emblem
+  px(g, gold, x+3, y+5, 2, 3, s);
+  px(g, gold, x+2, y+6, 4, 1, s);
+  // Arms (plate)
+  px(g, armor,  x+0, y+4, 1, 4, s);
+  px(g, armor,  x+7, y+4, 1, 4, s);
+  px(g, skin,   x+0, y+8, 1, 1, s);
+  px(g, skin,   x+7, y+8, 1, 1, s);
+  // Legs (plate greaves)
+  px(g, armor,  x+1, y+9,  2, 4, s);
+  px(g, armor,  x+5, y+9,  2, 4, s);
+  px(g, armor2, x+1, y+12, 2, 1, s);
+  px(g, armor2, x+5, y+12, 2, 1, s);
+  // Boots
+  px(g, boot, x+1, y+13, 2, 2, s);
+  px(g, boot, x+5, y+13, 2, 2, s);
+  // Shield (left arm, peeking from left edge)
+  px(g, armor,  x-1, y+4, 2, 6, s);
+  px(g, armor2, x-1, y+4, 2, 1, s);
+  px(g, armor2, x-1, y+9, 2, 1, s);
+  px(g, gold,   x-1, y+6, 2, 2, s);
+  // Sword (right arm, blade upright)
+  px(g, gold,   x+8, y+3, 2, 1, s);
+  px(g, silver, x+8, y+4, 1, 7, s);
+  px(g, silver, x+9, y+5, 1, 1, s);
+  px(g, 0x3a1800, x+8, y+11, 1, 2, s);
+};
 // Lv2
 const drawHumanMasterBlacksmith: DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 2);
 const drawHumanGuildMaster:      DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 2);
-const drawHumanPaladin:          DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 2);
+const drawHumanPaladin: DrawFn = (g, x, y, s) => {
+  const armor  = 0x801010;
+  const armor2 = 0x5a0c0c;
+  const gold   = 0xd4a017;
+  const gold2  = 0xa07010;
+  const dark   = 0x180808;
+  const silver = 0xc0c0d0;
+  const skin   = 0xf0c080;
+  const boot   = 0x2a1808;
+
+  // Full-face helmet with gold crest
+  px(g, armor,  x+2, y+0, 4, 1, s);
+  px(g, gold,   x+3, y+0, 2, 1, s);
+  px(g, armor,  x+1, y+1, 6, 3, s);
+  px(g, armor2, x+1, y+2, 6, 1, s);
+  px(g, dark,   x+2, y+2, 4, 1, s);  // visor slit
+  px(g, skin,   x+3, y+3, 2, 1, s);  // chin gap
+
+  // Chest plate
+  px(g, armor,  x+1, y+4, 6, 5, s);
+  px(g, armor2, x+1, y+5, 6, 1, s);
+  px(g, armor2, x+1, y+8, 6, 1, s);
+  // Holy cross emblem in gold
+  px(g, gold,   x+3, y+5, 2, 3, s);
+  px(g, gold,   x+2, y+6, 4, 1, s);
+
+  // Pauldrons / arms (plate)
+  px(g, armor,  x+0, y+4, 1, 4, s);
+  px(g, armor,  x+7, y+4, 1, 4, s);
+  px(g, gold2,  x+0, y+4, 1, 1, s);  // shoulder trim
+  px(g, gold2,  x+7, y+4, 1, 1, s);
+  px(g, skin,   x+0, y+8, 1, 1, s);
+  px(g, skin,   x+7, y+8, 1, 1, s);
+
+  // Greaves
+  px(g, armor,  x+1, y+9,  2, 4, s);
+  px(g, armor,  x+5, y+9,  2, 4, s);
+  px(g, gold2,  x+1, y+10, 2, 1, s);  // gold knee cap
+  px(g, gold2,  x+5, y+10, 2, 1, s);
+  px(g, armor2, x+1, y+12, 2, 1, s);
+  px(g, armor2, x+5, y+12, 2, 1, s);
+
+  // Boots
+  px(g, boot,   x+1, y+13, 2, 2, s);
+  px(g, boot,   x+5, y+13, 2, 2, s);
+
+  // Shield on left (deep red with gold boss)
+  px(g, armor,  x-1, y+4, 2, 6, s);
+  px(g, armor2, x-1, y+4, 2, 1, s);
+  px(g, armor2, x-1, y+9, 2, 1, s);
+  px(g, gold,   x-1, y+6, 2, 2, s);
+
+  // Longsword on right (upright)
+  px(g, gold,    x+8, y+3, 2, 1, s);   // crossguard
+  px(g, silver,  x+8, y+4, 1, 7, s);   // blade
+  px(g, silver,  x+9, y+5, 1, 1, s);   // blade edge highlight
+  px(g, 0x3a1800, x+8, y+11, 1, 2, s); // hilt/grip
+};
 // Lv3
 const drawHumanGrandmaster: DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 3);
 const drawHumanTycoon:      DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 3);
-const drawHumanWarlord:     DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 3);
+const drawHumanWarlord: DrawFn = (g, x, y, s) => {
+  const armor  = 0xb81818;  // main dark red
+  const armor2 = 0x901010;  // shadow dark red
+  const gold   = 0xd4a017;  // gold trim
+  const gold2  = 0xa07010;  // dark gold
+  const dark   = 0x180808;  // visor slit / dark
+  const skin   = 0xf0c080;  // skin
+  const cape   = 0x6a0808;  // deep crimson cape
+  const boot   = 0x2a1808;  // boots
+  const silver = 0xc0c0d0;  // axe blade
+
+  // === War Crown Helmet ===
+  // Crown tips (3 spikes: sides + center)
+  px(g, gold,  x+2, y+0, 1, 1, s);
+  px(g, gold,  x+3, y+0, 2, 1, s);  // center double spike
+  px(g, gold,  x+5, y+0, 1, 1, s);
+  // Crown base ring
+  px(g, gold,  x+2, y+1, 4, 1, s);
+  // Helmet body
+  px(g, armor, x+1, y+1, 6, 3, s);
+  px(g, armor2,x+1, y+2, 6, 1, s);  // shadow band
+  px(g, dark,  x+2, y+2, 4, 1, s);  // visor slit
+  px(g, skin,  x+3, y+3, 2, 1, s);  // chin gap
+
+  // === Battle Cape (behind torso, hanging wide) ===
+  px(g, cape,  x+0, y+4, 1, 9, s);  // left cape edge
+  px(g, cape,  x+7, y+4, 1, 9, s);  // right cape edge
+  px(g, cape,  x-1, y+5, 1, 7, s); // left cape overhang
+  px(g, cape,  x+8, y+5, 1, 7, s); // right cape overhang
+
+  // === Chest Plate ===
+  px(g, armor, x+1, y+4, 6, 5, s);
+  px(g, armor2,x+1, y+5, 6, 1, s);  // chest shadow stripe
+  px(g, armor2,x+1, y+8, 6, 1, s);  // belly plate bottom
+  // Skull / war emblem on chest (gold)
+  px(g, gold,  x+3, y+5, 2, 1, s);  // emblem top
+  px(g, gold,  x+2, y+6, 4, 1, s);  // emblem mid bar
+  px(g, gold,  x+3, y+7, 2, 1, s);  // emblem bottom
+
+  // === Pauldrons / Arms ===
+  px(g, armor2,x+0, y+4, 1, 1, s);  // left shoulder trim
+  px(g, armor2,x+7, y+4, 1, 1, s);  // right shoulder trim
+  px(g, gold2, x+0, y+4, 1, 1, s);  // left gold shoulder
+  px(g, gold2, x+7, y+4, 1, 1, s);  // right gold shoulder
+  px(g, armor, x+0, y+5, 1, 3, s);  // left arm plate
+  px(g, armor, x+7, y+5, 1, 3, s);  // right arm plate
+  px(g, skin,  x+0, y+8, 1, 1, s);  // left hand peek
+  px(g, skin,  x+7, y+8, 1, 1, s);  // right hand peek
+
+  // === Greaves (leg armor) ===
+  px(g, armor, x+1, y+9,  2, 4, s);
+  px(g, armor, x+5, y+9,  2, 4, s);
+  px(g, gold2, x+1, y+10, 2, 1, s); // left knee cap
+  px(g, gold2, x+5, y+10, 2, 1, s); // right knee cap
+  px(g, armor2,x+1, y+12, 2, 1, s);
+  px(g, armor2,x+5, y+12, 2, 1, s);
+
+  // === Boots ===
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+
+  // === War Axe (right side, upright) ===
+  px(g, gold,  x+8, y+3, 2, 1, s);   // axe top gold trim
+  px(g, silver,x+9, y+4, 1, 4, s);   // axe upper blade
+  px(g, silver,x+8, y+5, 1, 2, s);   // axe inner blade
+  px(g, armor2,x+8, y+4, 1, 1, s);   // axe top dark
+  px(g, 0x8a6020, x+9, y+8, 1, 1, s);// axe handle joint
+  px(g, 0x5a3010, x+9, y+9, 1, 4, s);// axe haft / handle
+  px(g, gold,  x+9, y+8, 1, 1, s);   // haft top wrap
+};
 // Lv4
 const drawHumanLegendSmith:  DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 4);
 const drawHumanLegendTycoon: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 4);
