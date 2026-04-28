@@ -6,8 +6,8 @@
 //   store.ts      – MONSTER_SPAWN_POSITIONS
 //   main.ts       – WORLD_WIDTH
 //
-// computeZoneConfig(1) returns values identical to the legacy hard-codes:
-//   wallLeft 900, wallRight 2700, shop 1100, craft 1400, town 1800, barracks 2200
+// computeZoneConfig(1) values:
+//   wallLeft 900, wallRight 2700, shop 1380, craft 1660, town 1940, barracks 2220
 //   patrolLeft 950, patrolRight 2650, worldWidth 3600
 //   monsterSpawn.left [700,450,200], monsterSpawn.right [2900,3100,3400]
 
@@ -30,24 +30,39 @@ export interface ZoneConfig {
 
 /**
  * Compute zone configuration for a given town level.
- * At level 1 the result exactly matches the legacy hard-coded values.
  * Higher levels scale the world proportionally (+400 px per level).
+ *
+ * Zone buildings are clustered around the world centre with a fixed 280 px gap
+ * (≈ 2 building-card grid slots) between each adjacent pair, so the town feels
+ * compact at early levels and the outer areas are reserved for expansion.
+ *
+ * Level 1 positions (worldWidth 3600):
+ *   wallLeft 900, wallRight 2700
+ *   shop 1380, craft 1660, town 1940, barracks 2220
+ *   patrolLeft 950, patrolRight 2650
+ *   monsterSpawn.left [700,450,200], monsterSpawn.right [2900,3100,3400]
  */
 export function computeZoneConfig(townLevel: number): ZoneConfig {
   const worldWidth = 3600 + (townLevel - 1) * 400;
   const wallLeft   = worldWidth * 0.25;   // level 1 → 900
   const wallRight  = worldWidth * 0.75;   // level 1 → 2700
+  const center     = worldWidth / 2;      // level 1 → 1800
+
+  // 4 zone buildings evenly spaced at 280 px apart, centred on the world.
+  // 280 ≈ 2 × building-card grid gap (140 px), leaving 2 card slots between
+  // each pair of zone buildings at all town levels.
+  const BLDG_GAP = 280;
 
   return {
     worldWidth,
     wallLeft,
     wallRight,
-    shop:        wallLeft  + 200,   // level 1 → 1100
-    craft:       wallLeft  + 500,   // level 1 → 1400
-    town:        worldWidth / 2,    // level 1 → 1800
-    barracks:    wallRight - 500,   // level 1 → 2200
-    patrolLeft:  wallLeft  + 50,    // level 1 → 950
-    patrolRight: wallRight - 50,    // level 1 → 2650
+    shop:        center - 1.5 * BLDG_GAP,   // level 1 → 1380
+    craft:       center - 0.5 * BLDG_GAP,   // level 1 → 1660
+    town:        center + 0.5 * BLDG_GAP,   // level 1 → 1940
+    barracks:    center + 1.5 * BLDG_GAP,   // level 1 → 2220
+    patrolLeft:  wallLeft  + 50,             // level 1 → 950
+    patrolRight: wallRight - 50,             // level 1 → 2650
     monsterSpawn: {
       left:  [
         wallLeft  - 200,  // Left0  level 1 → 700

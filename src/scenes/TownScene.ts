@@ -124,7 +124,7 @@ export class TownScene extends Phaser.Scene {
     this.labelLayer  = this.add.container(0, 0);
 
     this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
-    this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
+    this.cameras.main.centerOn(this.zoneConfig.worldWidth / 2, this.sceneH / 2);
     this.cameras.main.setZoom(1.0);
 
     this.setupCameraControls();
@@ -174,7 +174,7 @@ export class TownScene extends Phaser.Scene {
         // 重置区域配置并重建1级城镇视觉
         this.zoneConfig = computeZoneConfig(store.townLevel);
         this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
-        this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
+        this.cameras.main.centerOn(this.zoneConfig.worldWidth / 2, this.sceneH / 2);
         this.rebuildWorldVisuals();
       }
     });
@@ -1871,7 +1871,6 @@ export class TownScene extends Phaser.Scene {
       addZone(z.shop    - 120, 240, '商店');
       addZone(z.craft   - 120, 240, '制造');
       addZone(z.barracks - 120, 240, '兵营');
-      addZone(z.town    - 120, 240, '大厅');
     } else if (cardType === CardType.Monster) {
       const GAP = 160;
       const occupiedXs = store.field
@@ -1930,7 +1929,6 @@ export class TownScene extends Phaser.Scene {
         [z.shop,     JobType.Shop],
         [z.craft,    JobType.Craft],
         [z.barracks, JobType.Combat],
-        [z.town,     JobType.Idle],
       ];
       let best: [number, JobType] | null = null;
       let bestDist = Infinity;
