@@ -5,6 +5,7 @@
 } from '../types';
 import { CARD_DB, drawShopCards, LEVEL_COST, shopSize, shopRefreshCost, HUMAN_WILDCARD_BY_LEVEL, MONSTER_WILDCARD_BY_LEVEL, WILDCARD_CHANCE } from '../data/cards';
 import { LOOT_DB, PRODUCT_DB, RECIPE_DB, lootById, productById } from '../data/items';
+import { computeZoneConfig } from '../config/zones';
 
 // ─── Achievement definitions ───────────────────────────────────────────────────
 
@@ -176,8 +177,8 @@ export const TICKS_PER_WEEK  = 40;
 export const WEEKS_PER_MONTH = 4;
 export const TICKS_PER_MONTH = TICKS_PER_WEEK * WEEKS_PER_MONTH;
 const SAVE_KEY     = 'town_legend_save';
-// ── 版本号升至 7：扩展成就系统至100个 ──
-const SAVE_VERSION = 7;
+// ── 版本号升至 8：新增 segmentExpansions 字段 ──
+const SAVE_VERSION = 8;
 
 export function fieldCap(level: number): number { return 5 + (level - 1) * 2; }
 export { shopRefreshCost };
@@ -259,6 +260,9 @@ export class GameStore {
   shopSlots: ShopSlot[] = [];
   log: LogEntry[] = [];
   inventory: ItemStack[] = [];
+
+  /** Per-segment expansion counts [seg0, seg1, seg2]. Each +1 adds 140 px to that segment. */
+  segmentExpansions: [number, number, number] = [0, 0, 0];
 
   // ── 成就系统 ──────────────────────────────────────────────────────────────────
   achievements: AchievementRecord[] = ACHIEVEMENT_DB.map(def => ({ id: def.id, unlockedAt: null }));
@@ -785,9 +789,41 @@ export class GameStore {
     this.hand.splice(idx, 1);
     this.field.push(inst);
     this.addLog(`打出了 ${def.name}`, 'info');
+    // 建筑放置后检查区间是否需要扩张
+    if (def.type === CardType.Building && opts?.fieldX != null) {
+      this.checkSegmentExpansion(opts.fieldX);
+    }
     this.checkAchievements();
     this.emit('field');
     return { ok: true };
+  }
+
+  /** Check whether the segment containing newFieldX is now full; if so, expand it by one slot. */
+  checkSegmentExpansion(newFieldX: number): void {
+    const cfg = computeZoneConfig(this.townLevel, this.segmentExpansions);
+
+    const segIdx: 0 | 1 | 2 | null =
+      newFieldX > cfg.shop  && newFieldX < cfg.craft    ? 0
+    : newFieldX > cfg.craft && newFieldX < cfg.town     ? 1
+    : newFieldX > cfg.town  && newFieldX < cfg.barracks ? 2
+    : null;
+
+    if (segIdx === null) return; // placed on an anchor or outside segments
+
+    const buildingsInSeg = this.field.filter(inst => {
+      if (CARD_DB.find(c => c.id === inst.definitionId)?.type !== CardType.Building) return false;
+      if (inst.fieldX == null) return false;
+      if (segIdx === 0) return inst.fieldX > cfg.shop  && inst.fieldX < cfg.craft;
+      if (segIdx === 1) return inst.fieldX > cfg.craft && inst.fieldX < cfg.town;
+      return inst.fieldX > cfg.town && inst.fieldX < cfg.barracks;
+    }).length;
+
+    const capacity = 2 + this.segmentExpansions[segIdx];
+    if (buildingsInSeg >= capacity) {
+      this.segmentExpansions[segIdx]++;
+      this.addLog(`🏗️ 区间扩张！城镇空间延伸。`, 'info');
+      this.emit('zoneExpand');
+    }
   }
 
   assignJob(instanceId: string, job: JobType): boolean {
@@ -1246,6 +1282,7 @@ export class GameStore {
         monsterWildcardsObtained:    [...this._monsterWildcardsObtained],
         firstSellCardDone:           this._firstSellCardDone,
         reincarnationCount:          this.reincarnationCount,
+        segmentExpansions:           this.segmentExpansions,
         yearStats:                   { ...this.yearStats },
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
@@ -1311,6 +1348,23 @@ export class GameStore {
       this._monsterWildcardsObtained    = new Set(snap.monsterWildcardsObtained ?? []);
       this._firstSellCardDone           = snap.firstSellCardDone           ?? false;
       this.reincarnationCount           = snap.reincarnationCount          ?? 0;
+      // ── v8 新增字段 ──────────────────────────────────────────────────────────
+      if (snap.segmentExpansions && Array.isArray(snap.segmentExpansions)) {
+        this.segmentExpansions = snap.segmentExpansions as [number, number, number];
+      } else {
+        this.segmentExpansions = [0, 0, 0];
+      }
+      // v7→v8 迁移：旧存档的建筑 fieldX 是按旧坐标系存的，清空后让建筑回退到自动定位
+      if ((snap.version ?? 0) < 8) {
+        for (const inst of this.field) {
+          if (inst.fieldX != null) {
+            const def = CARD_DB.find(c => c.id === inst.definitionId);
+            if (def?.type === CardType.Building) {
+              inst.fieldX = undefined;
+            }
+          }
+        }
+      }
       this.yearStats = snap.yearStats
         ? { ...snap.yearStats }
         : { cardsBought: 0, upgradesDone: 0, totalIncome: 0, totalExpenses: 0 };
@@ -1358,6 +1412,7 @@ export class GameStore {
     };
     // 刷新商店
     this.refreshShopFull();
+    this.segmentExpansions = [0, 0, 0];
     this.addLog(`♻️ 第 ${this.reincarnationCount} 次轮回！城镇重建，踏上新的征途。`, 'good');
     this.saveToLocalStorage();
     this.emit('reincarnate');
