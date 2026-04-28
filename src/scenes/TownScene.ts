@@ -5,7 +5,8 @@ import { ZoneConfig, computeZoneConfig } from '../config/zones';
 import {
   generateAllTextures, spriteKeyForCard,
   drawPasserby,
-  drawShopBuilding, drawCraftBuilding, drawCombatBuilding,
+  drawShopBuilding, drawCraftBuilding, drawCombatBuilding, drawTownHall,
+  bldgTexSize,
 } from '../utils/sprites';
 
 const MS_PER_TICK = 200;
@@ -1535,18 +1536,19 @@ export class TownScene extends Phaser.Scene {
       [`bldg_barracks_lv${lv}`, (g, x, y, s) => drawCombatBuilding(g, x, y, s, lv), this.zoneConfig.barracks],
     ];
 
+    const [tw, th] = bldgTexSize(lv);
     for (const [key, fn, cx] of zones) {
       if (!this.textures.exists(key)) {
         const g = this.add.graphics();
         fn(g, 0, 0, scale);
-        g.generateTexture(key, 48, 51);
+        g.generateTexture(key, tw, th);
         g.destroy();
       }
       const img = this.add.image(cx, gy, key).setOrigin(0.5, 1);
       this.bldgLayer.add(img);
       const shadow = this.add.graphics();
       shadow.fillStyle(0x000000, 0.22);
-      shadow.fillEllipse(cx, gy + 3, 52, 10);
+      shadow.fillEllipse(cx, gy + 3, tw + 4, 10);
       this.bldgLayer.add(shadow);
     }
 
@@ -1980,144 +1982,3 @@ export class TownScene extends Phaser.Scene {
   }
 }
 
-function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: number, s: number, townLevel: number = 1) {
-  function px(c: number, px2: number, py: number, w: number, h: number) {
-    g.fillStyle(c, 1); g.fillRect(px2 * s, py * s, w * s, h * s);
-  }
-  if (townLevel >= 6) {
-    // Lv6: 神圣议政殿 — 光环，金柱，华盖
-    px(0x706080, x+1,  y+2,  10, 15); // divine purple walls
-    px(0x504060, x+1,  y+15, 10,  2); // base
-    px(0x906090, x,    y+0,  12,  3); // divine canopy roof
-    px(0xffd040, x,    y+0,  12,  1); // gold rim
-    // golden columns
-    px(0xd4a017, x+1,  y+2,   1, 13);
-    px(0xd4a017, x+10, y+2,   1, 13);
-    // halo / glow ring at top
-    px(0xffd040, x+2,  y+0,   8,  1);
-    px(0xffffff, x+5,  y+0,   2,  1); // shine
-    // central spire
-    px(0xd4a017, x+5,  y+0,   2,  2);
-    px(0xffffff, x+5,  y+0,   1,  1);
-    // tall ornate door
-    px(0x3a2010, x+4,  y+9,   4,  8);
-    px(0xd4a017, x+3,  y+8,   6,  2); // arch
-    px(0xd4a017, x+4,  y+10,  1,  1); // knob
-    // glowing windows
-    px(0xe0d0ff, x+2,  y+4,   2,  4);
-    px(0xe0d0ff, x+8,  y+4,   2,  4);
-    px(0xffd040, x+2,  y+4,   2,  1);
-    px(0xffd040, x+8,  y+4,   2,  1);
-    // flag
-    px(0x5a3010, x+6,  y+1,   1,  4);
-    px(0xd4a017, x+6,  y+1,   3,  2);
-    px(0xffffff, x+7,  y+2,   1,  1);
-  } else if (townLevel >= 5) {
-    // Lv5: 王宫正殿 — 多柱廊，双尖塔
-    px(0x908070, x+1,  y+3,  10, 14); // palatial stone walls
-    px(0x706050, x+1,  y+15, 10,  2); // base
-    px(0x8a3030, x,    y+1,  12,  3); // red palace roof
-    px(0xd4a017, x,    y+1,  12,  1); // gold roof trim
-    // side spires
-    px(0xd4a017, x,    y+0,   2,  2);
-    px(0xd4a017, x+10, y+0,   2,  2);
-    px(0xffd040, x,    y+0,   1,  1);
-    px(0xffd040, x+11, y+0,   1,  1);
-    // columns
-    px(0xd4a017, x+1,  y+3,   1, 12);
-    px(0xd4a017, x+10, y+3,   1, 12);
-    // flag
-    px(0x5a3010, x+6,  y+2,   1,  4);
-    px(0xaa3020, x+6,  y+2,   4,  3);
-    px(0xd4a017, x+7,  y+3,   2,  1);
-    // ornate door
-    px(0x3a2010, x+4,  y+9,   4,  8);
-    px(0xd4a017, x+3,  y+8,   6,  1); // arch
-    px(0xd4a017, x+4,  y+10,  1,  1); // knob
-    // windows
-    px(0xd0c898, x+2,  y+4,   2,  4);
-    px(0xd0c898, x+8,  y+4,   2,  4);
-    px(0xd4a017, x+2,  y+4,   2,  1);
-    px(0xd4a017, x+8,  y+4,   2,  1);
-  } else if (townLevel >= 4) {
-    // Lv4: 领主殿堂 — 双侧小塔
-    px(0x9a8878, x+1,  y+3,  10, 14); // lord's manor walls (taller)
-    px(0x686050, x+1,  y+15, 10,  2); // base
-    px(0x8a3030, x,    y+1,  12,  3); // red roof
-    // side towers
-    px(0x888070, x-1,  y+3,   4, 14);
-    px(0x888070, x+9,  y+3,   4, 14);
-    // tower battlements
-    px(0xaa4040, x-1,  y+3,   2,  2);
-    px(0xaa4040, x+1,  y+3,   2,  2);
-    px(0xaa4040, x+9,  y+3,   2,  2);
-    px(0xaa4040, x+11, y+3,   2,  2);
-    // flag
-    px(0x5a3010, x+6,  y+1,   1,  5);
-    px(0xaa3020, x+6,  y+2,   4,  3);
-    px(0xd4a017, x+7,  y+3,   2,  1); // emblem
-    // double door
-    px(0x5a3010, x+4,  y+9,   2,  8);
-    px(0x5a3010, x+6,  y+9,   2,  8);
-    px(0x8a5020, x+4,  y+10,  1,  1); // knob L
-    px(0x8a5020, x+7,  y+10,  1,  1); // knob R
-    // windows (4 total)
-    px(0xd0c090, x+2,  y+4,   2,  3);
-    px(0xd0c090, x+8,  y+4,   2,  3);
-    px(0xd0c090, x+2,  y+10,  2,  3);
-    px(0xd0c090, x+8,  y+10,  2,  3);
-  } else if (townLevel >= 3) {
-    // Lv3: 石制市政厅 — 拱门
-    px(0x808878, x+1,  y+4,  10, 13); // stone walls (taller)
-    px(0x606858, x+1,  y+15, 10,  2); // stone base
-    px(0x8a3030, x,    y+2,  12,  3); // red roof
-    px(0xa04040, x+1,  y+2,  10,  1); // roof highlight
-    // stone arch over entrance
-    px(0x909880, x+3,  y+8,   6,  2);
-    // flag
-    px(0x5a3010, x+6,  y+1,   1,  4);
-    px(0xaa3020, x+6,  y+2,   4,  2);
-    px(0xd4a017, x+7,  y+2,   2,  1); // emblem
-    // door
-    px(0x5a3010, x+4,  y+9,   4,  8);
-    px(0x8a5020, x+4,  y+10,  1,  1); // knob
-    // windows
-    px(0xd0c090, x+2,  y+5,   2,  3);
-    px(0xd0c090, x+8,  y+5,   2,  3);
-    // gold sign/emblem
-    px(0xd4a017, x+2,  y+0,   8,  2);
-  } else if (townLevel >= 2) {
-    // Lv2: 二层木楼 + 旗帜
-    px(0x9a8070, x+1,  y+5,  10, 12); // warmer wood walls
-    px(0x7a6050, x+1,  y+15, 10,  2); // base
-    px(0x8a3030, x,    y+2,  12,  4); // red roof
-    px(0xa04040, x+1,  y+2,  10,  1); // roof highlight
-    // floor divider
-    px(0x7a6050, x+1,  y+10, 10,  1);
-    // flag (bigger)
-    px(0x5a3010, x+6,  y+1,   1,  4);
-    px(0xaa3020, x+6,  y+1,   4,  3);
-    px(0xd4a017, x+7,  y+2,   2,  1); // emblem
-    // door + knob
-    px(0x5a3010, x+4,  y+9,   4,  8);
-    px(0x8a5020, x+4,  y+10,  1,  1);
-    // windows (2 upper, 2 lower)
-    px(0xd0c090, x+2,  y+6,   2,  3);
-    px(0xd0c090, x+8,  y+6,   2,  3);
-    px(0xd0c090, x+2,  y+11,  2,  3);
-    px(0xd0c090, x+8,  y+11,  2,  3);
-  } else {
-    // Lv1: 村委木屋 + 小旗 (original design)
-    px(0x8a7060, x+1,  y+5,  10, 12);
-    px(0x7a6050, x+1,  y+15, 10,  2);
-    px(0x8a3030, x,    y+2,  12,  4);
-    px(0xa04040, x+1,  y+1,  10,  1);
-    px(0xa04040, x+2,  y+0,   8,  1);
-    px(0x5a3010, x+4,  y+9,   4,  8);
-    px(0x8a5020, x+4,  y+10,  1,  1);
-    px(0xd0c090, x+2,  y+6,   2,  3);
-    px(0xd0c090, x+8,  y+6,   2,  3);
-    px(0xd4a017, x+5,  y+2,   2,  3);
-    px(0xcc3030, x+6,  y+1,   3,  2);
-  }
-}
