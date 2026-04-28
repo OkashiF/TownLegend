@@ -282,7 +282,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 1,
     cost: cost(1), upkeep: upkeep(1),
     emoji: '🧙',
-    description: '【彩蛋】博学多识的全能型人才，各岗位均有不错加成。由Lv0人物合成时10%概率获得。',
+    description: '【彩蛋】博学多识的全能型人才，各岗位均有不错加成。由Lv0人物合成时2%概率获得。',
     stats: { hp: 40, maxHp: 40, atk: 10, def: 5, intellect: 10, strength: 5, diligence: 10 },
   },
   {
@@ -292,7 +292,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 2,
     cost: cost(2), upkeep: upkeep(2),
     emoji: '🔮',
-    description: '【彩蛋】智慧超群，商店和制造均达极致，但不擅长战斗。由Lv1人物合成时10%概率获得。',
+    description: '【彩蛋】智慧超群，商店和制造均达极致，但不擅长战斗。由Lv1人物合成时2%概率获得。',
     stats: { hp: 40, maxHp: 40, atk: 10, def: 4, intellect: 20, strength: 5, diligence: 20 },
   },
   {
@@ -302,7 +302,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 3,
     cost: cost(3), upkeep: upkeep(3),
     emoji: '🦸',
-    description: '【彩蛋】传奇冒险家，战斗力惊人且全属性均衡。由Lv2人物合成时10%概率获得。',
+    description: '【彩蛋】传奇冒险家，战斗力惊人且全属性均衡。由Lv2人物合成时2%概率获得。',
     stats: { hp: 120, maxHp: 120, atk: 40, def: 25, intellect: 12, strength: 20, diligence: 15 },
   },
   {
@@ -312,7 +312,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 4,
     cost: cost(4), upkeep: upkeep(4),
     emoji: '🐲',
-    description: '【彩蛋】龙族血脉觉醒，各项能力全面碾压同等级卡牌。由Lv3人物合成时10%概率获得。',
+    description: '【彩蛋】龙族血脉觉醒，各项能力全面碾压同等级卡牌。由Lv3人物合成时2%概率获得。',
     stats: { hp: 200, maxHp: 200, atk: 60, def: 40, intellect: 20, strength: 30, diligence: 25 },
   },
   {
@@ -322,7 +322,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 5,
     cost: cost(5), upkeep: upkeep(5),
     emoji: '✨',
-    description: '【彩蛋】神明之子降临，全属性傲视群雄，是城镇最强的守护者。由Lv4人物合成时10%概率获得。',
+    description: '【彩蛋】神明之子降临，全属性傲视群雄，是城镇最强的守护者。由Lv4人物合成时2%概率获得。',
     stats: { hp: 400, maxHp: 400, atk: 110, def: 80, intellect: 50, strength: 50, diligence: 50 },
   },
 
@@ -537,7 +537,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 1,
     cost: cost(1), upkeep: 0,
     emoji: '👾',
-    description: '【彩蛋】基因突变的神秘生物，HP极高但攻击力低，掉落混合战利品。由Lv0怪物合成时10%概率获得。',
+    description: '【彩蛋】基因突变的神秘生物，HP极高但攻击力低，掉落混合战利品。由Lv0怪物合成时2%概率获得。',
     stats: { hp: 80, maxHp: 80, atk: 6, def: 5, rarity: 5, aggression: 5, strength: 3,
              lootId: 'loot_mutant_tissue', lootQtyMin: 4, lootQtyMax: 8 },
   },
@@ -548,7 +548,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 2,
     cost: cost(2), upkeep: 0,
     emoji: '🌀',
-    description: '【彩蛋】混沌能量孕育的怪物，侵略性最高(aggression=1)，掉落混沌晶核。由Lv1怪物合成时10%概率获得。',
+    description: '【彩蛋】混沌能量孕育的怪物，侵略性最高(aggression=1)，掉落混沌晶核。由Lv1怪物合成时2%概率获得。',
     stats: { hp: 150, maxHp: 150, atk: 35, def: 8, rarity: 10, aggression: 1, strength: 14,
              lootId: 'loot_chaos_crystal', lootQtyMin: 2, lootQtyMax: 6 },
   },
@@ -559,7 +559,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 3,
     cost: cost(3), upkeep: 0,
     emoji: '🕸️',
-    description: '【彩蛋】深渊中最强的存在，全属性均超越同等级怪物，掉落深渊精髓。由Lv2怪物合成时10%概率获得。',
+    description: '【彩蛋】深渊中最强的存在，全属性均超越同等级怪物，掉落深渊精髓。由Lv2怪物合成时2%概率获得。',
     stats: { hp: 400, maxHp: 400, atk: 70, def: 35, rarity: 20, aggression: 1, strength: 25,
              lootId: 'loot_abyss_essence', lootQtyMin: 2, lootQtyMax: 3 },
   },
@@ -570,7 +570,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 4,
     cost: cost(4), upkeep: 0,
     emoji: '🌟',
-    description: '【彩蛋】远古时代的神话生物，力量媲美神明，掉落原初精华。由Lv3怪物合成时10%概率获得。',
+    description: '【彩蛋】远古时代的神话生物，力量媲美神明，掉落原初精华。由Lv3怪物合成时2%概率获得。',
     stats: { hp: 800, maxHp: 800, atk: 120, def: 75, rarity: 35, aggression: 1, strength: 45,
              lootId: 'loot_primordial_essence', lootQtyMin: 1, lootQtyMax: 2 },
   },
@@ -581,7 +581,7 @@ export const CARD_DB: CardDefinition[] = [
     level: 5,
     cost: cost(5), upkeep: 0,
     emoji: '💥',
-    description: '【彩蛋】存在本身即是终结，全游戏最强怪物，掌握它意味着挑战极限。由Lv4怪物合成时10%概率获得。',
+    description: '【彩蛋】存在本身即是终结，全游戏最强怪物，掌握它意味着挑战极限。由Lv4怪物合成时2%概率获得。',
     stats: { hp: 2000, maxHp: 2000, atk: 250, def: 150, rarity: 100, aggression: 1, strength: 80,
              lootId: 'loot_world_shard', lootQtyMin: 1, lootQtyMax: 2 },
   },
@@ -756,7 +756,7 @@ export const CARD_DB: CardDefinition[] = [
     emoji: '⚡',
     description: '无法被攻破的传说要塞，战士ATK+40，怪物攻城永远不会造成税收惩罚。（6级城镇解锁）',
     stats: { capacity: 40, bonus: 2.5 },
-  },
+   },
 
   // ══════════════════════════════════════════════════════════════════════
   // 魔法卡（Lv1~Lv4，随城镇等级解锁）

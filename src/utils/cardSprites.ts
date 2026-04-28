@@ -174,7 +174,60 @@ const drawHumanPeddler: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 0);
 const drawHumanGuard:   DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 0);
 // Lv1
 const drawHumanBlacksmith: DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 1);
-const drawHumanMerchant:   DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 1);
+const drawHumanMerchant: DrawFn = (g, x, y, s) => {
+  const vest   = 0x2a6cb0, vest2  = 0x1a4c90;
+  const shirt  = 0xd8d0b8, collar = 0xb8b098;
+  const skin   = 0xf0c080, skin2  = 0xd4a060;
+  const hair   = 0x4a2800;
+  const pants  = 0x2a4a6a, pants2 = 0x1a3050;
+  const shoe   = 0x3a2010;
+  const gold   = 0xd4a017, gold2  = 0xa07010;
+  const bag    = 0xc89010, bag2   = 0x8a6008;
+  const tie    = 0x8a2020;
+  // ── Head ──
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, hair,  x+2, y+1, 4, 1, s);
+  px(g, hair,  x+1, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  // ── Merchant hat (top hat) ──
+  px(g, 0x1a1208, x+1, y+0, 6, 1, s);   // brim
+  px(g, 0x201810, x+2, y-2, 4, 2, s);   // crown
+  px(g, gold,     x+2, y+0, 4, 1, s);   // hat band
+  // ── Shirt / inner layer ──
+  px(g, shirt,  x+2, y+5, 4, 5, s);
+  px(g, collar, x+3, y+5, 2, 1, s);
+  // ── Vest over shirt ──
+  px(g, vest,  x+1, y+5, 2, 5, s);
+  px(g, vest,  x+5, y+5, 2, 5, s);
+  px(g, vest2, x+1, y+6, 2, 1, s);
+  px(g, vest2, x+5, y+6, 2, 1, s);
+  // ── Cravat / tie ──
+  px(g, tie, x+3, y+5, 2, 3, s);
+  px(g, 0xa03030, x+3, y+7, 2, 1, s);
+  // ── Left arm (holding coin bag) ──
+  px(g, vest,  x+0, y+5, 1, 3, s);
+  px(g, skin,  x+0, y+8, 1, 1, s);
+  // ── Right arm (extended, holding bag) ──
+  px(g, vest,  x+7, y+5, 1, 3, s);
+  px(g, skin,  x+7, y+8, 1, 1, s);
+  // ── Coin bag (right hand, dangling) ──
+  px(g, bag,   x+8, y+7, 2, 3, s);   // bag body
+  px(g, bag2,  x+8, y+9, 2, 1, s);   // bag bottom shadow
+  px(g, gold,  x+8, y+6, 2, 1, s);   // tie-off knot
+  px(g, gold2, x+9, y+7, 1, 1, s);   // coin glint
+  // ── Belt ──
+  px(g, 0x3a2010, x+1, y+9, 6, 1, s);
+  px(g, gold,     x+3, y+9, 2, 1, s);   // buckle
+  // ── Trousers ──
+  px(g, pants,  x+1, y+10, 2, 3, s);
+  px(g, pants,  x+5, y+10, 2, 3, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  // ── Shoes ──
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+};
 const drawHumanKnight: DrawFn = (g, x, y, s) => {
   const armor  = 0xb02020;
   const armor2 = 0x801818;
@@ -523,27 +576,52 @@ const drawHumanDivineWarrior:  DrawFn = (g, x, y, s) => {
 // ── 5 human egg-card draw functions (migrated from sprites.ts) ────────────────
 function drawHumanMage(g: Phaser.GameObjects.Graphics,
                        x: number, y: number, s: number): void {
-  const skin = 0xf0c080, skin2 = 0xd4a060;
-  const robe = 0x5028b0, robe2 = 0x3010a0;
-  const hat  = 0x1a1060;
-  px(g, hat,    x+2, y+0, 4, 2, s);
-  px(g, 0x8040f0, x+3, y+0, 2, 1, s);
-  px(g, hat,    x+1, y+2, 6, 1, s);
-  px(g, skin,   x+2, y+3, 4, 3, s);
-  px(g, skin2,  x+3, y+5, 1, 1, s);
-  px(g, 0x2020c0, x+3, y+4, 1, 1, s);
-  px(g, 0x2020c0, x+5, y+4, 1, 1, s);
-  px(g, robe,   x+1, y+6, 6, 7, s);
-  px(g, robe2,  x+1, y+7, 6, 1, s);
-  px(g, robe,   x+0, y+6, 1, 5, s);
-  px(g, robe,   x+7, y+6, 1, 5, s);
-  px(g, skin,   x+0, y+11, 1, 1, s);
-  px(g, skin,   x+7, y+11, 1, 1, s);
-  px(g, robe2,  x+1, y+13, 6, 1, s);
-  px(g, robe,   x+1, y+14, 6, 1, s);
-  px(g, 0x5a3010, x+8, y+6, 1, 7, s);
-  px(g, 0x60c0ff, x+8, y+5, 2, 2, s);
-  px(g, 0xa0e0ff, x+8, y+5, 1, 1, s);
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const hat   = 0x3a2080, hat2  = 0x281060;  // deep indigo hat
+  const robe  = 0x6040a0, robe2 = 0x4a2880;  // muted violet robe / shadow
+  const panel = 0x8860c0;                     // lighter purple front panel
+  const belt  = 0x3a2010;                     // dark brown belt
+  const boot  = 0x3a2010;                     // dark leather boots
+  const gem   = 0xd4a017;                     // amber staff gem
+  const staff = 0x5a3010;                     // wooden staff
+
+  // Pointed hat — tip (y+0), body (y+1), brim (y+2)
+  px(g, hat,  x+3, y+0, 2, 1, s);  // tip
+  px(g, hat,  x+2, y+1, 4, 1, s);  // hat body
+  px(g, hat2, x+2, y+1, 4, 1, s);  // same row, darker for depth (overwrite is fine – shows hat2)
+  px(g, hat,  x+2, y+1, 4, 1, s);  // hat mid
+  px(g, hat,  x+1, y+2, 6, 1, s);  // brim
+
+  // Head (face)
+  px(g, skin,  x+2, y+3, 4, 3, s);
+  px(g, skin2, x+3, y+5, 2, 1, s);  // chin shadow
+  // Eyes (white)
+  px(g, 0xf0f0e0, x+3, y+4, 1, 1, s);
+  px(g, 0xf0f0e0, x+5, y+4, 1, 1, s);
+
+  // Robe body (y+6 to y+12)
+  px(g, robe,  x+1, y+6, 6, 7, s);
+  px(g, robe2, x+1, y+7, 6, 1, s);  // shadow stripe under collar
+  // Front panel (lighter center strip)
+  px(g, panel, x+3, y+6, 2, 7, s);
+  // Sleeves / arms
+  px(g, robe,  x+0, y+6, 1, 5, s);
+  px(g, robe,  x+7, y+6, 1, 5, s);
+  px(g, skin,  x+0, y+11, 1, 1, s);  // left hand
+  px(g, skin,  x+7, y+11, 1, 1, s);  // right hand
+  // Belt
+  px(g, belt,  x+1, y+12, 6, 1, s);
+  // Robe hem (y+13–14)
+  px(g, robe2, x+1, y+13, 6, 1, s);
+  px(g, robe,  x+1, y+14, 6, 1, s);
+  // Boots peeking at base
+  px(g, boot,  x+2, y+13, 1, 2, s);
+  px(g, boot,  x+5, y+13, 1, 2, s);
+
+  // Staff (right side) — gem at top, wooden handle below
+  px(g, gem,   x+8, y+5, 1, 1, s);  // amber gem
+  px(g, 0xf8d060, x+9, y+5, 1, 1, s);  // gem highlight
+  px(g, staff, x+8, y+6, 1, 8, s);  // wooden handle
 }
 
 function drawHumanSage(g: Phaser.GameObjects.Graphics,
@@ -600,30 +678,74 @@ function drawHumanHero(g: Phaser.GameObjects.Graphics,
 
 function drawHumanDragonborn(g: Phaser.GameObjects.Graphics,
                               x: number, y: number, s: number): void {
-  const scales = 0x3a8040, scales2 = 0x206030;
-  const gold   = 0xd4a017;
-  const eye    = 0xff8800;
-  px(g, 0x206030, x+2, y+0, 1, 2, s);
-  px(g, 0x206030, x+5, y+0, 1, 2, s);
-  px(g, scales,  x+2, y+1, 4, 4, s);
-  px(g, scales2, x+2, y+1, 4, 1, s);
-  px(g, scales2, x+2, y+3, 4, 1, s);
-  px(g, eye,     x+3, y+3, 1, 1, s);
-  px(g, eye,     x+5, y+3, 1, 1, s);
-  px(g, scales,  x+1, y+5, 6, 5, s);
-  px(g, scales2, x+1, y+5, 6, 1, s);
-  px(g, scales2, x+1, y+7, 6, 1, s);
-  px(g, gold,    x+3, y+6, 2, 2, s);
-  px(g, scales,  x+0, y+5, 1, 3, s);
-  px(g, scales,  x+7, y+5, 1, 3, s);
-  px(g, 0x1a4020, x+0, y+8, 1, 1, s);
-  px(g, 0x1a4020, x+7, y+8, 1, 1, s);
-  px(g, 0x2a5530, x-1, y+5, 2, 5, s);
-  px(g, 0x2a5530, x+7, y+5, 2, 5, s);
-  px(g, scales,  x+1, y+10, 2, 4, s);
-  px(g, scales,  x+5, y+10, 2, 4, s);
-  px(g, 0x1a4020, x+1, y+13, 2, 2, s);
-  px(g, 0x1a4020, x+5, y+13, 2, 2, s);
+  const skin   = 0xf0c080, skin2  = 0xd4a060;
+  const armor  = 0x1038a8, armor2 = 0x082080;
+  const gold   = 0xd4a017, gold2  = 0xa07010;
+  const cape   = 0xb81818, cape2  = 0x801010;
+  const horn   = 0x1a3020;   // dark dragon horn
+  const tail   = 0x2a6030, tail2 = 0x1a4020;  // dragon tail scales
+  const eye    = 0xff6600;   // dragon slit eye
+  const boot   = 0x1a2050;
+  const silver = 0xd0d0e0;   // claymore blade
+
+  // Dragon horns (small, y+0–1)
+  px(g, horn, x+2, y+0, 1, 2, s);
+  px(g, horn, x+5, y+0, 1, 2, s);
+
+  // Head — human skin with subtle scale shadow on temples
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, skin2, x+2, y+1, 1, 2, s);  // left temple scale
+  px(g, skin2, x+5, y+1, 1, 2, s);  // right temple scale
+  px(g, eye,   x+3, y+3, 1, 1, s);  // left dragon eye
+  px(g, eye,   x+5, y+3, 1, 1, s);  // right dragon eye
+  px(g, skin2, x+3, y+4, 2, 1, s);  // chin shadow
+
+  // Cape behind torso and legs
+  px(g, cape,  x+0, y+4, 1, 10, s);
+  px(g, cape,  x+7, y+4, 1, 10, s);
+  px(g, cape2, x-1, y+5, 1,  8, s);
+
+  // Chest plate
+  px(g, armor,  x+1, y+5, 6, 5, s);
+  px(g, armor2, x+1, y+6, 6, 1, s);
+  px(g, armor2, x+1, y+9, 6, 1, s);
+  // Gold cross emblem
+  px(g, gold,  x+3, y+6, 2, 3, s);
+  px(g, gold,  x+2, y+7, 4, 1, s);
+  px(g, gold2, x+3, y+7, 2, 1, s);
+
+  // Pauldrons / arms
+  px(g, gold,  x+0, y+5, 1, 1, s);
+  px(g, gold,  x+7, y+5, 1, 1, s);
+  px(g, armor, x+0, y+6, 1, 2, s);
+  px(g, armor, x+7, y+6, 1, 2, s);
+  px(g, skin,  x+0, y+8, 1, 1, s);
+  px(g, skin,  x+7, y+8, 1, 1, s);
+
+  // Dragon tail peeking from behind at left lower body
+  px(g, tail,  x-1, y+9,  1, 4, s);
+  px(g, tail2, x-1, y+12, 1, 2, s);
+
+  // Greaves (leg armor)
+  px(g, armor,  x+1, y+10, 2, 3, s);
+  px(g, armor,  x+5, y+10, 2, 3, s);
+  px(g, gold,   x+1, y+11, 2, 1, s);  // knee cap
+  px(g, gold,   x+5, y+11, 2, 1, s);
+  px(g, armor2, x+1, y+12, 2, 1, s);
+  px(g, armor2, x+5, y+12, 2, 1, s);
+
+  // Boots
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+  px(g, gold2, x+1, y+13, 2, 1, s);
+  px(g, gold2, x+5, y+13, 2, 1, s);
+
+  // Golden claymore (right side, upright): pommel → grip → crossguard → blade
+  px(g, gold,   x+9, y+1, 1, 1, s);   // pommel
+  px(g, gold2,  x+9, y+2, 1, 3, s);   // grip
+  px(g, gold,   x+8, y+5, 2, 1, s);   // crossguard
+  px(g, silver, x+9, y+6, 1, 7, s);   // blade
+  px(g, gold,   x+9, y+8, 1, 1, s);   // blade rune accent
 }
 
 function drawHumanDemigod(g: Phaser.GameObjects.Graphics,
@@ -653,6 +775,63 @@ function drawHumanDemigod(g: Phaser.GameObjects.Graphics,
   px(g, glow,  x+5, y+13, 2, 2, s);
 }
 
+// ── Building sprites ──────────────────────────────────────────────────────────
+const drawBuildingStall: DrawFn = (g, x, y, s) => {
+  const wood  = 0x804800;
+  const wood2 = 0x5a3000;
+  const woodL = 0xa06020;
+  const blue  = 0x2a80c0;
+  const gold  = 0xd4a017;
+  const dark  = 0x1a1208;
+  const wall  = 0xc8a060;
+
+  // Support poles (left & right)
+  px(g, wood,  x+2,  y+3, 2, 29, s);
+  px(g, wood2, x+3,  y+3, 1, 29, s);
+  px(g, wood,  x+28, y+3, 2, 29, s);
+  px(g, wood2, x+29, y+3, 1, 29, s);
+
+  // Awning — base blue fill then gold stripes (3 px each, alternating)
+  px(g, blue, x+1, y+3, 30, 6, s);
+  px(g, gold, x+4,  y+3, 3, 6, s);
+  px(g, gold, x+10, y+3, 3, 6, s);
+  px(g, gold, x+16, y+3, 3, 6, s);
+  px(g, gold, x+22, y+3, 3, 6, s);
+  px(g, gold, x+28, y+3, 3, 6, s);
+  // Awning edges
+  px(g, dark, x+1,  y+3, 30, 1, s);
+  px(g, dark, x+1,  y+8, 30, 1, s);
+  // Horizontal crossbar (top of poles)
+  px(g, woodL, x+1, y+2, 30, 1, s);
+
+  // Back wall
+  px(g, wall, x+4, y+9, 24, 7, s);
+
+  // Goods on counter
+  px(g, 0xc02020, x+7,  y+13, 3, 3, s);  // red produce
+  px(g, 0x909090, x+14, y+12, 4, 4, s);  // clay pot
+  px(g, 0x606060, x+14, y+12, 4, 1, s);  // pot rim
+  px(g, gold,     x+22, y+14, 3, 2, s);  // gold coins
+
+  // Counter top
+  px(g, woodL, x+1, y+16, 30, 2, s);
+  px(g, dark,  x+1, y+16, 30, 1, s);
+
+  // Counter body
+  px(g, wood,  x+1, y+18, 30, 5, s);
+  px(g, woodL, x+1, y+19, 30, 1, s);
+  px(g, wood2, x+1, y+22, 30, 1, s);
+
+  // Legs
+  px(g, wood,  x+2,  y+23, 4, 8, s);
+  px(g, wood2, x+5,  y+23, 1, 8, s);
+  px(g, wood,  x+26, y+23, 4, 8, s);
+  px(g, wood2, x+29, y+23, 1, 8, s);
+
+  // Ground shadow
+  px(g, dark, x+2, y+31, 28, 1, s);
+};
+
 // ── Human card sprite registry (18 normal + 5 egg = 23 cards) ─────────────────
 export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   // 18 normal cards
@@ -680,4 +859,6 @@ export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   human_hero:       { draw: drawHumanHero as DrawFn,       w: 32, h: 45 },
   human_dragonborn: { draw: drawHumanDragonborn as DrawFn, w: 32, h: 45 },
   human_demigod:    { draw: drawHumanDemigod as DrawFn,    w: 32, h: 45 },
+  // Building cards
+  building_stall:   { draw: drawBuildingStall, w: 32, h: 32 },
 };
