@@ -82,7 +82,8 @@ src/
 ├── ui/
 │   └── UIController.ts   # 出售按钮、商店刷新价格动态显示、成就面板、手牌拖拽放卡状态机
 └── utils/
-    └── sprites.ts        # 纯代码像素绘制：人物/怪物/建筑精灵；drawShopBuilding / drawCraftBuilding / drawTownHall / drawCombatBuilding（四座固定建筑，含 Lv1-6 侧翼）；bldgTexSize(level) 纹理尺寸查询
+    ├── cardSprites.ts    # 人物卡片精灵独立模块：JOB_COLORS / drawShopWorker / drawCraftWorker / drawCombatWorker / drawIdleWorker / CARD_SPRITE_REGISTRY（23 条：18 普通 + 5 人物蛋卡）
+    └── sprites.ts        # 怪物/建筑精灵 + 透传 cardSprites.ts 全部导出；私有 MONSTER_SPRITE_REGISTRY（21 条）+ 合并公开 CARD_SPRITE_REGISTRY（44 条）；drawShopBuilding / drawCraftBuilding / drawTownHall / drawCombatBuilding（四座固定建筑，含 Lv1-6 侧翼）；bldgTexSize(level) 纹理尺寸查询
 ```
 
 ---
@@ -1048,4 +1049,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 特别鸣谢：感谢玩家 ***万亿核爆*** 的测试反馈和建议！
 
-*文档版本：v4.1 · 最后更新：补充源码结构中 utils/sprites.ts 条目（四座固定建筑绘制函数 + bldgTexSize 均位于此模块）*
+*文档版本：v4.2 · 最后更新：人物卡片精灵拆分为独立模块 cardSprites.ts（23 条注册 + JOB_COLORS 等导出）；sprites.ts 改为怪物/建筑精灵 + 透传，CARD_SPRITE_REGISTRY 扩展至 44 条*
