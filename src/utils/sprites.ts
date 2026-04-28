@@ -7,7 +7,14 @@ function px(g: Phaser.GameObjects.Graphics, c: number,
   g.fillRect(x * s, y * s, w * s, h * s);
 }
 
-type DrawFn = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void;
+export type DrawFn = (g: Phaser.GameObjects.Graphics, x: number, y: number, s: number) => void;
+
+/** A single entry in the card-sprite registry. */
+export interface CardSpriteEntry {
+  draw: DrawFn;
+  w: number;
+  h: number;
+}
 
 // ── Job colour tints ──────────────────────────────────────────────────────────
 // depth 0–5 correspond to card levels 0–5
@@ -1856,6 +1863,46 @@ export const drawTree: DrawFn = (g, x, y, s) => {
   px(g, 0x3a8a3a, x+2, y+2, 2, 2, s);
 };
 
+// ── Card sprite registry ──────────────────────────────────────────────────────
+// Maps each card definitionId that has a dedicated sprite to its entry.
+// Cards NOT listed here fall back to job-based sprite selection in spriteKeyForCard().
+
+export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
+  // Human egg cards (32×45px)
+  human_mage:       { draw: drawHumanMage       as DrawFn, w: 32, h: 45 },
+  human_sage:       { draw: drawHumanSage       as DrawFn, w: 32, h: 45 },
+  human_hero:       { draw: drawHumanHero       as DrawFn, w: 32, h: 45 },
+  human_dragonborn: { draw: drawHumanDragonborn as DrawFn, w: 32, h: 45 },
+  human_demigod:    { draw: drawHumanDemigod    as DrawFn, w: 32, h: 45 },
+
+  // Monsters — beast route
+  monster_rat:                { draw: drawRat,              w: 32, h: 42 },
+  monster_wolf:               { draw: drawWolf,             w: 32, h: 39 },
+  monster_troll:              { draw: drawTroll,            w: 36, h: 60 },
+  monster_harpy:              { draw: drawHarpy,            w: 42, h: 39 },
+  monster_dragon:             { draw: drawDragon,           w: 54, h: 63 },
+  monster_ancient_dragon:     { draw: drawAncientDragon,    w: 42, h: 57 },
+  monster_dragon_king:        { draw: drawDragonKing,       w: 48, h: 63 },
+  monster_primordial_dragon:  { draw: drawPrimordialDragon, w: 54, h: 69 },
+
+  // Monsters — undead route
+  monster_slime:           { draw: drawSlime,          w: 32, h: 42 },
+  monster_skeleton:        { draw: drawSkeleton,       w: 32, h: 42 },
+  monster_poison_slime:    { draw: drawPoisonSlime,    w: 36, h: 51 },
+  monster_skeleton_knight: { draw: drawSkeletonKnight, w: 36, h: 51 },
+  monster_lich:            { draw: drawLich,           w: 42, h: 57 },
+  monster_death_lord:      { draw: drawDeathLord,      w: 42, h: 57 },
+  monster_void_god:        { draw: drawVoidGod,        w: 48, h: 63 },
+  monster_end_bringer:     { draw: drawEndBringer,     w: 54, h: 69 },
+
+  // Monster egg cards
+  monster_mutant:      { draw: drawMonsterMutant,      w: 32, h: 45 },
+  monster_chaos_beast: { draw: drawMonsterChaosBeast,  w: 36, h: 51 },
+  monster_abyss_lord:  { draw: drawMonsterAbyssLord,   w: 42, h: 57 },
+  monster_primordial:  { draw: drawMonsterPrimordial,  w: 48, h: 63 },
+  monster_world_ender: { draw: drawMonsterWorldEnder,  w: 54, h: 69 },
+};
+
 // ── Texture generation ────────────────────────────────────────────────────────
 
 export type SpriteKey =
@@ -1878,7 +1925,7 @@ export type SpriteKey =
   | 'building_basic' | 'magic_basic' | 'tree' | 'passerby';
 
 export function generateAllTextures(scene: Phaser.Scene): void {
-  function gen(key: string, fn: DrawFn, w: number, h: number) {
+  function gen(key: string, fn: DrawFn, w: number, h: number): void {
     if (scene.textures.exists(key)) return;
     const g = scene.add.graphics();
     fn(g, 0, 0, 3);
@@ -1896,49 +1943,10 @@ export function generateAllTextures(scene: Phaser.Scene): void {
   }
   gen('human_idle', drawIdleWorker as DrawFn, 32, 45);
 
-  // 彩蛋人物：同样 32x45px
-  gen('human_mage',       drawHumanMage       as DrawFn, 32, 45);
-  gen('human_sage',       drawHumanSage       as DrawFn, 32, 45);
-  gen('human_hero',       drawHumanHero       as DrawFn, 32, 45);
-  gen('human_dragonborn', drawHumanDragonborn as DrawFn, 32, 45);
-  gen('human_demigod',    drawHumanDemigod    as DrawFn, 32, 45);
-
-  // 怪物：纹理高 = 图形实际底部像素
-  // rat:    feet bottom = (12+2)*3 = 42px
-  // wolf:   feet bottom = (12+1)*3 = 39px
-  // troll:  feet bottom = (17+3)*3 = 60px
-  // harpy:  feet bottom = (12+1)*3 = 39px
-  // dragon: feet bottom = (19+2)*3 = 63px
-  gen('monster_rat',    drawRat,    32, 42);
-  gen('monster_wolf',   drawWolf,   32, 39);
-  gen('monster_troll',  drawTroll,  36, 60);
-  gen('monster_harpy',  drawHarpy,  42, 39);
-  gen('monster_dragon', drawDragon, 54, 63);
-
-  // 新增怪物 (亡灵系 Lv0-5 + 野兽系高级 Lv3-5)
-  gen('monster_slime',            drawSlime,            32, 42);
-  gen('monster_skeleton',         drawSkeleton,         32, 42);
-  gen('monster_poison_slime',     drawPoisonSlime,      36, 51);
-  gen('monster_skeleton_knight',  drawSkeletonKnight,   36, 51);
-  gen('monster_lich',             drawLich,             42, 57);
-  gen('monster_death_lord',       drawDeathLord,        42, 57);
-  gen('monster_void_god',         drawVoidGod,          48, 63);
-  gen('monster_end_bringer',      drawEndBringer,       54, 69);
-  gen('monster_ancient_dragon',   drawAncientDragon,    42, 57);
-  gen('monster_dragon_king',      drawDragonKing,       48, 63);
-  gen('monster_primordial_dragon',drawPrimordialDragon, 54, 69);
-
-  // 彩蛋怪物
-  // mutant:      bottom = y+14 → 45px  (32 wide)
-  // chaos_beast: bottom = y+16 → 51px  (36 wide)
-  // abyss_lord:  bottom = y+18 → 57px  (42 wide)
-  // primordial:  bottom = y+20 → 63px  (48 wide)
-  // world_ender: bottom = y+22 → 69px  (54 wide)
-  gen('monster_mutant',      drawMonsterMutant,      32, 45);
-  gen('monster_chaos_beast', drawMonsterChaosBeast,  36, 51);
-  gen('monster_abyss_lord',  drawMonsterAbyssLord,   42, 57);
-  gen('monster_primordial',  drawMonsterPrimordial,  48, 63);
-  gen('monster_world_ender', drawMonsterWorldEnder,  54, 69);
+  // 每张人物卡 / 怪物卡的专属纹理 — 从 CARD_SPRITE_REGISTRY 统一生成
+  for (const [id, entry] of Object.entries(CARD_SPRITE_REGISTRY)) {
+    gen(id, entry.draw, entry.w, entry.h);
+  }
 
   // 建筑 s=3: 墙基 logical y+17 → 像素 51px。纹理高 = 51
   gen('building_basic', drawBuilding, 48, 51);
@@ -1955,24 +1963,10 @@ export function spriteKeyForCard(
   job?: string,
   level = 0
 ): string {
-  // ── Egg human cards: exact match before startsWith check ──────────────────
-  switch (definitionId) {
-    case 'human_mage':       return 'human_mage';
-    case 'human_sage':       return 'human_sage';
-    case 'human_hero':       return 'human_hero';
-    case 'human_dragonborn': return 'human_dragonborn';
-    case 'human_demigod':    return 'human_demigod';
-  }
+  // ── Registry-first: if a dedicated sprite exists, use definitionId as key ──
+  if (definitionId in CARD_SPRITE_REGISTRY) return definitionId;
 
-  // ── Egg monster cards: exact match ────────────────────────────────────────
-  switch (definitionId) {
-    case 'monster_mutant':      return 'monster_mutant';
-    case 'monster_chaos_beast': return 'monster_chaos_beast';
-    case 'monster_abyss_lord':  return 'monster_abyss_lord';
-    case 'monster_primordial':  return 'monster_primordial';
-    case 'monster_world_ender': return 'monster_world_ender';
-  }
-
+  // ── Fallback: job-based textures for regular human cards ──────────────────
   const depth = Math.min(level, 5);
   if (definitionId.startsWith('human')) {
     if (job === 'shop')   return `human_shop_${depth}`;
@@ -1980,22 +1974,6 @@ export function spriteKeyForCard(
     if (job === 'combat') return `human_combat_${depth}`;
     return 'human_idle';
   }
-  if (definitionId === 'monster_rat')    return 'monster_rat';
-  if (definitionId === 'monster_wolf')   return 'monster_wolf';
-  if (definitionId === 'monster_troll')  return 'monster_troll';
-  if (definitionId === 'monster_harpy')  return 'monster_harpy';
-  if (definitionId === 'monster_dragon') return 'monster_dragon';
-  if (definitionId === 'monster_slime')            return 'monster_slime';
-  if (definitionId === 'monster_skeleton')         return 'monster_skeleton';
-  if (definitionId === 'monster_poison_slime')     return 'monster_poison_slime';
-  if (definitionId === 'monster_skeleton_knight')  return 'monster_skeleton_knight';
-  if (definitionId === 'monster_lich')             return 'monster_lich';
-  if (definitionId === 'monster_death_lord')       return 'monster_death_lord';
-  if (definitionId === 'monster_void_god')         return 'monster_void_god';
-  if (definitionId === 'monster_end_bringer')      return 'monster_end_bringer';
-  if (definitionId === 'monster_ancient_dragon')   return 'monster_ancient_dragon';
-  if (definitionId === 'monster_dragon_king')      return 'monster_dragon_king';
-  if (definitionId === 'monster_primordial_dragon') return 'monster_primordial_dragon';
   if (definitionId.startsWith('building')) return 'building_basic';
   if (definitionId.startsWith('magic'))    return 'magic_basic';
   return 'human_idle';
