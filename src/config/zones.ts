@@ -6,10 +6,10 @@
 //   store.ts      – MONSTER_SPAWN_POSITIONS
 //   main.ts       – WORLD_WIDTH
 //
-// computeZoneConfig(1) returns values identical to the legacy hard-codes:
-//   wallLeft 900, wallRight 2700, shop 1100, craft 1400, town 1800, barracks 2200
-//   patrolLeft 950, patrolRight 2650, worldWidth 3600
-//   monsterSpawn.left [700,450,200], monsterSpawn.right [2900,3100,3400]
+// At level 1 with seg=[0,0,0]:
+//   worldWidth 2400, wallLeft 600, wallRight 1800
+//   shop 680, craft 960, town 1240, barracks 1520
+//   patrolLeft 650, patrolRight 1750
 
 export interface ZoneConfig {
   worldWidth:  number;
@@ -29,35 +29,66 @@ export interface ZoneConfig {
 }
 
 /**
- * Compute zone configuration for a given town level.
- * At level 1 the result exactly matches the legacy hard-coded values.
- * Higher levels scale the world proportionally (+400 px per level).
+ * Compute zone configuration for a given town level and optional segment expansions.
+ *
+ * @param townLevel  Current town level (1–6).
+ * @param seg        Per-segment expansion counts [seg0, seg1, seg2], defaults to [0,0,0].
+ *                   Each +1 adds one extra 140 px building slot to that segment and shifts
+ *                   the downstream anchor points right by 140 px.
+ *
+ * Layout (from wallLeft, with 80 px margins at each end):
+ *   shop     = wallLeft + 80
+ *   craft    = shop + gap0         gap0 = (2 + seg[0]) * 140
+ *   town     = craft + gap1        gap1 = (2 + seg[1]) * 140
+ *   barracks = town  + gap2        gap2 = (2 + seg[2]) * 140
+ *
+ * worldWidth = max(level-base, segment-dynamic)
+ *   level-base:     2400 + (townLevel - 1) * 300
+ *   segment-dynamic: ((160 + gap0 + gap1 + gap2) / 0.5)
+ *
+ * Left monster spawn offsets are reduced to -150/-300/-450 so they never go below x=0
+ * even when worldWidth (and wallLeft) is small.
  */
-export function computeZoneConfig(townLevel: number): ZoneConfig {
-  const worldWidth = 3600 + (townLevel - 1) * 400;
-  const wallLeft   = worldWidth * 0.25;   // level 1 → 900
-  const wallRight  = worldWidth * 0.75;   // level 1 → 2700
+export function computeZoneConfig(
+  townLevel: number,
+  seg: [number, number, number] = [0, 0, 0],
+): ZoneConfig {
+  const gap0 = (2 + seg[0]) * 140;
+  const gap1 = (2 + seg[1]) * 140;
+  const gap2 = (2 + seg[2]) * 140;
+
+  const levelBase     = 2400 + (townLevel - 1) * 300;
+  const segmentNeeded = (160 + gap0 + gap1 + gap2) / 0.5;
+  const worldWidth    = Math.max(levelBase, segmentNeeded);
+
+  const wallLeft  = worldWidth * 0.25;
+  const wallRight = worldWidth * 0.75;
+
+  const shop     = wallLeft + 80;
+  const craft    = shop     + gap0;
+  const town     = craft    + gap1;
+  const barracks = town     + gap2;
 
   return {
     worldWidth,
     wallLeft,
     wallRight,
-    shop:        wallLeft  + 200,   // level 1 → 1100
-    craft:       wallLeft  + 500,   // level 1 → 1400
-    town:        worldWidth / 2,    // level 1 → 1800
-    barracks:    wallRight - 500,   // level 1 → 2200
-    patrolLeft:  wallLeft  + 50,    // level 1 → 950
-    patrolRight: wallRight - 50,    // level 1 → 2650
+    shop,
+    craft,
+    town,
+    barracks,
+    patrolLeft:  wallLeft  + 50,
+    patrolRight: wallRight - 50,
     monsterSpawn: {
       left:  [
-        wallLeft  - 200,  // Left0  level 1 → 700
-        wallLeft  - 450,  // Left1  level 1 → 450
-        wallLeft  - 700,  // Left2  level 1 → 200
+        wallLeft - 150,   // Left0  (closest)
+        wallLeft - 300,   // Left1
+        wallLeft - 450,   // Left2  (farthest – always > 0 since wallLeft ≥ 600)
       ],
       right: [
-        wallRight + 200,  // Right0 level 1 → 2900
-        wallRight + 400,  // Right1 level 1 → 3100
-        wallRight + 700,  // Right2 level 1 → 3400
+        wallRight + 200,  // Right0
+        wallRight + 400,  // Right1
+        wallRight + 700,  // Right2
       ],
     },
   };

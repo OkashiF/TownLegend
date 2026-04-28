@@ -179,6 +179,8 @@ export interface SaveSnapshot {
   monsterWildcardsObtained?: string[];
   firstSellCardDone?: boolean;
   reincarnationCount?: number;
+  // ── v8 新增：区间扩张次数 ──────────────────────────────────────────────────
+  segmentExpansions?: [number, number, number];
   yearStats?: {
     cardsBought: number;
     upgradesDone: number;

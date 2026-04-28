@@ -112,7 +112,7 @@ export class TownScene extends Phaser.Scene {
     this.sceneH  = this.scale.height;
     this.groundY = this.sceneH * GROUND_FRAC;
 
-    this.zoneConfig = computeZoneConfig(store.townLevel);
+    this.zoneConfig = computeZoneConfig(store.townLevel, store.segmentExpansions);
 
     generateAllTextures(this);
 
@@ -124,6 +124,7 @@ export class TownScene extends Phaser.Scene {
     this.labelLayer  = this.add.container(0, 0);
 
     this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
+    this.cameras.main.setBackgroundColor(0x3a6a2a);
     this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
     this.cameras.main.setZoom(1.0);
 
@@ -143,10 +144,22 @@ export class TownScene extends Phaser.Scene {
       }
     });
 
+    // ── 区间扩张：平移受影响建筑坐标，扩展世界宽度，重绘视觉 ─────────────────
+    store.subscribe(evt => {
+      if (evt === 'zoneExpand') {
+        const oldConfig = this.zoneConfig;
+        this.zoneConfig = computeZoneConfig(store.townLevel, store.segmentExpansions);
+        this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
+        this.shiftBuildingFieldX(oldConfig, this.zoneConfig);
+        this.rebuildWorldVisuals();
+        this.syncSprites();
+      }
+    });
+
     // ── 城镇升级：更新区域配置并重绘世界视觉 ────────────────────────────────
     store.subscribe(evt => {
       if (evt === 'townLevelUp') {
-        this.zoneConfig = computeZoneConfig(store.townLevel);
+        this.zoneConfig = computeZoneConfig(store.townLevel, store.segmentExpansions);
         this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
         this.rebuildWorldVisuals();
       }
@@ -172,7 +185,7 @@ export class TownScene extends Phaser.Scene {
         this.dens = [];
 
         // 重置区域配置并重建1级城镇视觉
-        this.zoneConfig = computeZoneConfig(store.townLevel);
+        this.zoneConfig = computeZoneConfig(store.townLevel, store.segmentExpansions);
         this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
         this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
         this.rebuildWorldVisuals();
@@ -1221,6 +1234,34 @@ export class TownScene extends Phaser.Scene {
     this.buildZoneBuildings();
   }
 
+  /**
+   * When a segment expands, shift fieldX of buildings that sit past the expanding anchor.
+   * Called before rebuildWorldVisuals() so Sprites are repositioned in the new coordinate system.
+   *
+   * Rule (only one segment expands per call):
+   *  - seg0 expanded (craft moved right): shift buildings with fieldX > oldCfg.craft
+   *  - seg1 expanded (town moved right):  shift buildings with fieldX > oldCfg.town
+   *  - seg2 expanded (barracks moved):    no buildings need shifting (seg2 adds space to the right)
+   */
+  private shiftBuildingFieldX(oldCfg: ZoneConfig, newCfg: ZoneConfig): void {
+    const craftDelta = newCfg.craft - oldCfg.craft;
+    const townDelta  = newCfg.town  - oldCfg.town;
+
+    for (const inst of store.field) {
+      if (defById(inst.definitionId).type !== CardType.Building) continue;
+      if (inst.fieldX == null) continue;
+
+      if (craftDelta > 0) {
+        // seg0 expanded: buildings in seg1 and seg2 (past old craft) shift right
+        if (inst.fieldX > oldCfg.craft) inst.fieldX += 140;
+      } else if (townDelta > 0) {
+        // seg1 expanded: buildings in seg2 (past old town) shift right
+        if (inst.fieldX > oldCfg.town) inst.fieldX += 140;
+      }
+      // seg2 expanded: barracks shifts right, existing buildings in seg2 stay
+    }
+  }
+
   private buildBackground() {
     const W  = this.zoneConfig.worldWidth;
     const H  = this.sceneH;
@@ -1756,31 +1797,35 @@ export class TownScene extends Phaser.Scene {
 
   /**
    * Generate grid cell X-coordinates for building placement inside the walls.
-   * Regular cells fill wallLeft+100 → wallRight-100 with 140px gaps.
-   * If all regular cells are occupied, up to 3 overflow cells extend to the right.
+   * Cells are generated per-segment: each segment contributes cells from
+   * (anchorLeft + 70) to (anchorRight - 70) with 140 px steps.
+   * If all cells are occupied, one overflow cell is appended.
    */
   private generateBuildingCells(): number[] {
-    const { wallLeft, wallRight } = this.zoneConfig;
-    const GAP   = 140;
-    const start = wallLeft  + 100;
-    const end   = wallRight - 100;
+    const { shop, craft, town, barracks } = this.zoneConfig;
+    const GAP = 140;
+
+    const segments: [number, number][] = [
+      [shop + 70, craft - 70],    // seg0: between shop and craft
+      [craft + 70, town - 70],    // seg1: between craft and town
+      [town + 70, barracks - 70], // seg2: between town and barracks
+    ];
+
+    const cells: number[] = [];
+    for (const [start, end] of segments) {
+      for (let x = start; x <= end + 0.5; x += GAP) {
+        cells.push(Math.round(x));
+      }
+    }
 
     const occupiedXs = store.field
       .filter(c => defById(c.definitionId).type === CardType.Building && c.fieldX != null)
       .map(c => c.fieldX!);
     const isOccupied = (x: number) => occupiedXs.some(ox => Math.abs(ox - x) < GAP * 0.8);
 
-    const regularCount = Math.max(1, Math.floor((end - start) / GAP) + 1);
-    const cells: number[] = [];
-    for (let i = 0; i < regularCount; i++) {
-      cells.push(start + i * GAP);
-    }
-
-    // If all regular slots occupied, add up to 3 overflow slots
-    if (cells.every(x => isOccupied(x))) {
-      for (let i = 0; i < 3; i++) {
-        cells.push(start + (regularCount + i) * GAP);
-      }
+    // Safety overflow: if all cells are full, extend one extra slot to the right
+    if (cells.length > 0 && cells.every(x => isOccupied(x))) {
+      cells.push(cells[cells.length - 1] + GAP);
     }
     return cells;
   }
@@ -1871,7 +1916,6 @@ export class TownScene extends Phaser.Scene {
       addZone(z.shop    - 120, 240, '商店');
       addZone(z.craft   - 120, 240, '制造');
       addZone(z.barracks - 120, 240, '兵营');
-      addZone(z.town    - 120, 240, '大厅');
     } else if (cardType === CardType.Monster) {
       const GAP = 160;
       const occupiedXs = store.field
@@ -1930,7 +1974,6 @@ export class TownScene extends Phaser.Scene {
         [z.shop,     JobType.Shop],
         [z.craft,    JobType.Craft],
         [z.barracks, JobType.Combat],
-        [z.town,     JobType.Idle],
       ];
       let best: [number, JobType] | null = null;
       let bestDist = Infinity;
