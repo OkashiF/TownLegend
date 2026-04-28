@@ -947,7 +947,95 @@ export function drawTownHall(g: Phaser.GameObjects.Graphics, x: number, y: numbe
     px(g, 0xcc3030, x+6,  y+1,   3,  2, s);
   }
 }
+// ── Building sprites ──────────────────────────────────────────────────────────
+export const drawBuildingStall: DrawFn = (g, x, y, s) => {
+    const bottomY = y + 26;
+    
+    // 1. 木质底座与侧架 (#804800)
+    // 左支撑柱
+    px(g, 0x804800, x + 2, bottomY - 14, 2, 14, s);
+    // 右支撑柱
+    px(g, 0x804800, x + 18, bottomY - 14, 2, 14, s);
+    // 底部货台底座
+    px(g, 0x3a2010, x + 2, bottomY - 6, 18, 6, s); // 暗色阴影基座
+    px(g, 0x804800, x + 1, bottomY - 5, 20, 4, s); // 主体台面
+    
+    // 2. 货架上的箱子与货物
+    px(g, 0x804800, x + 4, bottomY - 8, 4, 3, s);  // 木箱A
+    px(g, 0xf8f0c0, x + 5, bottomY - 9, 2, 1, s);  // 货物高亮
+    px(g, 0x3a2010, x + 12, bottomY - 8, 5, 3, s); // 木箱B
+    px(g, 0x2a80c0, x + 13, bottomY - 9, 3, 1, s); // 蓝色小物件
+    
+    // 3. 支撑横梁
+    px(g, 0x804800, x + 2, bottomY - 14, 18, 2, s);
+    
+    // 4. 条纹顶棚 (#2a80c0 主色, #f8f0c0 高亮/白条)
+    // 顶棚主体
+    px(g, 0x2a80c0, x + 0, bottomY - 20, 22, 6, s);
+    // 蓝色条纹细节
+    px(g, 0x2a80c0, x + 0, bottomY - 15, 2, 2, s);
+    px(g, 0x2a80c0, x + 5, bottomY - 15, 3, 2, s);
+    px(g, 0x2a80c0, x + 10, bottomY - 15, 3, 2, s);
+    px(g, 0x2a80c0, x + 15, bottomY - 15, 3, 2, s);
+    px(g, 0x2a80c0, x + 20, bottomY - 15, 2, 2, s);
+    
+    // 白色/浅色条纹间隔 (#f8f0c0)
+    px(g, 0xf8f0c0, x + 2, bottomY - 20, 3, 5, s);
+    px(g, 0xf8f0c0, x + 8, bottomY - 20, 2, 5, s);
+    px(g, 0xf8f0c0, x + 13, bottomY - 20, 2, 5, s);
+    px(g, 0xf8f0c0, x + 18, bottomY - 20, 2, 5, s);
 
+    // 顶棚边缘装饰 (波浪感)
+    px(g, 0x2a80c0, x + 0, bottomY - 14, 22, 1, s);
+};
+
+export const drawBuildingWorkshop: DrawFn = (g, x, y, s) => {
+  const cStone = 0x707070;      // 石墙灰色
+  const cStoneDark = 0x505050;  // 石墙阴影
+  const cWood = 0x804800;       // 木头/屋顶深棕
+  const cWoodLight = 0xc07010;  // 屋顶浅色/边框
+  const cForge = 0xffa500;      // 熔炉发光色
+  const cSmoke = 0xcccccc;      // 像素烟雾
+  const cTool = 0x333333;       // 悬挂工具色
+
+  // --- 1. 烟囱 (Chimney) ---
+  px(g, cStoneDark, x + 12, y + 5, 3, 6, s);
+  // 像素烟雾
+  px(g, cSmoke, x + 13, y + 2, 2, 2, s);
+  px(g, cSmoke, x + 15, y + 0, 3, 2, s);
+
+  // --- 2. 主体石墙 (Stone Walls) ---
+  // 基座与主体
+  px(g, cStone, x + 2, y + 16, 16, 10, s); 
+  // 墙面细节阴影
+  px(g, cStoneDark, x + 2, y + 24, 16, 2, s); 
+  px(g, cStoneDark, x + 6, y + 18, 2, 2, s);
+
+  // --- 3. 木质斜屋顶 (Slanted Wooden Roof) ---
+  // 屋顶底层
+  for (let i = 0; i < 6; i++) {
+    // 阶梯状实现斜屋顶
+    px(g, cWood, x + 1 + i, y + 15 - i, 18 - i, 1, s);
+  }
+  // 屋顶边缘亮色
+  px(g, cWoodLight, x + 0, y + 16, 20, 1, s);
+  px(g, cWoodLight, x + 6, y + 10, 10, 1, s);
+
+  // --- 4. 熔炉窗口 (Glowing Forge Window) ---
+  px(g, cWood, x + 5, y + 19, 4, 4, s); // 窗框
+  px(g, cForge, x + 6, y + 20, 2, 2, s); // 核心发光
+
+  // --- 5. 外部装饰与工具 (Industrial Tools) ---
+  // 侧边工作台
+  px(g, cWood, x + 18, y + 22, 4, 4, s);
+  // 悬挂的铁锤/工具意象
+  px(g, cTool, x + 19, y + 20, 1, 2, s);
+  px(g, cStoneDark, x + 20, y + 21, 1, 1, s);
+
+  // --- 6. 门 (Door) ---
+  px(g, cWood, x + 11, y + 20, 4, 6, s);
+  px(g, cWoodLight, x + 14, y + 23, 1, 1, s); // 门把手
+};;
 // ── Magic ─────────────────────────────────────────────────────────────────────
 
 export const drawMagic: DrawFn = (g, x, y, s) => {
@@ -995,10 +1083,18 @@ export const drawTree: DrawFn = (g, x, y, s) => {
 
 // ── Monster sprite registry ───────────────────────────────────────────────────
 
+// —— Building cards 
+
+export const BUILDING_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
+    'building_stall': { draw: drawBuildingStall, w: 64, h: 80 },
+    'building_workshop': { draw: drawBuildingWorkshop, w: 64, h: 80 },
+};
+
 // Combined registry — human cards from cardSprites.ts + monsters
 export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   ...HUMAN_SPRITE_REGISTRY,
   ...MONSTER_SPRITE_REGISTRY,
+  ...BUILDING_SPRITE_REGISTRY,
 };
 
 // ── Texture generation ────────────────────────────────────────────────────────
@@ -1025,7 +1121,7 @@ export type SpriteKey =
   | 'monster_slime' | 'monster_skeleton' | 'monster_poison_slime'
   | 'monster_skeleton_knight' | 'monster_lich' | 'monster_death_lord'
   | 'monster_void_god' | 'monster_end_bringer'
-  | 'monster_ancient_dragon' | 'monster_dragon_king' | 'monster_primordial_dragon'
+  | 'monster_ancient_dragon' | 'monster_dragon_king' | 'monster_primordial_dragon' | 'building_stall' | 'building_workshop'
   | 'building_basic' | 'magic_basic' | 'tree' | 'passerby';
 
 export function generateAllTextures(scene: Phaser.Scene): void {
@@ -1078,6 +1174,7 @@ export function spriteKeyForCard(
     if (job === 'combat') return `human_combat_${depth}`;
     return 'human_idle';
   }
+
   if (definitionId.startsWith('building')) return 'building_basic';
   if (definitionId.startsWith('magic'))    return 'magic_basic';
   return 'human_idle';

@@ -775,63 +775,6 @@ function drawHumanDemigod(g: Phaser.GameObjects.Graphics,
   px(g, glow,  x+5, y+13, 2, 2, s);
 }
 
-// ── Building sprites ──────────────────────────────────────────────────────────
-const drawBuildingStall: DrawFn = (g, x, y, s) => {
-  const wood  = 0x804800;
-  const wood2 = 0x5a3000;
-  const woodL = 0xa06020;
-  const blue  = 0x2a80c0;
-  const gold  = 0xd4a017;
-  const dark  = 0x1a1208;
-  const wall  = 0xc8a060;
-
-  // Support poles (left & right)
-  px(g, wood,  x+2,  y+3, 2, 29, s);
-  px(g, wood2, x+3,  y+3, 1, 29, s);
-  px(g, wood,  x+28, y+3, 2, 29, s);
-  px(g, wood2, x+29, y+3, 1, 29, s);
-
-  // Awning — base blue fill then gold stripes (3 px each, alternating)
-  px(g, blue, x+1, y+3, 30, 6, s);
-  px(g, gold, x+4,  y+3, 3, 6, s);
-  px(g, gold, x+10, y+3, 3, 6, s);
-  px(g, gold, x+16, y+3, 3, 6, s);
-  px(g, gold, x+22, y+3, 3, 6, s);
-  px(g, gold, x+28, y+3, 3, 6, s);
-  // Awning edges
-  px(g, dark, x+1,  y+3, 30, 1, s);
-  px(g, dark, x+1,  y+8, 30, 1, s);
-  // Horizontal crossbar (top of poles)
-  px(g, woodL, x+1, y+2, 30, 1, s);
-
-  // Back wall
-  px(g, wall, x+4, y+9, 24, 7, s);
-
-  // Goods on counter
-  px(g, 0xc02020, x+7,  y+13, 3, 3, s);  // red produce
-  px(g, 0x909090, x+14, y+12, 4, 4, s);  // clay pot
-  px(g, 0x606060, x+14, y+12, 4, 1, s);  // pot rim
-  px(g, gold,     x+22, y+14, 3, 2, s);  // gold coins
-
-  // Counter top
-  px(g, woodL, x+1, y+16, 30, 2, s);
-  px(g, dark,  x+1, y+16, 30, 1, s);
-
-  // Counter body
-  px(g, wood,  x+1, y+18, 30, 5, s);
-  px(g, woodL, x+1, y+19, 30, 1, s);
-  px(g, wood2, x+1, y+22, 30, 1, s);
-
-  // Legs
-  px(g, wood,  x+2,  y+23, 4, 8, s);
-  px(g, wood2, x+5,  y+23, 1, 8, s);
-  px(g, wood,  x+26, y+23, 4, 8, s);
-  px(g, wood2, x+29, y+23, 1, 8, s);
-
-  // Ground shadow
-  px(g, dark, x+2, y+31, 28, 1, s);
-};
-
 // ── Human card sprite registry (18 normal + 5 egg = 23 cards) ─────────────────
 export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   // 18 normal cards
@@ -859,6 +802,4 @@ export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   human_hero:       { draw: drawHumanHero as DrawFn,       w: 32, h: 45 },
   human_dragonborn: { draw: drawHumanDragonborn as DrawFn, w: 32, h: 45 },
   human_demigod:    { draw: drawHumanDemigod as DrawFn,    w: 32, h: 45 },
-  // Building cards
-  building_stall:   { draw: drawBuildingStall, w: 32, h: 32 },
 };
