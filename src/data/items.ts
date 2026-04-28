@@ -1,4 +1,4 @@
-import { LootDef, ProductDef, Recipe } from '../types';
+﻿import { LootDef, ProductDef, Recipe } from '../types';
 
 // ── Loot definitions ──────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { TownScene } from './scenes/TownScene';
 import { initUI } from './ui/UIController';
 import { store } from './systems/store';
