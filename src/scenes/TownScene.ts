@@ -152,6 +152,33 @@ export class TownScene extends Phaser.Scene {
       }
     });
 
+    // ── 轮回：立即清理场上精灵/巢穴/战利品，并恢复1级城镇视觉 ───────────────
+    store.subscribe(evt => {
+      if (evt === 'reincarnate') {
+        // 强制销毁所有精灵（含正在播放死亡动画的）
+        for (const sp of this.sprites.values()) {
+          if (!sp.isDead || sp.dyingTimer > 0) {
+            sp.sprite.destroy(); sp.label.destroy(); sp.hpBar.destroy(); sp.craftBar.destroy();
+          }
+        }
+        this.sprites.clear();
+
+        // 清理战利品掉落
+        for (const drop of this.lootDrops.values()) drop.sprite.destroy();
+        this.lootDrops.clear();
+
+        // 清理巢穴精灵
+        for (const den of this.dens) { den.img.destroy(); den.restPulse.destroy(); }
+        this.dens = [];
+
+        // 重置区域配置并重建1级城镇视觉
+        this.zoneConfig = computeZoneConfig(store.townLevel);
+        this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
+        this.cameras.main.centerOn(this.zoneConfig.town, this.sceneH / 2);
+        this.rebuildWorldVisuals();
+      }
+    });
+
     // ── 后台继续运行 ─────────────────────────────────────────────────────────
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
