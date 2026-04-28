@@ -155,7 +155,21 @@ export function drawIdleWorker(g: Phaser.GameObjects.Graphics,
 
 // ── 18 individual normal human card draw functions ────────────────────────────
 // Lv0
-const drawHumanFarmer:  DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 0);
+const drawHumanFarmer: DrawFn = (g, x, y, s) => {
+  // Base human: yellow-brown work shirt
+  drawHumanColored(g, x, y, s, 0xe0a020, 0xb07818);
+  // Straw hat brim (wide, sits above head at y+0)
+  px(g, 0xd4a018, x+1, y+0, 6, 1, s);
+  // Hat crown (center, slightly darker)
+  px(g, 0xc89010, x+2, y+0, 4, 1, s);
+  // Hat highlight
+  px(g, 0xe8c040, x+3, y+0, 2, 1, s);
+  // Hoe handle (wooden, right side)
+  px(g, 0x5a3010, x+8, y+4, 1, 8, s);
+  // Hoe blade (metal, horizontal at top of handle)
+  px(g, 0x909090, x+7, y+4, 2, 1, s);
+  px(g, 0x606070, x+7, y+5, 1, 1, s);
+};
 const drawHumanPeddler: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 0);
 const drawHumanGuard:   DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 0);
 // Lv1
@@ -345,11 +359,166 @@ const drawHumanWarlord: DrawFn = (g, x, y, s) => {
 // Lv4
 const drawHumanLegendSmith:  DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 4);
 const drawHumanLegendTycoon: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 4);
-const drawHumanImmortal:     DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 4);
+const drawHumanImmortal: DrawFn = (g, x, y, s) => {
+  const armor  = 0x1038a8;  // deep divine blue
+  const armor2 = 0x082088;  // shadow blue
+  const gold   = 0xd4a017;  // gold trim
+  const gold2  = 0xa07010;  // dark gold
+  const dark   = 0x080818;  // visor dark
+  const skin   = 0xf0c080;  // skin
+  const divine = 0x80c0ff;  // divine glow
+  const silver = 0xc0c0d0;  // blade
+  const boot   = 0x1a1030;  // dark blue-black boot
+
+  // Divine Crown — 3 gold spikes
+  px(g, gold,  x+2, y+0, 1, 1, s);
+  px(g, gold,  x+3, y+0, 2, 1, s);
+  px(g, gold,  x+5, y+0, 1, 1, s);
+  // Crown base band
+  px(g, gold,  x+2, y+1, 4, 1, s);
+  // Helmet body
+  px(g, armor, x+1, y+1, 6, 3, s);
+  px(g, armor2,x+1, y+2, 6, 1, s);
+  // Visor slit with divine glowing eyes
+  px(g, dark,  x+2, y+2, 4, 1, s);
+  px(g, divine,x+3, y+2, 1, 1, s);
+  px(g, divine,x+5, y+2, 1, 1, s);
+  // Chin gap
+  px(g, skin,  x+3, y+3, 2, 1, s);
+
+  // Divine aura glow on sides (cape-like columns)
+  px(g, divine,x+0, y+4, 1, 9, s);
+  px(g, divine,x+7, y+4, 1, 9, s);
+
+  // Chest plate
+  px(g, armor, x+1, y+4, 6, 5, s);
+  px(g, armor2,x+1, y+5, 6, 1, s);
+  px(g, armor2,x+1, y+8, 6, 1, s);
+  // Divine star emblem (cross + corners)
+  px(g, gold,  x+3, y+5, 2, 1, s);
+  px(g, gold,  x+2, y+6, 4, 1, s);
+  px(g, gold,  x+3, y+7, 2, 1, s);
+  px(g, divine,x+3, y+6, 2, 1, s);  // glowing centre
+
+  // Pauldrons / arms
+  px(g, gold2, x+0, y+4, 1, 1, s);  // left gold shoulder cap
+  px(g, gold2, x+7, y+4, 1, 1, s);  // right gold shoulder cap
+  px(g, armor, x+0, y+5, 1, 3, s);
+  px(g, armor, x+7, y+5, 1, 3, s);
+  px(g, skin,  x+0, y+8, 1, 1, s);
+  px(g, skin,  x+7, y+8, 1, 1, s);
+
+  // Greaves (leg armour)
+  px(g, armor, x+1, y+9,  2, 4, s);
+  px(g, armor, x+5, y+9,  2, 4, s);
+  px(g, gold2, x+1, y+10, 2, 1, s);  // gold knee cap
+  px(g, gold2, x+5, y+10, 2, 1, s);
+  px(g, armor2,x+1, y+12, 2, 1, s);
+  px(g, armor2,x+5, y+12, 2, 1, s);
+
+  // Boots
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+
+  // Divine shield (left, peeks from left edge)
+  px(g, armor,  x-1, y+4, 2, 6, s);
+  px(g, armor2, x-1, y+4, 2, 1, s);  // shield top edge
+  px(g, armor2, x-1, y+9, 2, 1, s);  // shield bottom edge
+  px(g, gold,   x-1, y+6, 2, 2, s);  // gold boss
+  px(g, divine, x-1, y+7, 1, 1, s);  // glowing rune on boss
+
+  // Divine longsword (right side, upright)
+  px(g, divine, x+8, y+2, 1, 2, s);   // divine blade tip glow
+  px(g, gold,   x+8, y+4, 2, 1, s);   // crossguard
+  px(g, silver, x+8, y+5, 1, 6, s);   // blade
+  px(g, divine, x+8, y+5, 1, 1, s);   // blade highlight
+  px(g, gold2,  x+8, y+11, 1, 2, s);  // grip
+};
 // Lv5
 const drawHumanDivineSmith:    DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 5);
 const drawHumanDivineMerchant: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 5);
-const drawHumanDivineWarrior:  DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 5);
+const drawHumanDivineWarrior:  DrawFn = (g, x, y, s) => {
+  const gold   = 0xd4a017;  // divine gold
+  const gold2  = 0xa07010;  // shadow gold
+  const glow   = 0xffff80;  // divine aura glow
+  const holy   = 0xfffff0;  // holy white
+  const silver = 0xe0e0f8;  // blessed blade
+  const dark   = 0x100800;  // visor dark
+  const skin   = 0xf0c080;  // skin
+  const boot   = 0x3a2808;  // dark boot
+
+  // === Divine Crown (3 tall gold spikes) ===
+  px(g, gold,  x+2, y+0, 1, 1, s);
+  px(g, glow,  x+3, y+0, 2, 1, s);  // centre spike glows
+  px(g, gold,  x+5, y+0, 1, 1, s);
+  // Crown base band
+  px(g, gold,  x+2, y+1, 4, 1, s);
+
+  // === Helmet body ===
+  px(g, gold,  x+1, y+1, 6, 3, s);
+  px(g, gold2, x+1, y+2, 6, 1, s);   // shadow band
+  px(g, dark,  x+2, y+2, 4, 1, s);   // visor slit
+  // Divine glowing eyes in visor
+  px(g, glow,  x+3, y+2, 1, 1, s);
+  px(g, glow,  x+5, y+2, 1, 1, s);
+  // Chin gap
+  px(g, skin,  x+3, y+3, 2, 1, s);
+
+  // === Holy aura columns (wings of light behind torso) ===
+  px(g, glow,  x+0, y+4, 1, 9, s);
+  px(g, glow,  x+7, y+4, 1, 9, s);
+  px(g, holy,  x-1, y+5, 1, 7, s);   // outer halo left
+  px(g, holy,  x+8, y+5, 1, 7, s);   // outer halo right
+
+  // === Chest plate (full gold) ===
+  px(g, gold,  x+1, y+4, 6, 5, s);
+  px(g, gold2, x+1, y+5, 6, 1, s);   // chest shadow stripe
+  px(g, gold2, x+1, y+8, 6, 1, s);   // belly plate bottom edge
+  // Divine sun emblem (cross + 4 corner dots)
+  px(g, glow,  x+3, y+5, 2, 1, s);   // emblem top
+  px(g, glow,  x+2, y+6, 4, 1, s);   // emblem centre bar
+  px(g, glow,  x+3, y+7, 2, 1, s);   // emblem bottom
+  px(g, holy,  x+3, y+6, 2, 1, s);   // centre fill — pure white
+
+  // === Pauldrons / Arms ===
+  px(g, glow,  x+0, y+4, 1, 1, s);   // left gold shoulder
+  px(g, glow,  x+7, y+4, 1, 1, s);   // right gold shoulder
+  px(g, gold,  x+0, y+5, 1, 3, s);
+  px(g, gold,  x+7, y+5, 1, 3, s);
+  px(g, skin,  x+0, y+8, 1, 1, s);
+  px(g, skin,  x+7, y+8, 1, 1, s);
+
+  // === Greaves (gold leg armour) ===
+  px(g, gold,  x+1, y+9,  2, 4, s);
+  px(g, gold,  x+5, y+9,  2, 4, s);
+  px(g, glow,  x+1, y+10, 2, 1, s);  // gold knee cap glow
+  px(g, glow,  x+5, y+10, 2, 1, s);
+  px(g, gold2, x+1, y+12, 2, 1, s);
+  px(g, gold2, x+5, y+12, 2, 1, s);
+
+  // === Boots ===
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+  // Gold boot trim
+  px(g, gold2, x+1, y+13, 2, 1, s);
+  px(g, gold2, x+5, y+13, 2, 1, s);
+
+  // === Divine Greatsword (right side, upright) ===
+  px(g, glow,   x+9, y+0, 1, 2, s);   // glowing tip
+  px(g, holy,   x+9, y+2, 1, 2, s);   // upper blade holy
+  px(g, silver, x+9, y+4, 1, 6, s);   // blade body
+  px(g, glow,   x+9, y+5, 1, 1, s);   // blade rune highlight
+  px(g, gold,   x+8, y+4, 2, 1, s);   // crossguard
+  px(g, glow,   x+8, y+4, 1, 1, s);   // crossguard left glow
+  px(g, gold2,  x+9, y+10, 1, 3, s);  // grip
+
+  // === Sacred Shield (left side) ===
+  px(g, gold,  x-1, y+4, 2, 6, s);
+  px(g, glow,  x-1, y+4, 2, 1, s);   // shield top glow
+  px(g, gold2, x-1, y+9, 2, 1, s);   // shield bottom edge
+  px(g, holy,  x-1, y+6, 2, 2, s);   // holy boss centre
+  px(g, glow,  x-1, y+7, 1, 1, s);   // boss rune glow
+};
 
 // ── 5 human egg-card draw functions (migrated from sprites.ts) ────────────────
 function drawHumanMage(g: Phaser.GameObjects.Graphics,
