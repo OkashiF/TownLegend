@@ -1098,7 +1098,6 @@ export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
 };
 
 // ── Texture generation ────────────────────────────────────────────────────────
-
 export type SpriteKey =
   | 'human_shop_0'  | 'human_shop_1'  | 'human_shop_2'
   | 'human_shop_3'  | 'human_shop_4'  | 'human_shop_5'
@@ -1106,7 +1105,8 @@ export type SpriteKey =
   | 'human_craft_3' | 'human_craft_4' | 'human_craft_5'
   | 'human_combat_0'| 'human_combat_1'| 'human_combat_2'
   | 'human_combat_3'| 'human_combat_4'| 'human_combat_5'
-  | 'human_idle'
+  | 'human_idle' | 'human_herbalist' | 'human_scout' | 'human_alchemist' | 'human_bard' | 'human_ranger' | 'human_treasurer'
+  | 'human_inquisitor' | 'human_runesmith' | 'human_spymaster' | 'human_archmage' | 'human_divine_oracle' | 'human_divine_warlord'
   | 'human_farmer' | 'human_peddler' | 'human_guard'
   | 'human_blacksmith' | 'human_merchant' | 'human_knight'
   | 'human_master_blacksmith' | 'human_guild_master' | 'human_paladin'

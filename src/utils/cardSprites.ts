@@ -173,7 +173,46 @@ const drawHumanFarmer: DrawFn = (g, x, y, s) => {
 const drawHumanPeddler: DrawFn = (g, x, y, s) => drawShopWorker(g, x, y, s, 0);
 const drawHumanGuard:   DrawFn = (g, x, y, s) => drawCombatWorker(g, x, y, s, 0);
 // Lv1
-const drawHumanBlacksmith: DrawFn = (g, x, y, s) => drawCraftWorker(g, x, y, s, 1);
+const drawHumanBlacksmith: DrawFn = (g, x, y, s) => {
+  const skin = 0xf0c080;      // 皮肤
+  const hair = 0x333333;      // 深灰发
+  const tunic = 0xc07010;     // 制造职业服 (Lv1 橙)
+  const apron = 0x3a2010;     // 皮革围裙/鞋
+  const metal = 0x505050;     // 铁锤/金属[cite: 1]
+  const wood = 0x5a3a22;      // 锤柄
+
+  // --- 身体基础 (逻辑底部 y+15) ---
+  // 双腿与靴子
+  px(g, apron, x - 2, y + 13, 2, 2, s); // 左脚
+  px(g, apron, x + 1, y + 13, 2, 2, s); // 右脚
+
+  // 躯干 (外衣)
+  px(g, tunic, x - 3, y + 4, 7, 9, s); 
+  
+  // 皮革围裙 (覆盖在躯干中心)
+  px(g, apron, x - 2, y + 6, 5, 7, s);
+  px(g, apron, x - 3, y + 11, 7, 1, s); // 工具腰带
+
+  // --- 头部 ---
+  px(g, skin, x - 2, y - 1, 5, 5, s);  // 脸
+  px(g, hair, x - 2, y - 2, 5, 2, s);  // 头发顶部
+  px(g, hair, x - 3, y - 1, 1, 3, s);  // 鬓角
+  px(g, hair, x + 3, y - 1, 1, 3, s);
+
+  // --- 手臂与武器 ---
+  // 左臂 (自然下垂)
+  px(g, tunic, x - 4, y + 4, 2, 4, s);
+  px(g, skin, x - 4, y + 8, 2, 2, s);
+
+  // 右臂 (手持重锤)
+  px(g, tunic, x + 3, y + 4, 2, 4, s);
+  px(g, skin, x + 4, y + 8, 2, 2, s);
+  
+  // 铁锤 (Hammer)
+  px(g, wood, x + 5, y + 5, 1, 5, s);   // 锤柄
+  px(g, metal, x + 4, y + 3, 3, 3, s);  // 锤头
+  px(g, 0x707070, x + 4, y + 3, 1, 1, s); // 锤头高光
+};
 const drawHumanMerchant: DrawFn = (g, x, y, s) => {
   const vest   = 0x2a6cb0, vest2  = 0x1a4c90;
   const shirt  = 0xd8d0b8, collar = 0xb8b098;
@@ -774,7 +813,512 @@ function drawHumanDemigod(g: Phaser.GameObjects.Graphics,
   px(g, glow,  x+1, y+13, 2, 2, s);
   px(g, glow,  x+5, y+13, 2, 2, s);
 }
-
+// ═════════════════════════════════════════════════════════════════════════════
+// ── 新增12张人物卡像素绘制函数 (Lv0~Lv5，每级2张) ─────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+ 
+// ── Lv0: 草药师·薇妲 (human_herbalist) ──────────────────────────────────────
+const drawHumanHerbalist: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const hair  = 0x6a3800;
+  const shirt = 0xe8e0c0, shirt2 = 0xc8c0a0;
+  const apron = 0x4a8a40, apron2 = 0x306028;
+  const pants = 0x5a6a40, pants2 = 0x3a4a20;
+  const shoe  = 0x3a2010;
+  const herb  = 0x2a8a30, herb2 = 0x50c050;
+  const band  = 0xd4a017;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, hair,  x+2, y+1, 4, 1, s);
+  px(g, hair,  x+1, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, band,  x+2, y+1, 4, 1, s);
+  px(g, herb,  x+3, y+0, 1, 1, s);
+  px(g, herb2, x+4, y+0, 1, 1, s);
+  px(g, herb,  x+2, y+0, 1, 1, s);
+  px(g, shirt,  x+1, y+5, 6, 4, s);
+  px(g, shirt2, x+1, y+6, 6, 1, s);
+  px(g, shirt,  x+0, y+5, 1, 3, s);
+  px(g, shirt,  x+7, y+5, 1, 3, s);
+  px(g, skin,   x+0, y+8, 1, 1, s);
+  px(g, skin,   x+7, y+8, 1, 1, s);
+  px(g, apron,  x+2, y+5, 4, 8, s);
+  px(g, apron2, x+2, y+6, 4, 1, s);
+  px(g, pants,  x+1, y+9,  1, 4, s);
+  px(g, pants,  x+6, y+9,  1, 4, s);
+  px(g, pants2, x+1, y+12, 1, 1, s);
+  px(g, pants2, x+6, y+12, 1, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, herb,  x+8, y+6, 2, 4, s);
+  px(g, herb2, x+8, y+6, 1, 2, s);
+  px(g, herb,  x+9, y+5, 1, 1, s);
+  px(g, herb,  x+8, y+5, 1, 1, s);
+  px(g, 0x8a5020, x-1, y+7, 2, 3, s);
+  px(g, 0xb07030, x-1, y+7, 2, 1, s);
+  px(g, herb2,    x-1, y+6, 2, 1, s);
+};
+ 
+// ── Lv0: 斥候·雷恩 (human_scout) ─────────────────────────────────────────────
+const drawHumanScout: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const cloak = 0x2a4a20, cloak2 = 0x1a3010;
+  const shirt = 0x7a6040;
+  const pants = 0x4a3820, pants2 = 0x2a2010;
+  const shoe  = 0x2a1808;
+  const hat   = 0x5a3810, hat2   = 0x3a2008;
+  const bow   = 0x5a3010;
+  const string= 0xd0c090;
+  px(g, hat,  x+1, y+0, 6, 1, s);
+  px(g, hat2, x+2, y+0, 4, 1, s);
+  px(g, hat,  x+2, y+1, 4, 1, s);
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x3a2000, x+2, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, cloak,  x+0, y+4, 8, 6, s);
+  px(g, cloak2, x+0, y+5, 8, 1, s);
+  px(g, shirt, x+1, y+10, 6, 3, s);
+  px(g, cloak, x+0, y+4,  1, 9, s);
+  px(g, cloak, x+7, y+4,  1, 9, s);
+  px(g, skin,  x+0, y+8,  1, 1, s);
+  px(g, skin,  x+7, y+8,  1, 1, s);
+  px(g, pants,  x+1, y+9,  2, 4, s);
+  px(g, pants,  x+5, y+9,  2, 4, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, bow,    x+9, y+3, 1, 9, s);
+  px(g, bow,    x+8, y+3, 2, 1, s);
+  px(g, bow,    x+8, y+11,2, 1, s);
+  px(g, string, x+8, y+4, 1, 7, s);
+};
+ 
+// ── Lv1: 炼金术士·科尔 (human_alchemist) ─────────────────────────────────────
+const drawHumanAlchemist: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const coat  = 0xd8d0b0, coat2 = 0xb8b090;
+  const apron = 0x5a4010, apron2= 0x3a2800;
+  const gogg  = 0xd4a017, gogg2 = 0x8a6010;
+  const lens  = 0xc0e8ff;
+  const pants = 0x3a3050, pants2= 0x282038;
+  const shoe  = 0x2a1808;
+  const flask = 0x60c0a0;
+  const flaskG= 0xd0f0e0;
+  px(g, gogg,  x+2, y+1, 4, 1, s);
+  px(g, lens,  x+2, y+1, 2, 1, s);
+  px(g, lens,  x+4, y+1, 2, 1, s);
+  px(g, gogg2, x+3, y+1, 1, 1, s);
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x5a4020, x+2, y+2, 1, 2, s);
+  px(g, 0x5a4020, x+5, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, coat,  x+1, y+5, 6, 5, s);
+  px(g, coat2, x+1, y+6, 6, 1, s);
+  px(g, coat,  x+0, y+5, 1, 4, s);
+  px(g, coat,  x+7, y+5, 1, 4, s);
+  px(g, skin,  x+0, y+9, 1, 1, s);
+  px(g, skin,  x+7, y+9, 1, 1, s);
+  px(g, apron,  x+2, y+5, 4, 8, s);
+  px(g, apron2, x+2, y+9, 4, 1, s);
+  px(g, pants,  x+1, y+10, 2, 3, s);
+  px(g, pants,  x+5, y+10, 2, 3, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, 0xd0d0d0, x+8, y+6, 1, 3, s);
+  px(g, flask,    x+8, y+9, 2, 3, s);
+  px(g, flaskG,   x+8, y+9, 1, 1, s);
+  px(g, 0x909090, x+7, y+6, 1, 1, s);
+  px(g, apron2, x+1, y+9, 1, 3, s);
+  px(g, gogg,   x+1, y+10,1, 1, s);
+};
+ 
+// ── Lv1: 吟游诗人·索拉 (human_bard) ──────────────────────────────────────────
+const drawHumanBard: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf4d090, skin2 = 0xd8b070;
+  const hat   = 0x8030a0, hat2  = 0x601880;
+  const feat  = 0xe04080;
+  const coat  = 0xb03090, coat2 = 0x802060;
+  const trim  = 0xd4a017;
+  const shirt = 0xf0e8d0;
+  const pants = 0x3050a0, pants2= 0x203880;
+  const shoe  = 0x3a2010;
+  const lute  = 0x8a5020, lute2 = 0xc07030;
+  px(g, hat,  x+1, y+0, 6, 2, s);
+  px(g, hat2, x+2, y+0, 4, 1, s);
+  px(g, feat, x+6, y+0, 2, 1, s);
+  px(g, feat, x+7, y+1, 1, 2, s);
+  px(g, 0xc87820, x+1, y+2, 1, 2, s);
+  px(g, 0xc87820, x+6, y+2, 1, 2, s);
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, coat,  x+1, y+5, 6, 5, s);
+  px(g, coat2, x+1, y+6, 6, 1, s);
+  px(g, trim,  x+1, y+5, 6, 1, s);
+  px(g, shirt, x+3, y+5, 2, 5, s);
+  px(g, coat,  x+0, y+5, 1, 4, s);
+  px(g, coat,  x+7, y+5, 1, 4, s);
+  px(g, skin,  x+0, y+9, 1, 1, s);
+  px(g, skin,  x+7, y+9, 1, 1, s);
+  px(g, pants,  x+1, y+10, 2, 3, s);
+  px(g, pants,  x+5, y+10, 2, 3, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, lute,  x-2, y+5, 3, 5, s);
+  px(g, lute2, x-2, y+5, 3, 1, s);
+  px(g, lute,  x-1, y+4, 1, 2, s);
+  px(g, 0xd0c090, x-2, y+7, 3, 1, s);
+  px(g, 0xd0c090, x-2, y+8, 3, 1, s);
+};
+ 
+// ── Lv2: 游侠·艾登 (human_ranger) ────────────────────────────────────────────
+const drawHumanRanger: DrawFn = (g, x, y, s) => {
+  const skin  = 0xd4a060, skin2 = 0xb88040;
+  const cloak = 0x4a6030, cloak2= 0x3a4820;
+  const armor = 0x6a5838, armor2= 0x4a3820;
+  const trim  = 0xb08840;
+  const pants = 0x3a4020, pants2= 0x2a3010;
+  const shoe  = 0x2a1808;
+  const blade = 0xc0c0d0, hilt  = 0x8a6020;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x2a1800, x+2, y+1, 4, 1, s);
+  px(g, 0x2a1800, x+1, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 2, 1, s);
+  px(g, 0xa07050, x+4, y+2, 1, 2, s);
+  px(g, cloak,  x+0, y+4, 8, 5, s);
+  px(g, cloak2, x+0, y+5, 8, 1, s);
+  px(g, cloak,  x-1, y+5, 1, 8, s);
+  px(g, cloak,  x+8, y+5, 1, 8, s);
+  px(g, armor,  x+1, y+9, 6, 4, s);
+  px(g, armor2, x+1, y+10,6, 1, s);
+  px(g, trim,   x+1, y+9, 6, 1, s);
+  px(g, skin,   x+0, y+9, 1, 1, s);
+  px(g, skin,   x+7, y+9, 1, 1, s);
+  px(g, pants,  x+1, y+10, 2, 3, s);
+  px(g, pants,  x+5, y+10, 2, 3, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  px(g, armor2, x+1, y+13, 2, 2, s);
+  px(g, armor2, x+5, y+13, 2, 2, s);
+  px(g, trim,   x+1, y+13, 2, 1, s);
+  px(g, trim,   x+5, y+13, 2, 1, s);
+  px(g, hilt,   x+8, y+8, 1, 2, s);
+  px(g, hilt,   x+7, y+9, 2, 1, s);
+  px(g, blade,  x+8, y+10,1, 4, s);
+  px(g, armor2, x-1, y+9, 1, 5, s);
+  px(g, hilt,   x-1, y+9, 1, 1, s);
+};
+ 
+// ── Lv2: 财务官·葛霖 (human_treasurer) ──────────────────────────────────────
+const drawHumanTreasurer: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const vest  = 0x2a3060, vest2 = 0x1a2040;
+  const shirt = 0xf0f0e8, collar= 0xd0d0c8;
+  const pants = 0x2a3060, pants2= 0x1a2040;
+  const shoe  = 0x2a1808;
+  const glass = 0xc0e0ff, glassF= 0x8080a0;
+  const book  = 0x8a2020, bookP = 0xf0e8d0;
+  const abacus= 0x8a5020, bead  = 0xd4a017;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x888888, x+2, y+1, 4, 1, s);
+  px(g, 0x888888, x+1, y+2, 1, 1, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, glass, x+2, y+3, 2, 1, s);
+  px(g, glass, x+5, y+3, 2, 1, s);
+  px(g, glassF,x+3, y+3, 1, 1, s);
+  px(g, glassF,x+5, y+3, 1, 1, s);
+  px(g, glassF,x+4, y+3, 1, 1, s);
+  px(g, shirt, x+1, y+5, 6, 5, s);
+  px(g, collar,x+3, y+5, 2, 1, s);
+  px(g, vest,  x+1, y+5, 2, 5, s);
+  px(g, vest,  x+5, y+5, 2, 5, s);
+  px(g, vest2, x+1, y+6, 2, 1, s);
+  px(g, vest2, x+5, y+6, 2, 1, s);
+  px(g, 0x1a1a40, x+3, y+5, 2, 3, s);
+  px(g, 0x1a1a40, x+3, y+7, 1, 1, s);
+  px(g, vest,  x+0, y+5, 1, 4, s);
+  px(g, vest,  x+7, y+5, 1, 4, s);
+  px(g, skin,  x+0, y+9, 1, 1, s);
+  px(g, skin,  x+7, y+9, 1, 1, s);
+  px(g, pants,  x+1, y+10, 2, 3, s);
+  px(g, pants,  x+5, y+10, 2, 3, s);
+  px(g, pants2, x+1, y+12, 2, 1, s);
+  px(g, pants2, x+5, y+12, 2, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, book,  x+8, y+5, 2, 6, s);
+  px(g, bookP, x+8, y+6, 1, 4, s);
+  px(g, 0x8a6040, x+9, y+6, 1, 1, s);
+  px(g, abacus, x-2, y+6, 2, 4, s);
+  px(g, bead,   x-2, y+7, 1, 1, s);
+  px(g, bead,   x-2, y+9, 1, 1, s);
+};
+ 
+// ── Lv3: 审判者·塞拉芬 (human_inquisitor) ────────────────────────────────────
+const drawHumanInquisitor: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const robe  = 0x181818, robe2 = 0x303030;
+  const white = 0xf0f0e8, white2= 0xd0d0c0;
+  const gold  = 0xd4a017, gold2 = 0xa07010;
+  const boot  = 0x1a1a1a;
+  const staff = 0x5a3010, staffT= 0xd4a017;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x1a1a1a, x+2, y+1, 4, 1, s);
+  px(g, 0x1a1a1a, x+1, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, robe,  x+1, y+5, 6, 9, s);
+  px(g, robe2, x+1, y+6, 6, 1, s);
+  px(g, white, x+3, y+5, 2, 2, s);
+  px(g, white2,x+2, y+6, 4, 1, s);
+  px(g, robe,  x+0, y+5, 1, 4, s);
+  px(g, robe,  x+7, y+5, 1, 4, s);
+  px(g, skin,  x+0, y+9, 1, 1, s);
+  px(g, skin,  x+7, y+9, 1, 1, s);
+  px(g, gold,  x+3, y+7, 2, 1, s);
+  px(g, gold2, x+4, y+7, 1, 2, s);
+  px(g, gold,  x+3, y+9, 1, 1, s);
+  px(g, gold,  x+5, y+9, 1, 1, s);
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+  px(g, white2,x+1, y+13, 2, 1, s);
+  px(g, white2,x+5, y+13, 2, 1, s);
+  px(g, staff,  x+9, y+4, 1, 9, s);
+  px(g, staffT, x+8, y+4, 3, 1, s);
+  px(g, staffT, x+8, y+6, 1, 1, s);
+  px(g, staffT, x+10,y+6, 1, 1, s);
+  px(g, gold,   x+8, y+7, 1, 1, s);
+  px(g, gold,   x+10,y+7, 1, 1, s);
+};
+ 
+// ── Lv3: 符文匠·奥瑞恩 (human_runesmith) ────────────────────────────────────
+const drawHumanRunesmith: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const shirt = 0x3a3060, shirt2= 0x282040;
+  const apron = 0x5a4830, apron2= 0x3a3020;
+  const rune  = 0x8060e0, rune2 = 0xc0a0ff;
+  const pants = 0x282040, pants2= 0x1a1028;
+  const shoe  = 0x2a1808;
+  const chisel= 0xc0c0d0, chiselH= 0x8a5020;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x3a2080, x+2, y+1, 4, 1, s);
+  px(g, 0x3a2080, x+1, y+2, 1, 2, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, skin2, x+5, y+3, 1, 1, s);
+  px(g, rune,  x+5, y+2, 1, 2, s);
+  px(g, rune2, x+5, y+2, 1, 1, s);
+  px(g, shirt,  x+1, y+5, 6, 4, s);
+  px(g, shirt2, x+1, y+6, 6, 1, s);
+  px(g, shirt,  x+0, y+5, 1, 3, s);
+  px(g, shirt,  x+7, y+5, 1, 3, s);
+  px(g, skin,   x+0, y+8, 1, 1, s);
+  px(g, skin,   x+7, y+8, 1, 1, s);
+  px(g, apron,  x+2, y+5, 4, 8, s);
+  px(g, apron2, x+2, y+9, 4, 1, s);
+  px(g, rune,  x+3, y+6, 2, 1, s);
+  px(g, rune,  x+2, y+8, 1, 1, s);
+  px(g, rune,  x+5, y+8, 1, 1, s);
+  px(g, rune2, x+3, y+7, 2, 1, s);
+  px(g, pants,  x+1, y+10, 1, 3, s);
+  px(g, pants,  x+6, y+10, 1, 3, s);
+  px(g, pants2, x+1, y+12, 1, 1, s);
+  px(g, pants2, x+6, y+12, 1, 1, s);
+  px(g, shoe, x+1, y+13, 2, 2, s);
+  px(g, shoe, x+5, y+13, 2, 2, s);
+  px(g, chiselH, x+8, y+8, 1, 1, s);
+  px(g, chisel,  x+8, y+9, 1, 3, s);
+  px(g, rune2,   x+8, y+9, 1, 1, s);
+  px(g, apron2, x-2, y+7, 2, 3, s);
+  px(g, rune,   x-2, y+8, 2, 1, s);
+};
+ 
+// ── Lv4: 影卫统领·幽兰 (human_spymaster) ─────────────────────────────────────
+const drawHumanSpymaster: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0c080, skin2 = 0xd4a060;
+  const suit  = 0x101010, suit2 = 0x202020;
+  const mask  = 0x181818, maskW = 0xf0f0e0;
+  const cloak = 0x080808;
+  const trim  = 0x4040a0;
+  const boot  = 0x101010;
+  const dagger= 0xd0d0e0, daggerH= 0x202030;
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, 0x1a1a1a, x+2, y+1, 4, 1, s);
+  px(g, mask,  x+2, y+2, 4, 2, s);
+  px(g, maskW, x+2, y+2, 1, 1, s);
+  px(g, skin,  x+2, y+3, 1, 1, s);
+  px(g, skin2, x+3, y+3, 1, 1, s);
+  px(g, suit,  x+1, y+5, 6, 5, s);
+  px(g, suit2, x+1, y+6, 6, 1, s);
+  px(g, trim,  x+1, y+5, 6, 1, s);
+  px(g, suit,  x+0, y+5, 1, 4, s);
+  px(g, suit,  x+7, y+5, 1, 4, s);
+  px(g, skin,  x+0, y+9, 1, 1, s);
+  px(g, skin,  x+7, y+9, 1, 1, s);
+  px(g, cloak, x-1, y+4, 1, 10, s);
+  px(g, cloak, x+8, y+4, 1, 10, s);
+  px(g, suit,  x+1, y+10, 2, 3, s);
+  px(g, suit,  x+5, y+10, 2, 3, s);
+  px(g, suit2, x+1, y+12, 2, 1, s);
+  px(g, suit2, x+5, y+12, 2, 1, s);
+  px(g, boot,  x+1, y+13, 2, 2, s);
+  px(g, boot,  x+5, y+13, 2, 2, s);
+  px(g, trim,  x+1, y+13, 2, 1, s);
+  px(g, trim,  x+5, y+13, 2, 1, s);
+  px(g, daggerH, x+8, y+7, 1, 2, s);
+  px(g, dagger,  x+8, y+9, 1, 4, s);
+  px(g, daggerH, x+7, y+8, 2, 1, s);
+  px(g, daggerH, x-1, y+7, 1, 2, s);
+  px(g, trim,    x-1, y+7, 1, 1, s);
+};
+ 
+// ── Lv4: 法术师长·艾尔文 (human_archmage) ────────────────────────────────────
+const drawHumanArcmage: DrawFn = (g, x, y, s) => {
+  const skin  = 0xf0d0a0, skin2 = 0xd4b080;
+  const robe  = 0x9090b0, robe2 = 0x6868a0;
+  const inner = 0xd8d8f0;
+  const rune  = 0x80a0ff, rune2 = 0xd0e0ff;
+  const trim  = 0xd4a017;
+  const boot  = 0x484868;
+  const orb   = 0x80c0ff, orbG  = 0xffffff;
+  px(g, 0xe8e8e8, x+1, y+1, 6, 1, s);
+  px(g, 0xe8e8e8, x+1, y+2, 1, 3, s);
+  px(g, 0xe8e8e8, x+6, y+2, 1, 3, s);
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, skin2, x+3, y+3, 2, 1, s);
+  px(g, robe,  x+1, y+5, 6, 8, s);
+  px(g, robe2, x+1, y+6, 6, 1, s);
+  px(g, inner, x+3, y+5, 2, 8, s);
+  px(g, rune,  x+1, y+7, 2, 1, s);
+  px(g, rune,  x+5, y+9, 2, 1, s);
+  px(g, rune2, x+2, y+8, 1, 1, s);
+  px(g, robe, x+0, y+5, 1, 5, s);
+  px(g, robe, x+7, y+5, 1, 5, s);
+  px(g, skin, x+0, y+10,1, 1, s);
+  px(g, skin, x+7, y+10,1, 1, s);
+  px(g, trim, x+1, y+12,6, 1, s);
+  px(g, boot, x+2, y+13,2, 2, s);
+  px(g, boot, x+5, y+13,2, 2, s);
+  px(g, rune, x+2, y+13,2, 1, s);
+  px(g, rune, x+5, y+13,2, 1, s);
+  px(g, rune2, x+9, y+3, 2, 2, s);
+  px(g, orb,   x+9, y+4, 2, 2, s);
+  px(g, orbG,  x+9, y+4, 1, 1, s);
+  px(g, rune,  x+8, y+5, 1, 1, s);
+  px(g, 0x9090b0, x-1, y+5, 1, 8, s);
+  px(g, trim,     x-1, y+5, 1, 1, s);
+  px(g, rune2,    x-2, y+4, 2, 2, s);
+};
+ 
+// ── Lv5: 神谕者·薇欧拉 (human_divine_oracle) ─────────────────────────────────
+const drawHumanDivineOracle: DrawFn = (g, x, y, s) => {
+  const skin  = 0xfce8c0, skin2 = 0xe8c890;
+  const robe  = 0xe8e0f8, robe2 = 0xc8c0e0;
+  const robe3 = 0xd0c8e8;
+  const star  = 0xd4a017, star2 = 0xffffc0;
+  const eye   = 0xd4a017;
+  const glow  = 0xfffff0, holy  = 0xffd080;
+  const orb   = 0xd0e8ff, orbC  = 0x8090d0;
+  px(g, star,  x+2, y+0, 4, 1, s);
+  px(g, star2, x+3, y+0, 1, 1, s);
+  px(g, star,  x+2, y+0, 1, 1, s);
+  px(g, star,  x+5, y+0, 1, 1, s);
+  px(g, 0xf0f0f0, x+1, y+1, 6, 1, s);
+  px(g, 0xf0f0f0, x+1, y+2, 1, 3, s);
+  px(g, 0xf0f0f0, x+6, y+2, 1, 3, s);
+  px(g, skin,  x+2, y+1, 4, 4, s);
+  px(g, skin2, x+3, y+3, 2, 1, s);
+  px(g, eye,  x+3, y+3, 1, 1, s);
+  px(g, eye,  x+5, y+3, 1, 1, s);
+  px(g, glow, x+3, y+2, 1, 1, s);
+  px(g, glow, x+5, y+2, 1, 1, s);
+  px(g, robe,  x+1, y+5, 6, 8, s);
+  px(g, robe2, x+1, y+6, 6, 1, s);
+  px(g, robe3, x+3, y+5, 2, 8, s);
+  px(g, holy,  x+2, y+7, 1, 1, s);
+  px(g, holy,  x+5, y+9, 1, 1, s);
+  px(g, star2, x+2, y+8, 4, 1, s);
+  px(g, robe, x+0, y+5, 1, 5, s);
+  px(g, robe, x+7, y+5, 1, 5, s);
+  px(g, skin, x+0, y+10,1, 1, s);
+  px(g, skin, x+7, y+10,1, 1, s);
+  px(g, robe2,x+1, y+13,6, 2, s);
+  px(g, holy, x+1, y+13,6, 1, s);
+  px(g, 0xd8d8e8, x+9, y+4, 1, 9, s);
+  px(g, star,     x+8, y+4, 3, 1, s);
+  px(g, orb,      x+8, y+2, 3, 3, s);
+  px(g, orbC,     x+9, y+2, 1, 1, s);
+  px(g, glow,     x+8, y+2, 1, 1, s);
+  px(g, holy,     x+9, y+1, 1, 1, s);
+  px(g, glow, x-1, y+9, 2, 2, s);
+  px(g, holy, x-1, y+9, 1, 1, s);
+};
+ 
+// ── Lv5: 圣裁将军·卡利奥斯 (human_divine_warlord_new) ────────────────────────
+const drawHumanDivineWarlord: DrawFn = (g, x, y, s) => {
+  const armor  = 0xd8d8e8, armor2 = 0xa8a8c8;
+  const gold   = 0xd4a017, gold2  = 0xa07010;
+  const glow   = 0xfffff0, holy   = 0xffffc0;
+  const skin   = 0xf0c080;
+  const cape   = 0xf0f0f0, cape2  = 0xd0d0d0;
+  const crown  = 0xd4a017, crownG = 0xffffc0;
+  const dark   = 0x181820;
+  const boot   = 0x383848;
+  const blade  = 0xf0f0ff, bladeG = 0xc0c0e0;
+  px(g, crown,  x+2, y+0, 1, 2, s);
+  px(g, crownG, x+3, y+0, 2, 1, s);
+  px(g, crown,  x+5, y+0, 1, 2, s);
+  px(g, gold,   x+2, y+1, 4, 1, s);
+  px(g, armor,  x+1, y+1, 6, 3, s);
+  px(g, armor2, x+1, y+2, 6, 1, s);
+  px(g, dark,   x+2, y+2, 4, 1, s);
+  px(g, holy,   x+3, y+2, 1, 1, s);
+  px(g, holy,   x+5, y+2, 1, 1, s);
+  px(g, skin,   x+3, y+3, 2, 1, s);
+  px(g, cape,   x+0, y+4, 8, 1, s);
+  px(g, cape,   x-1, y+5, 1, 8, s);
+  px(g, cape,   x+8, y+5, 1, 8, s);
+  px(g, cape2,  x-1, y+9, 1, 4, s);
+  px(g, cape2,  x+8, y+9, 1, 4, s);
+  px(g, armor,  x+1, y+4, 6, 6, s);
+  px(g, armor2, x+1, y+5, 6, 1, s);
+  px(g, armor2, x+1, y+9, 6, 1, s);
+  px(g, gold,   x+3, y+5, 2, 4, s);
+  px(g, gold,   x+2, y+7, 4, 1, s);
+  px(g, glow,   x+3, y+7, 2, 1, s);
+  px(g, gold,   x+0, y+4, 2, 1, s);
+  px(g, gold,   x+6, y+4, 2, 1, s);
+  px(g, armor,  x+0, y+5, 1, 4, s);
+  px(g, armor,  x+7, y+5, 1, 4, s);
+  px(g, skin,   x+0, y+9, 1, 1, s);
+  px(g, skin,   x+7, y+9, 1, 1, s);
+  px(g, armor,  x+1, y+10, 2, 3, s);
+  px(g, armor,  x+5, y+10, 2, 3, s);
+  px(g, gold,   x+1, y+11, 2, 1, s);
+  px(g, gold,   x+5, y+11, 2, 1, s);
+  px(g, armor2, x+1, y+12, 2, 1, s);
+  px(g, armor2, x+5, y+12, 2, 1, s);
+  px(g, boot,   x+1, y+13, 2, 2, s);
+  px(g, boot,   x+5, y+13, 2, 2, s);
+  px(g, gold2,  x+1, y+13, 2, 1, s);
+  px(g, gold2,  x+5, y+13, 2, 1, s);
+  px(g, crownG, x+9, y+0, 1, 2, s);
+  px(g, glow,   x+9, y+0, 1, 1, s);
+  px(g, blade,  x+9, y+2, 1, 8, s);
+  px(g, bladeG, x+9, y+3, 1, 1, s);
+  px(g, gold,   x+8, y+4, 3, 1, s);
+  px(g, holy,   x+8, y+4, 1, 1, s);
+  px(g, holy,   x+10,y+4, 1, 1, s);
+  px(g, gold2,  x+9, y+10,1, 3, s);
+  px(g, gold,   x+9, y+12,1, 1, s);
+};
 // ── Human card sprite registry (18 normal + 5 egg = 23 cards) ─────────────────
 export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   // 18 normal cards
@@ -796,6 +1340,19 @@ export const CARD_SPRITE_REGISTRY: Record<string, CardSpriteEntry> = {
   human_divine_smith:      { draw: drawHumanDivineSmith,      w: 32, h: 45 },
   human_divine_merchant:   { draw: drawHumanDivineMerchant,   w: 32, h: 45 },
   human_divine_warrior:    { draw: drawHumanDivineWarrior,    w: 32, h: 45 },
+  // ── 新增12张普通卡 ──
+  human_herbalist:         { draw: drawHumanHerbalist,        w: 32, h: 45 },  // Lv0 草药师·薇妲
+  human_scout:             { draw: drawHumanScout,            w: 32, h: 45 },  // Lv0 斥候·雷恩
+  human_alchemist:         { draw: drawHumanAlchemist,        w: 32, h: 45 },  // Lv1 炼金术士·科尔
+  human_bard:              { draw: drawHumanBard,             w: 32, h: 45 },  // Lv1 吟游诗人·索拉
+  human_ranger:            { draw: drawHumanRanger,           w: 32, h: 45 },  // Lv2 游侠·艾登
+  human_treasurer:         { draw: drawHumanTreasurer,        w: 32, h: 45 },  // Lv2 财务官·葛霖
+  human_inquisitor:        { draw: drawHumanInquisitor,       w: 32, h: 45 },  // Lv3 审判者·塞拉芬
+  human_runesmith:         { draw: drawHumanRunesmith,        w: 32, h: 45 },  // Lv3 符文匠·奥瑞恩
+  human_spymaster:         { draw: drawHumanSpymaster,        w: 32, h: 45 },  // Lv4 影卫统领·幽兰
+  human_archmage:          { draw: drawHumanArcmage,          w: 32, h: 45 },  // Lv4 法术师长·艾尔文
+  human_divine_oracle:     { draw: drawHumanDivineOracle,     w: 32, h: 45 },  // Lv5 神谕者·薇欧拉
+  human_divine_warlord:    { draw: drawHumanDivineWarlord,    w: 32, h: 45 },  // Lv5 圣裁将军·卡利奥斯
   // 5 egg cards
   human_mage:       { draw: drawHumanMage as DrawFn,       w: 32, h: 45 },
   human_sage:       { draw: drawHumanSage as DrawFn,       w: 32, h: 45 },

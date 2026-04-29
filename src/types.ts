@@ -14,7 +14,6 @@ export enum JobType {
   Idle   = 'idle',
 }
 
-// SpawnZone 不再由玩家选择，改为按上场顺序自动分配
 // 保留枚举供内部使用；实际坐标由 computeZoneConfig 动态计算
 export enum SpawnZone {
   Left0  = 'left0',   // 左近位（靠左城墙，第1只）
