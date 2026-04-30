@@ -1287,131 +1287,199 @@ export class TownScene extends Phaser.Scene {
     const roadW = wallRight - wallLeft;
 
     // Road appearance by level
+    // Road visual heights: Lv1=32, Lv2=38, Lv3=44, Lv4=52, Lv5=60, Lv6=68
     if (lv >= 6) {
-      // Lv6: 发光星纹地板 — 蓝紫色魔法铺路
-      g.fillStyle(0x282048); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0x383060); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // Lv6: 魔法永恒大道 — 深蓝紫魔法石，发光网格线与星形符文
+      const rh = 68;
+      g.fillStyle(0x282048); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0x302858); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
       // glowing grid lines (blue-purple)
       g.fillStyle(0x6060c8);
       for (let rx = wallLeft; rx < wallRight; rx += 40) {
-        g.fillRect(rx, gy + 2, 1, 32);
+        g.fillRect(rx, gy + 2, 1, rh - 4);
       }
-      for (let ry = gy + 8; ry < gy + 36; ry += 8) {
+      for (let ry = gy + 8; ry < gy + rh - 4; ry += 8) {
         g.fillRect(wallLeft, ry, roadW, 1);
       }
-      // star sparkles
+      // crystalline glowing curb on both sides
+      g.fillStyle(0x60d8ff); g.fillRect(wallLeft, gy, 5, rh);
+      g.fillStyle(0x60d8ff); g.fillRect(wallRight - 5, gy, 5, rh);
+      g.fillStyle(0xa0e8ff); g.fillRect(wallLeft, gy, 2, rh);
+      g.fillStyle(0xa0e8ff); g.fillRect(wallRight - 2, gy, 2, rh);
+      // star-shaped arcane rune sigils along center
       g.fillStyle(0xa0b0ff);
-      for (let i = 0; i < 30; i++) {
+      for (let rx = wallLeft + 32; rx < wallRight - 16; rx += 64) {
+        const cy = gy + Math.floor(rh / 2);
+        g.fillRect(rx - 1, cy - 3, 3, 7); // vertical bar
+        g.fillRect(rx - 3, cy - 1, 7, 3); // horizontal bar
+        g.fillRect(rx - 2, cy - 2, 2, 2); // top-left arm
+        g.fillRect(rx + 1, cy - 2, 2, 2); // top-right arm
+        g.fillRect(rx - 2, cy + 1, 2, 2); // bottom-left arm
+        g.fillRect(rx + 1, cy + 1, 2, 2); // bottom-right arm
+      }
+      // sparkle pixel dots
+      g.fillStyle(0xc0c8ff);
+      for (let i = 0; i < 40; i++) {
         const rx = wallLeft + 8 + (i * 61 % (roadW - 16));
-        const ry = gy + 6 + (i * 41 % 22);
-        g.fillRect(rx, ry, 2, 2);
+        const ry = gy + 4 + (i * 41 % (rh - 8));
+        g.fillRect(rx, ry, 1, 1);
       }
     } else if (lv >= 5) {
-      // Lv5: 大理石铺路，金色路石
-      g.fillStyle(0xd0c8a8); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0xe0d8b8); g.fillRect(wallLeft, gy + 2, roadW, 32);
-      // marble grid
+      // Lv5: 金边王道 — 奶白色大理石，金色嵌线，路沿描金
+      const rh = 60;
+      g.fillStyle(0xd0c8a8); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0xe0d8b8); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
+      // marble slab grid
       g.fillStyle(0xb8b098);
       for (let rx = wallLeft; rx < wallRight; rx += 48) {
-        g.fillRect(rx, gy + 2, 2, 32);
+        g.fillRect(rx, gy + 2, 2, rh - 4);
       }
-      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+      for (let ry = gy + 12; ry < gy + rh - 4; ry += 12) {
         g.fillRect(wallLeft, ry, roadW, 1);
       }
-      // golden accent stones
+      // gold center dividing strip
+      g.fillStyle(0xd4a017);
+      g.fillRect(wallLeft + Math.floor(roadW / 2) - 1, gy + 2, 2, rh - 4);
+      // ornate gold-topped curbs
+      g.fillStyle(0xc8b890); g.fillRect(wallLeft, gy, 6, rh);
+      g.fillStyle(0xc8b890); g.fillRect(wallRight - 6, gy, 6, rh);
+      g.fillStyle(0xffd040); g.fillRect(wallLeft, gy, 6, 3);
+      g.fillStyle(0xffd040); g.fillRect(wallRight - 6, gy, 6, 3);
+      // royal medallion accent marks
       g.fillStyle(0xd4a017);
       for (let i = 0; i < 20; i++) {
-        const rx = wallLeft + 12 + (i * 73 % (roadW - 24));
-        const ry = gy + 6 + (i * 43 % 22);
+        const rx = wallLeft + 24 + (i * 73 % (roadW - 48));
+        const ry = gy + 6 + (i * 43 % (rh - 16));
         g.fillRect(rx, ry, 4, 2);
+        g.fillRect(rx + 1, ry - 1, 2, 1);
+        g.fillRect(rx + 1, ry + 2, 2, 1);
       }
     } else if (lv >= 4) {
-      // Lv4: 精雕石板路，路石高光
-      g.fillStyle(0xa8a090); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0xb8b0a0); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // Lv4: 精雕御道 — 大方石板，抛光高光，双层路沿，排水沟
+      const rh = 52;
+      g.fillStyle(0xa8a090); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0xb8b0a0); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
+      // dressed stone joints
       g.fillStyle(0x888070);
       for (let rx = wallLeft; rx < wallRight; rx += 48) {
-        g.fillRect(rx, gy + 2, 2, 32);
+        g.fillRect(rx, gy + 2, 2, rh - 4);
       }
-      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+      for (let ry = gy + 12; ry < gy + rh - 4; ry += 12) {
         g.fillRect(wallLeft, ry, roadW, 1);
       }
-      // polished stone highlights
-      g.fillStyle(0xc8c0a8);
+      // double curb: outer (8px) + inner (4px) with drainage gutter between
+      g.fillStyle(0xc8c0a8); g.fillRect(wallLeft, gy, 8, rh);
+      g.fillStyle(0xc8c0a8); g.fillRect(wallRight - 8, gy, 8, rh);
+      g.fillStyle(0xb0a898); g.fillRect(wallLeft + 8, gy, 4, rh);
+      g.fillStyle(0xb0a898); g.fillRect(wallRight - 12, gy, 4, rh);
+      // drainage gutter channel
+      g.fillStyle(0x706858); g.fillRect(wallLeft + 5, gy + 4, 3, rh - 8);
+      g.fillStyle(0x706858); g.fillRect(wallRight - 8, gy + 4, 3, rh - 8);
+      // polished stone highlights (top-left pixel per tile)
+      g.fillStyle(0xd8d0b8);
       for (let i = 0; i < 30; i++) {
-        const rx = wallLeft + 8 + (i * 59 % (roadW - 16));
-        const ry = gy + 4 + (i * 37 % 22);
+        const rx = wallLeft + 12 + (i * 59 % (roadW - 24));
+        const ry = gy + 4 + (i * 37 % (rh - 10));
         g.fillRect(rx, ry, 6, 2);
       }
     } else if (lv >= 3) {
-      // Lv3: 石板路 + 路沿
-      g.fillStyle(0x8a8878); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0x9a9888); g.fillRect(wallLeft, gy + 2, roadW, 32);
-      // stone tile joints
+      // Lv3: 石板铺路 — 灰色长方石板，错缝砌法，路沿石，苔藓
+      const rh = 44;
+      g.fillStyle(0x8a8878); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0x9a9888); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
+      // offset cobblestone tile joints
       g.fillStyle(0x686858);
       for (let rx = wallLeft; rx < wallRight; rx += 48) {
-        g.fillRect(rx, gy + 2, 2, 32);
+        g.fillRect(rx, gy + 2, 2, rh - 4);
       }
-      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+      for (let ry = gy + 10; ry < gy + rh - 4; ry += 10) {
         g.fillRect(wallLeft, ry, roadW, 1);
       }
-      // curb edges
-      g.fillStyle(0xb0a898); g.fillRect(wallLeft, gy, 4, 40);
-      g.fillStyle(0xb0a898); g.fillRect(wallRight - 4, gy, 4, 40);
+      // raised stone curb on both sides
+      g.fillStyle(0xb0a898); g.fillRect(wallLeft, gy, 4, rh);
+      g.fillStyle(0xb0a898); g.fillRect(wallRight - 4, gy, 4, rh);
+      // moss patches near curb
+      g.fillStyle(0x608040);
+      for (let i = 0; i < 12; i++) {
+        const rx = wallLeft + 4 + (i * 71 % (roadW - 8));
+        g.fillRect(rx, gy + 2, 3, 2);
+      }
       // pebble details
       g.fillStyle(0xb8b0a0);
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 20; i++) {
         const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
-        const ry = gy + 6 + (i * 37 % 22);
+        const ry = gy + 6 + (i * 37 % (rh - 12));
         g.fillRect(rx, ry, 3, 2);
       }
     } else if (lv >= 2) {
-      // Lv2: 夯土路 + 草边
-      g.fillStyle(0x7a6a50); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // Lv2: 夯土商道 — 夯实红棕土路，卵石路边，踏脚石
+      const rh = 38;
+      g.fillStyle(0x7a6a50); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
+      // faint tamping lines
       g.fillStyle(0x6a5a48);
-      for (let rx = wallLeft; rx < wallRight; rx += 48) {
-        g.fillRect(rx, gy + 2, 2, 32);
-      }
-      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
+      for (let ry = gy + 6; ry < gy + rh - 4; ry += 6) {
         g.fillRect(wallLeft, ry, roadW, 1);
       }
+      // rough fieldstone border on each edge
+      g.fillStyle(0xa09078);
+      for (let rx = wallLeft; rx < wallRight; rx += 10) {
+        const sh = 3 + (rx % 3);
+        g.fillRect(rx, gy, 8, sh);
+        g.fillRect(rx, gy + rh - sh, 8, sh);
+      }
+      // occasional flat stepping stones embedded in center
+      g.fillStyle(0xb0a888);
+      for (let i = 0; i < 8; i++) {
+        const rx = wallLeft + 20 + (i * 97 % (roadW - 40));
+        g.fillRect(rx, gy + Math.floor(rh / 2) - 2, 10, 4);
+      }
+      // scattered pebble texture
       g.fillStyle(0xa89878);
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 25; i++) {
         const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
-        const ry = gy + 6 + (i * 37 % 22);
+        const ry = gy + 4 + (i * 37 % (rh - 10));
         g.fillRect(rx, ry, 4, 2);
       }
+      // patchy grass tufts at road edge
+      g.fillStyle(0x5a8a40);
+      for (let rx = wallLeft; rx < wallRight; rx += 20) {
+        const h2 = 2 + (rx % 2);
+        g.fillRect(rx + 2, gy - h2, 2, h2);
+      }
     } else {
-      // Lv1: 泥土小道 (original)
-      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy, roadW, 40);
-      g.fillStyle(0x9a8a70); g.fillRect(wallLeft, gy + 2, roadW, 32);
+      // Lv1: 泥泞村道 — 暖棕色泥土，车辙压痕，野草碎石
+      const rh = 32;
+      g.fillStyle(0x8a7a60); g.fillRect(wallLeft, gy, roadW, rh);
+      g.fillStyle(0x9a8a70); g.fillRect(wallLeft, gy + 2, roadW, rh - 4);
+      // two wagon-wheel rut lines running lengthwise
       g.fillStyle(0x6a5a48);
-      for (let rx = wallLeft; rx < wallRight; rx += 48) {
-        g.fillRect(rx, gy + 2, 2, 32);
+      g.fillRect(wallLeft, gy + Math.floor(rh * 0.3), roadW, 2);
+      g.fillRect(wallLeft, gy + Math.floor(rh * 0.65), roadW, 2);
+      // uneven muddy texture patches
+      g.fillStyle(0x7a6a55);
+      for (let i = 0; i < 20; i++) {
+        const rx = wallLeft + 4 + (i * 53 % (roadW - 8));
+        const ry = gy + 3 + (i * 31 % (rh - 8));
+        g.fillRect(rx, ry, 5 + (i % 3), 2);
       }
-      for (let ry = gy + 12; ry < gy + 36; ry += 12) {
-        g.fillRect(wallLeft, ry, roadW, 1);
-      }
-      g.fillStyle(0x5a8a40);
-      for (let rx = wallLeft; rx < wallRight; rx += 18) {
-        const h2 = 3 + (rx % 3);
-        g.fillRect(rx, gy - h2, 4, h2);
-      }
+      // scattered small pebbles
       g.fillStyle(0xb0a088);
-      for (let i = 0; i < 40; i++) {
-        const rx = wallLeft + 10 + (i * 67 % (roadW - 20));
-        const ry = gy + 6 + (i * 37 % 22);
-        g.fillRect(rx, ry, 3, 2);
+      for (let i = 0; i < 35; i++) {
+        const rx = wallLeft + 4 + (i * 67 % (roadW - 8));
+        const ry = gy + 2 + (i * 37 % (rh - 6));
+        g.fillRect(rx, ry, 2, 1);
       }
-    }
-
-    // Lv3+: grass tufts along road edge
-    if (lv >= 2) {
+      // sparse weeds / dry grass tufts at road edges
       g.fillStyle(0x5a8a40);
-      for (let rx = wallLeft; rx < wallRight; rx += 18) {
-        const h2 = 3 + (rx % 3);
-        g.fillRect(rx, gy - h2, 4, h2);
+      for (let rx = wallLeft; rx < wallRight; rx += 22) {
+        const h2 = 2 + (rx % 3);
+        g.fillRect(rx, gy - h2, 3, h2);
+      }
+      // dry grass tufts (yellowish)
+      g.fillStyle(0xa09040);
+      for (let rx = wallLeft + 6; rx < wallRight; rx += 30) {
+        g.fillRect(rx, gy - 2, 2, 2);
       }
     }
 
@@ -1496,98 +1564,745 @@ export class TownScene extends Phaser.Scene {
   }
 
   private buildWalls(g: Phaser.GameObjects.Graphics, gy: number, H: number, townLevel: number) {
-    // Dimensions scale up with town level
-    const wallH  = [55, 70, 82, 97, 114, 134][townLevel - 1] ?? 70;
-    const wallW  = [22, 28, 33, 39, 46,  54][townLevel - 1]  ?? 28;
-    const gateW  = [30, 36, 42, 46, 50,  56][townLevel - 1]  ?? 36;
-    const crenH  = [ 7, 10, 13, 15, 17,  20][townLevel - 1]  ?? 10;
-    const crenW  = [ 8, 10, 11, 12, 14,  16][townLevel - 1]  ?? 10;
-    const crenGap = [6,  8,  9, 10, 11,  12][townLevel - 1]  ?? 8;
-
-    // Colour palette varies by level
-    const palettes: [number, number, number, number, number][] = [
-      // stoneLight,  stoneMid,   stoneDark,  gateColor,  gateHigh      — wood/rough for Lv1
-      [0xa09060, 0x806840, 0x585020, 0x4a2c10, 0x6a4220],
-      // Lv2 — stone (original)
-      [0xa09070, 0x806850, 0x604830, 0x3a2010, 0x5a3820],
-      // Lv3 — heavier castle stone
-      [0x9a9080, 0x707060, 0x504840, 0x382810, 0x584030],
-      // Lv4 — dark fortress stone + iron gate
-      [0x9a9888, 0x787068, 0x585048, 0x282020, 0x484040],
-      // Lv5 — noble stone with gold trim
-      [0xb0a888, 0x888070, 0x605848, 0x2a1808, 0x4a3020],
-      // Lv6 — legendary dark stone with magic glow
-      [0x9090a8, 0x686878, 0x484858, 0x181018, 0x383048],
-    ];
-    const [stoneLight, stoneMid, stoneDark, gateColor, gateHigh] = palettes[townLevel - 1] ?? palettes[1];
-
     for (const wallX of [this.zoneConfig.wallLeft, this.zoneConfig.wallRight]) {
-      const wx = wallX - wallW / 2;
-      for (const [wingX, wingW] of [[wx - 80, 80], [wx + wallW + gateW, 80]] as [number, number][]) {
-        g.fillStyle(stoneMid); g.fillRect(wingX, gy - wallH, wingW, wallH);
-        g.fillStyle(stoneLight); g.fillRect(wingX, gy - wallH, wingW, 6);
-        g.fillStyle(stoneDark); g.fillRect(wingX, gy - wallH + 6, wingW, 3);
+      if      (townLevel === 1) this._drawWallLv1(g, gy, wallX);
+      else if (townLevel === 2) this._drawWallLv2(g, gy, wallX);
+      else if (townLevel === 3) this._drawWallLv3(g, gy, wallX);
+      else if (townLevel === 4) this._drawWallLv4(g, gy, wallX);
+      else if (townLevel === 5) this._drawWallLv5(g, gy, wallX);
+      else                      this._drawWallLv6(g, gy, wallX);
+    }
+  }
+
+  // ─── Lv1: 木栅栏墙 ────────────────────────────────────────────────────────
+  private _drawWallLv1(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    // 整体尺寸：矮小破旧木栅栏
+    const wallH = 48;   // 总高度（偏矮）
+    const gateW = 28;   // 门洞宽
+    const wingW = 80;   // 两翼延伸宽
+    const wx    = wallX - Math.floor(gateW / 2);
+
+    // ── 泥土/石基 ──
+    g.fillStyle(0x7a6a52); g.fillRect(wx - wingW, gy - 5, wingW * 2 + gateW, 5);
+
+    // ── 两翼木栅栏（粗糙竖立原木，高度不一）──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      // 底部原木墙体（深木色）
+      g.fillStyle(0x8B5E3C); g.fillRect(wingX, gy - wallH, ww, wallH);
+      // 原木分段线（模拟单根圆木绑合）
+      g.fillStyle(0x5C3D1E);
+      for (let lx = wingX + 6; lx < wingX + ww - 2; lx += 7) {
+        // 每根木桩随机高矮 (偏移 -4~+4)
+        const jitter = ((lx * 7) % 9) - 4;
+        g.fillRect(lx, gy - wallH - jitter, 1, wallH + jitter);
       }
-      const towerW = wallW + 8;
-      for (const tx of [wx - 8, wx + wallW + gateW - wallW]) {
-        g.fillStyle(stoneMid); g.fillRect(tx, gy - wallH - 20, towerW, wallH + 20);
-        g.fillStyle(stoneLight); g.fillRect(tx, gy - wallH - 20, towerW, 6);
-        g.fillStyle(stoneDark); g.fillRect(tx, gy - wallH - 14, towerW, 3);
-        for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
-          g.fillStyle(stoneLight); g.fillRect(cx, gy - wallH - 20 - crenH, crenW, crenH);
-          g.fillStyle(stoneDark); g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
-        }
-        g.fillStyle(stoneDark); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - wallH - 10, 3, 8);
+      // 顶部削尖桩头
+      g.fillStyle(0xD4A96A);
+      for (let lx = wingX + 2; lx < wingX + ww - 2; lx += 7) {
+        const jitter = ((lx * 7) % 9) - 4;
+        g.fillRect(lx + 2, gy - wallH - jitter - 4, 3, 4);
+        g.fillRect(lx + 3, gy - wallH - jitter - 6, 1, 2);
+      }
+      // 绑绳横条（两道）
+      g.fillStyle(0x5C3D1E);
+      g.fillRect(wingX, gy - wallH + 10, ww, 2);
+      g.fillRect(wingX, gy - wallH + 26, ww, 2);
+      // 亮色木纹高光（顶边）
+      g.fillStyle(0xD4A96A); g.fillRect(wingX, gy - wallH, ww, 2);
+      // 基础草根
+      g.fillStyle(0x5a8a40);
+      for (let gx = wingX; gx < wingX + ww; gx += 5) {
+        const gh = 2 + (gx % 3);
+        g.fillRect(gx, gy - gh, 2, gh);
+      }
+    }
 
-        // Lv3+: extra horizontal belt on tower
-        if (townLevel >= 3) {
-          g.fillStyle(stoneDark); g.fillRect(tx, gy - wallH - 20 + Math.floor((wallH + 20) / 2), towerW, 3);
+    // ── 门（两扇不规则木板，横木加固）──
+    const gateH = 36;
+    const gateY = gy - gateH;
+    // 左扇门
+    g.fillStyle(0x8B5E3C); g.fillRect(wx, gateY, Math.floor(gateW / 2) - 1, gateH);
+    g.fillStyle(0x5C3D1E); g.fillRect(wx, gateY, 1, gateH);
+    // 右扇门
+    g.fillStyle(0x8B5E3C); g.fillRect(wx + Math.floor(gateW / 2) + 1, gateY, Math.ceil(gateW / 2) - 1, gateH);
+    g.fillStyle(0x5C3D1E); g.fillRect(wx + gateW - 1, gateY, 1, gateH);
+    // 门上横木加固（两道）
+    g.fillStyle(0x5C3D1E);
+    g.fillRect(wx, gateY + 6, gateW, 3);
+    g.fillRect(wx, gateY + gateH - 9, gateW, 3);
+    // 木纹高光
+    g.fillStyle(0xD4A96A);
+    g.fillRect(wx + 2, gateY + 1, Math.floor(gateW / 2) - 4, 1);
+    // 铁箍（门左右各一）
+    g.fillStyle(0x3a3020);
+    g.fillRect(wx + 2, gateY + 4, 3, 8);
+    g.fillRect(wx + gateW - 5, gateY + 4, 3, 8);
+    // 门缝中线
+    g.fillStyle(0x3a2a10); g.fillRect(wx + Math.floor(gateW / 2) - 1, gateY, 2, gateH);
+
+    // ── 火把架（门两侧各一，简陋铁架）──
+    for (const tx of [wx - 5, wx + gateW + 2]) {
+      g.fillStyle(0x5C3D1E); g.fillRect(tx, gy - wallH + 6, 2, 10);   // 架臂
+      g.fillStyle(0x3a2a10); g.fillRect(tx - 1, gy - wallH + 5, 4, 2); // 固定箍
+      // 火把（未点燃，深色）
+      g.fillStyle(0x8B5E3C); g.fillRect(tx, gy - wallH + 2, 2, 5);
+      g.fillStyle(0x5C3D1E); g.fillRect(tx, gy - wallH + 1, 2, 2);
+    }
+  }
+
+  // ─── Lv2: 石砌矮墙 ───────────────────────────────────────────────────────
+  private _drawWallLv2(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    const wallH = 62;
+    const gateW = 34;
+    const wingW = 80;
+    const wx    = wallX - Math.floor(gateW / 2);
+    const crenH = 8;
+    const crenW = 7;
+    const crenGap = 5;
+
+    // ── 两翼矮石墙 ──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      g.fillStyle(0x8A8A8A); g.fillRect(wingX, gy - wallH, ww, wallH);
+      // 不规则石块砌缝（偏移错落体现低级感）
+      g.fillStyle(0x5A5A5A);
+      for (let row = 0; row < 4; row++) {
+        const rowY = gy - wallH + 4 + row * 14;
+        const offset = (row % 2) * 8;
+        for (let bx = wingX + offset; bx < wingX + ww; bx += 16) {
+          g.fillRect(bx, rowY, 1, 12);
         }
-        // Lv5+: decorative spire on tower top
-        if (townLevel >= 5) {
-          const spireX = tx + Math.floor(towerW / 2) - 2;
-          g.fillStyle(0xd4a017); g.fillRect(spireX, gy - wallH - 20 - crenH - 10, 4, 10);
-          g.fillStyle(0xffd040); g.fillRect(spireX + 1, gy - wallH - 20 - crenH - 12, 2, 4);
-        }
-        // Lv6: magic glow on battlements
-        if (townLevel >= 6) {
-          for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
-            g.fillStyle(0x8060ff, 0.7);
-            g.fillRect(cx, gy - wallH - 20 - crenH, crenW, 2);
-          }
+        g.fillRect(wingX, rowY, ww, 1);
+      }
+      // 顶部高光
+      g.fillStyle(0xb0b0b0); g.fillRect(wingX, gy - wallH, ww, 2);
+      // 苔藓点缀
+      g.fillStyle(0x5a7a40);
+      for (let i = 0; i < 6; i++) {
+        const mx = wingX + 4 + (i * 13 % (ww - 8));
+        const my = gy - wallH + 10 + (i * 7 % (wallH - 20));
+        g.fillRect(mx, my, 3, 2);
+      }
+      // 矩形垛口
+      for (let cx = wingX + 2; cx < wingX + ww - crenW; cx += crenW + crenGap) {
+        g.fillStyle(0x8A8A8A); g.fillRect(cx, gy - wallH - crenH, crenW, crenH);
+        g.fillStyle(0x5A5A5A); g.fillRect(cx, gy - wallH - crenH, crenW, 2);
+      }
+      // 鹅卵石路基
+      g.fillStyle(0x7A6A52); g.fillRect(wingX, gy - 5, ww, 5);
+    }
+
+    // ── 两侧嵌入式壁龛（守卫站位）──
+    for (const tx of [wx - 14, wx + gateW + 2]) {
+      const towerW = 14;
+      const towerH = wallH + 14;
+      g.fillStyle(0x7a7a7a); g.fillRect(tx, gy - towerH, towerW, towerH);
+      g.fillStyle(0x5A5A5A);
+      for (let row = 0; row < 4; row++) {
+        g.fillRect(tx, gy - towerH + 4 + row * 14, towerW, 1);
+        for (let bx = tx + (row % 2) * 6; bx < tx + towerW; bx += 10) {
+          g.fillRect(bx, gy - towerH + 4 + row * 14, 1, 12);
         }
       }
+      // 壁龛顶部垛口
+      g.fillStyle(0x8A8A8A);
+      for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
+        g.fillRect(cx, gy - towerH - crenH, crenW, crenH);
+        g.fillStyle(0x5A5A5A); g.fillRect(cx, gy - towerH - crenH, crenW, 2);
+        g.fillStyle(0x8A8A8A);
+      }
+      // 点燃的火把架
+      g.fillStyle(0x4A3D2A); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - towerH + 6, 2, 8);
+      g.fillStyle(0xff8820); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - towerH + 3, 2, 4);
+      g.fillStyle(0xffcc40); g.fillRect(tx + Math.floor(towerW / 2), gy - towerH + 2, 1, 2);
+    }
 
-      g.fillStyle(gateColor); g.fillRect(wx + wallW, gy - 44, gateW, 44);
-      g.fillStyle(gateHigh); g.fillRect(wx + wallW + 2, gy - 42, gateW - 4, 5);
-      g.fillStyle(gateColor); g.fillRect(wx + wallW + 4, gy - 50, gateW - 8, 8);
-      g.fillRect(wx + wallW + 2, gy - 48, gateW - 4, 4);
+    // ── 门（双扇厚木板配铁带）──
+    const gateH = 40;
+    const gateY = gy - gateH;
+    const half  = Math.floor(gateW / 2);
+    g.fillStyle(0xC8A86A); g.fillRect(wx, gateY, half - 1, gateH);
+    g.fillStyle(0xC8A86A); g.fillRect(wx + half + 1, gateY, gateW - half - 1, gateH);
+    // 铁带横条（加固）
+    g.fillStyle(0x4A3D2A);
+    for (const gy2 of [gateY + 5, gateY + gateH / 2 - 1, gateY + gateH - 7]) {
+      g.fillRect(wx, gy2, gateW, 3);
+    }
+    // 铆钉（四角）
+    g.fillStyle(0x282018);
+    for (const [rx, ry] of [[wx+3, gateY+7],[wx+gateW-6, gateY+7],[wx+3, gateY+gateH-9],[wx+gateW-6, gateY+gateH-9]] as [number,number][]) {
+      g.fillRect(rx, ry, 3, 3);
+    }
+    // 门缝
+    g.fillStyle(0x3a2a10); g.fillRect(wx + half - 1, gateY, 2, gateH);
+    // 门洞上方拱头（简单横梁）
+    g.fillStyle(0x5A5A5A); g.fillRect(wx - 2, gateY - 4, gateW + 4, 4);
+    // 鹅卵石门前路
+    g.fillStyle(0x888070); g.fillRect(wx - 4, gy - 5, gateW + 8, 5);
+  }
 
-      // Lv4+: iron portcullis bars
-      if (townLevel >= 4) {
-        g.fillStyle(0x484040);
-        for (let bar = 0; bar < 4; bar++) {
-          g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
-        }
-        g.fillStyle(0x484040);
-        for (let row = 0; row < 3; row++) {
-          g.fillRect(wx + wallW + 4, gy - 44 + row * 14, gateW - 8, 2);
-        }
-      } else {
-        g.fillStyle(0x484030);
-        for (let bar = 0; bar < 4; bar++) {
-          g.fillRect(wx + wallW + 4 + bar * 8, gy - 44, 3, 44);
+  // ─── Lv3: 整砌城墙 ───────────────────────────────────────────────────────
+  private _drawWallLv3(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    const wallH  = 80;
+    const gateW  = 40;
+    const wingW  = 80;
+    const towerW = 22;
+    const wx     = wallX - Math.floor(gateW / 2);
+    const crenH  = 12;
+    const crenW  = 9;
+    const crenGap = 7;
+
+    // ── 两翼整石城墙 ──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      g.fillStyle(0xA0A0A8); g.fillRect(wingX, gy - wallH, ww, wallH);
+      g.fillStyle(0x686878);
+      for (let row = 0; row < 5; row++) {
+        const rowY = gy - wallH + 3 + row * 15;
+        g.fillRect(wingX, rowY, ww, 1);
+        const offset = (row % 2) * 12;
+        for (let bx = wingX + offset; bx < wingX + ww; bx += 22) {
+          g.fillRect(bx, rowY - 13, 1, 14);
         }
       }
-
-      g.fillStyle(0x201000, 0.4); g.fillRect(wx + wallW, gy, gateW, 8);
-
-      // Lv5+: gold crest emblem above gate
-      if (townLevel >= 5) {
-        const gcx = wx + wallW + Math.floor(gateW / 2) - 4;
-        g.fillStyle(0xd4a017); g.fillRect(gcx, gy - wallH - 6, 8, 6);
-        g.fillStyle(0xffd040); g.fillRect(gcx + 2, gy - wallH - 8, 4, 4);
+      g.fillStyle(0xb8b8c0); g.fillRect(wingX, gy - wallH, ww, 2);
+      // 阶梯式垛口
+      for (let cx = wingX + 2; cx < wingX + ww - crenW; cx += crenW + crenGap) {
+        g.fillStyle(0xA0A0A8); g.fillRect(cx, gy - wallH - crenH, crenW, crenH);
+        g.fillStyle(0x686878); g.fillRect(cx, gy - wallH - crenH, crenW, 2);
+        // 阶梯分层感
+        g.fillStyle(0x888898); g.fillRect(cx + 1, gy - wallH - crenH + 3, crenW - 2, 2);
       }
+    }
+
+    // ── 方形侧塔 ──
+    for (const tx of [wx - towerW - 2, wx + gateW + 2]) {
+      const th = wallH + 22;
+      g.fillStyle(0x9898a0); g.fillRect(tx, gy - th, towerW, th);
+      // 石块砌缝
+      g.fillStyle(0x686878);
+      for (let row = 0; row < 6; row++) {
+        const rowY = gy - th + 3 + row * 16;
+        g.fillRect(tx, rowY, towerW, 1);
+        const off = (row % 2) * 8;
+        for (let bx = tx + off; bx < tx + towerW; bx += 14) {
+          g.fillRect(bx, rowY - 14, 1, 15);
+        }
+      }
+      // 水平腰带
+      g.fillStyle(0x505060); g.fillRect(tx, gy - th + Math.floor(th / 2), towerW, 3);
+      // 塔顶阶梯垛口
+      for (let cx = tx; cx < tx + towerW - crenW + 2; cx += crenW + crenGap) {
+        g.fillStyle(0x9898a0); g.fillRect(cx, gy - th - crenH, crenW, crenH);
+        g.fillStyle(0x686878); g.fillRect(cx, gy - th - crenH, crenW, 2);
+      }
+      // 旗帜（红色）
+      g.fillStyle(0x888898); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - th - crenH - 14, 2, 14);
+      g.fillStyle(0xC8282E); g.fillRect(tx + Math.floor(towerW / 2) + 1, gy - th - crenH - 14, 8, 6);
+      // 塔侧火把壁灯
+      g.fillStyle(0x505060); g.fillRect(tx + 2, gy - th + 10, 2, 6);
+      g.fillStyle(0xff8820); g.fillRect(tx + 2, gy - th + 7, 2, 4);
+      g.fillStyle(0xffcc40); g.fillRect(tx + 2, gy - th + 6, 2, 2);
+    }
+
+    // ── 拱形城门 + 铁闸 ──
+    const gateH = 48;
+    const gateY = gy - gateH;
+    const archR = Math.floor(gateW / 2);
+    // 门洞背景（暗色）
+    g.fillStyle(0x303040); g.fillRect(wx, gateY, gateW, gateH);
+    // 拱顶（逐行模拟弧形）
+    g.fillStyle(0x303040);
+    for (let i = 0; i < archR; i++) {
+      const arcW = Math.round(archR * 2 * Math.sqrt(1 - ((archR - i) / archR) ** 2));
+      const arcX = wx + archR - Math.floor(arcW / 2);
+      g.fillRect(arcX, gateY - archR + i, arcW, 1);
+    }
+    // 拱门石框
+    g.fillStyle(0x888898);
+    g.fillRect(wx - 2, gateY - archR, 4, gateH + archR); // 左柱
+    g.fillRect(wx + gateW - 2, gateY - archR, 4, gateH + archR); // 右柱
+    // 拱顶楔形石（keystone）
+    g.fillStyle(0xF5D060); g.fillRect(wx + archR - 2, gateY - archR - 2, 4, 6);
+    // 铁闸（portcullis）纵横格
+    g.fillStyle(0x484858, 0.9);
+    for (let bar = 0; bar < 4; bar++) {
+      g.fillRect(wx + 3 + bar * 9, gateY, 3, gateH);
+    }
+    for (let row = 0; row < 3; row++) {
+      g.fillRect(wx + 3, gateY + 8 + row * 12, gateW - 6, 2);
+    }
+    // 盾形族徽（门上方）
+    const scx = wx + Math.floor(gateW / 2);
+    g.fillStyle(0xC8282E); g.fillRect(scx - 5, gy - wallH - 12, 10, 12);
+    g.fillStyle(0xF5D060); g.fillRect(scx - 2, gy - wallH - 10, 4, 4);
+    g.fillStyle(0x686878); g.fillRect(scx - 6, gy - wallH - 13, 12, 2);
+  }
+
+  // ─── Lv4: 要塞城墙 ───────────────────────────────────────────────────────
+  private _drawWallLv4(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    const wallH  = 96;
+    const gateW  = 44;
+    const wingW  = 80;
+    const towerW = 26;
+    const wx     = wallX - Math.floor(gateW / 2);
+    const crenH  = 14;
+    const crenW  = 10;
+    const crenGap = 8;
+
+    // ── 两翼厚重深色花岗岩城墙 ──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      g.fillStyle(0x4A4A5A); g.fillRect(wingX, gy - wallH, ww, wallH);
+      // 凿痕纹理（花岗岩感）
+      g.fillStyle(0x2A2A38);
+      for (let row = 0; row < 6; row++) {
+        const rowY = gy - wallH + 2 + row * 15;
+        g.fillRect(wingX, rowY, ww, 1);
+        const off = (row % 2) * 10;
+        for (let bx = wingX + off; bx < wingX + ww; bx += 18) {
+          g.fillRect(bx, rowY - 13, 1, 14);
+        }
+      }
+      // 微小凿痕点
+      g.fillStyle(0x3a3a4a);
+      for (let i = 0; i < 8; i++) {
+        g.fillRect(wingX + 4 + (i * 11 % (ww - 8)), gy - wallH + 6 + (i * 7 % (wallH - 12)), 2, 1);
+      }
+      // 悬挑墙顶（machicolations — 凸出齿形）
+      g.fillStyle(0x3a3a4a);
+      for (let cx = wingX; cx < wingX + ww; cx += 10) {
+        g.fillRect(cx, gy - wallH - 4, 8, 4);
+      }
+      // 交错高度垛口
+      for (let i = 0, cx = wingX + 2; cx < wingX + ww - crenW; cx += crenW + crenGap, i++) {
+        const extraH = (i % 2 === 0) ? 4 : 0;
+        g.fillStyle(0x4A4A5A); g.fillRect(cx, gy - wallH - crenH - extraH, crenW, crenH + extraH);
+        g.fillStyle(0x2A2A38); g.fillRect(cx, gy - wallH - crenH - extraH, crenW, 2);
+      }
+    }
+
+    // ── 圆形棱堡侧翼（bastions）──
+    for (const tx of [wx - towerW - 4, wx + gateW + 4]) {
+      const th = wallH + 28;
+      const rad = Math.floor(towerW / 2);
+      // 圆形塔身（用矩形近似）
+      g.fillStyle(0x404050); g.fillRect(tx, gy - th, towerW, th);
+      // 圆弧前沿（凸出）
+      for (let i = 0; i < th; i += 2) {
+        const bulge = Math.round(rad * 0.3 * Math.sin((i / th) * Math.PI));
+        g.fillRect(tx - bulge, gy - th + i, towerW + bulge * 2, 2);
+      }
+      // 塔身石缝
+      g.fillStyle(0x2A2A38);
+      for (let row = 0; row < 7; row++) {
+        g.fillRect(tx - 2, gy - th + 3 + row * 14, towerW + 4, 1);
+      }
+      // 箭孔（arrow slits）
+      g.fillStyle(0x181828);
+      g.fillRect(tx + rad - 1, gy - th + 18, 2, 8);
+      g.fillRect(tx + rad - 1, gy - th + 36, 2, 8);
+      // 悬挑马面（overhanging machicolations）
+      g.fillStyle(0x2A2A38);
+      for (let cx = tx - 2; cx < tx + towerW + 2; cx += 8) {
+        g.fillRect(cx, gy - th - 5, 6, 5);
+      }
+      // 塔顶交错垛口
+      for (let cx = tx - 2; cx < tx + towerW; cx += crenW + crenGap) {
+        g.fillStyle(0x404050); g.fillRect(cx, gy - th - crenH, crenW, crenH);
+        g.fillStyle(0x2A2A38); g.fillRect(cx, gy - th - crenH, crenW, 2);
+      }
+      // 战旗（深红破损感）
+      g.fillStyle(0x606060); g.fillRect(tx + rad - 1, gy - th - crenH - 16, 2, 16);
+      g.fillStyle(0x8C1A1A); g.fillRect(tx + rad + 1, gy - th - crenH - 15, 9, 7);
+      g.fillStyle(0x600000); g.fillRect(tx + rad + 7, gy - th - crenH - 13, 3, 5); // 撕裂效果
+      // 投油锅座（oil cauldron mount）
+      g.fillStyle(0x2A2A38); g.fillRect(tx + 2, gy - th + 8, towerW - 4, 3);
+      g.fillStyle(0x181828); g.fillRect(tx + 5, gy - th + 4, towerW - 10, 5);
+    }
+
+    // ── 大型双层铁闸拱门 ──
+    const gateH = 54;
+    const gateY = gy - gateH;
+    const archR = 16;
+    // 门洞
+    g.fillStyle(0x101018); g.fillRect(wx, gateY, gateW, gateH);
+    // 拱顶
+    for (let i = 0; i < archR; i++) {
+      const arcW = Math.round(archR * 2 * Math.sqrt(1 - ((archR - i) / archR) ** 2));
+      const arcX = wx + Math.floor(gateW / 2) - Math.floor(arcW / 2);
+      g.fillStyle(0x101018); g.fillRect(arcX, gateY - archR + i, arcW, 1);
+    }
+    // 厚重石框
+    g.fillStyle(0x383848);
+    g.fillRect(wx - 3, gateY - archR, 5, gateH + archR);
+    g.fillRect(wx + gateW - 2, gateY - archR, 5, gateH + archR);
+    // 金属包裹门板
+    g.fillStyle(0x282838);
+    g.fillRect(wx + 2, gateY, Math.floor(gateW / 2) - 2, gateH);
+    g.fillRect(wx + Math.floor(gateW / 2) + 2, gateY, gateW - Math.floor(gateW / 2) - 4, gateH);
+    // 第一层铁闸
+    g.fillStyle(0x484858, 0.9);
+    for (let bar = 0; bar < 5; bar++) {
+      g.fillRect(wx + 3 + bar * 8, gateY, 3, gateH);
+    }
+    for (let row = 0; row < 4; row++) {
+      g.fillRect(wx + 3, gateY + 6 + row * 12, gateW - 6, 2);
+    }
+    // 第二层铁闸（略微偏移，营造双层感）
+    g.fillStyle(0x303040, 0.7);
+    for (let bar = 0; bar < 4; bar++) {
+      g.fillRect(wx + 6 + bar * 8, gateY + 4, 2, gateH - 4);
+    }
+    // 铁闸底部锯齿
+    g.fillStyle(0x484858);
+    for (let bar = 0; bar < 5; bar++) {
+      g.fillRect(wx + 4 + bar * 8, gy - 5, 2, 5);
+      g.fillRect(wx + 5 + bar * 8, gy - 7, 1, 2);
+    }
+    // 锁链（gate chains）
+    g.fillStyle(0x484040);
+    for (let i = 0; i < 6; i++) {
+      g.fillRect(wx + 5, gy - wallH + 10 + i * 10, 2, 6);
+      g.fillRect(wx + gateW - 7, gy - wallH + 10 + i * 10, 2, 6);
+    }
+    // 大剑徽章（crossed swords）
+    const gcx = wx + Math.floor(gateW / 2);
+    g.fillStyle(0x888898); g.fillRect(gcx - 1, gy - wallH - 14, 2, 14);  // 竖剑
+    g.fillRect(gcx - 7, gy - wallH - 10, 14, 2);  // 横剑
+    g.fillStyle(0xaaaaaa); g.fillRect(gcx - 5, gy - wallH - 12, 2, 2);  // 护手
+    g.fillRect(gcx + 3, gy - wallH - 12, 2, 2);
+    // 拱顶楔形石符文（蓝色发光）
+    g.fillStyle(0x6A8CFF); g.fillRect(gcx - 2, gateY - archR - 3, 4, 4);
+    g.fillStyle(0x4a6aff, 0.7); g.fillRect(gcx - 3, gateY - archR - 4, 6, 1);
+  }
+
+  // ─── Lv5: 传说城墙 ───────────────────────────────────────────────────────
+  private _drawWallLv5(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    const wallH  = 118;
+    const gateW  = 50;
+    const wingW  = 80;
+    const towerW = 30;
+    const wx     = wallX - Math.floor(gateW / 2);
+    const crenH  = 16;
+    const crenW  = 12;
+    const crenGap = 9;
+
+    // ── 两翼大理石城墙 ──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      // 大理石白底
+      g.fillStyle(0xE8E0CC); g.fillRect(wingX, gy - wallH, ww, wallH);
+      // 金色纹理嵌入（marble veins）
+      g.fillStyle(0xC8A830);
+      for (let i = 0; i < 5; i++) {
+        const vx = wingX + 4 + (i * 17 % (ww - 8));
+        g.fillRect(vx, gy - wallH + 2, 1, wallH - 4);
+      }
+      // 石砌缝（精整）
+      g.fillStyle(0xc0b8a0);
+      for (let row = 0; row < 7; row++) {
+        const rowY = gy - wallH + 3 + row * 16;
+        g.fillRect(wingX, rowY, ww, 1);
+        const off = (row % 2) * 14;
+        for (let bx = wingX + off; bx < wingX + ww; bx += 26) {
+          g.fillRect(bx, rowY - 14, 1, 15);
+        }
+      }
+      // 顶部高光
+      g.fillStyle(0xf8f0dc); g.fillRect(wingX, gy - wallH, ww, 2);
+      // 骑士头盔形垛口
+      for (let i = 0, cx = wingX + 2; cx < wingX + ww - crenW; cx += crenW + crenGap, i++) {
+        g.fillStyle(0xE8E0CC); g.fillRect(cx, gy - wallH - crenH, crenW, crenH);
+        // 头盔形状：顶部弧形（用梯形近似）
+        g.fillStyle(0xC8A830); g.fillRect(cx + 2, gy - wallH - crenH - 4, crenW - 4, 4);
+        g.fillStyle(0xd4c898); g.fillRect(cx, gy - wallH - crenH, crenW, 2);
+      }
+      // 金链装饰（两端）
+      g.fillStyle(0xC8A830);
+      for (let i = 0; i < 3; i++) {
+        g.fillRect(wingX + 2 + i * 4, gy - wallH + 4 + i, 2, 2);
+      }
+    }
+
+    // ── 高塔（锥形帽 + 金尖顶）──
+    for (const tx of [wx - towerW - 4, wx + gateW + 4]) {
+      const th = wallH + 30;
+      // 塔身
+      g.fillStyle(0xdcd4b8); g.fillRect(tx, gy - th, towerW, th);
+      // 金色嵌线
+      g.fillStyle(0xC8A830);
+      for (let i = 0; i < 4; i++) {
+        const vx = tx + 3 + (i * 8 % (towerW - 6));
+        g.fillRect(vx, gy - th + 2, 1, th - 4);
+      }
+      // 石缝
+      g.fillStyle(0xc0b8a0);
+      for (let row = 0; row < 8; row++) {
+        g.fillRect(tx, gy - th + 3 + row * 14, towerW, 1);
+        const off = (row % 2) * 8;
+        for (let bx = tx + off; bx < tx + towerW; bx += 14) {
+          g.fillRect(bx, gy - th + 3 + row * 14 - 12, 1, 13);
+        }
+      }
+      // 腰带（水平金色）
+      g.fillStyle(0xC8A830); g.fillRect(tx, gy - th + Math.floor(th / 2), towerW, 3);
+      // 锥形帽（conical roof）
+      const roofH = 20;
+      for (let i = 0; i < roofH; i++) {
+        const rw = Math.round(towerW * (roofH - i) / roofH);
+        const rx = tx + Math.floor((towerW - rw) / 2);
+        g.fillStyle(0x3A5A8C); g.fillRect(rx, gy - th - roofH + i, rw, 1);
+      }
+      // 金色尖顶
+      g.fillStyle(0xF5D060); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - th - roofH - 8, 2, 8);
+      g.fillStyle(0xffd040); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - th - roofH - 12, 2, 4);
+      g.fillStyle(0xfff080); g.fillRect(tx + Math.floor(towerW / 2), gy - th - roofH - 14, 1, 2);
+      // 大型纹章旗帜
+      g.fillStyle(0xC8A830); g.fillRect(tx + 2, gy - th + 8, 2, 18);
+      g.fillStyle(0x3A5A8C); g.fillRect(tx + 4, gy - th + 8, 12, 10);
+      g.fillStyle(0xF5D060); g.fillRect(tx + 8, gy - th + 10, 4, 6); // 纹章金
+      // 塔顶火焰台（brazier）
+      g.fillStyle(0x888870); g.fillRect(tx + Math.floor(towerW / 2) - 3, gy - th - roofH - 1, 6, 4);
+    }
+
+    // ── 凯旋拱门 + 英雄浮雕 ──
+    const gateH = 62;
+    const gateY = gy - gateH;
+    const archR = 20;
+    // 门洞（暗色内部）
+    g.fillStyle(0x201808); g.fillRect(wx, gateY, gateW, gateH);
+    // 拱顶
+    for (let i = 0; i < archR; i++) {
+      const arcW = Math.round(archR * 2 * Math.sqrt(1 - ((archR - i) / archR) ** 2));
+      const arcX = wx + Math.floor(gateW / 2) - Math.floor(arcW / 2);
+      g.fillStyle(0x201808); g.fillRect(arcX, gateY - archR + i, arcW, 1);
+    }
+    // 大理石门框（宽厚）
+    g.fillStyle(0xE8E0CC);
+    g.fillRect(wx - 4, gateY - archR, 6, gateH + archR);
+    g.fillRect(wx + gateW - 2, gateY - archR, 6, gateH + archR);
+    // 拱顶楔形金石
+    g.fillStyle(0xC8A830); g.fillRect(wx + Math.floor(gateW / 2) - 3, gateY - archR - 4, 6, 6);
+    // 拱肩浮雕（hero reliefs — 简化为纹章图案）
+    g.fillStyle(0xd4cc98);
+    g.fillRect(wx + 6, gateY - archR + 4, 8, 10); // 左浮雕块
+    g.fillRect(wx + gateW - 14, gateY - archR + 4, 8, 10); // 右浮雕块
+    g.fillStyle(0xC8A830);
+    g.fillRect(wx + 9, gateY - archR + 6, 2, 6);   // 左浮雕纹
+    g.fillRect(wx + gateW - 11, gateY - archR + 6, 2, 6); // 右浮雕纹
+    // 门板（金属包面）
+    g.fillStyle(0x4a3820); g.fillRect(wx + 2, gateY, Math.floor(gateW / 2) - 2, gateH);
+    g.fillStyle(0x4a3820); g.fillRect(wx + Math.floor(gateW / 2) + 2, gateY, gateW - Math.floor(gateW / 2) - 4, gateH);
+    // 金色铆钉装饰
+    g.fillStyle(0xF5D060);
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        g.fillRect(wx + 5 + col * 8, gateY + 6 + row * 13, 2, 2);
+        g.fillRect(wx + Math.floor(gateW / 2) + 5 + col * 8, gateY + 6 + row * 13, 2, 2);
+      }
+    }
+    // 门缝
+    g.fillStyle(0x201808); g.fillRect(wx + Math.floor(gateW / 2) - 1, gateY, 2, gateH);
+    // 门上方发光魔法护盾浮入墙面
+    const scx = wx + Math.floor(gateW / 2);
+    g.fillStyle(0x3A5A8C); g.fillRect(scx - 7, gy - wallH - 16, 14, 16);
+    g.fillStyle(0xF5D060); g.fillRect(scx - 4, gy - wallH - 13, 8, 8);
+    g.fillStyle(0xF0C860, 0.6); g.fillRect(scx - 2, gy - wallH - 11, 4, 4); // 光晕
+    // 金链装饰（两塔之间）
+    g.fillStyle(0xC8A830);
+    for (let i = 0; i < 8; i++) {
+      const cx2 = wx - towerW + i * Math.floor((gateW + towerW * 2) / 7);
+      const sag = Math.round(4 * Math.sin((i / 7) * Math.PI));
+      g.fillRect(cx2, gy - wallH - 4 + sag, 3, 2);
+    }
+  }
+
+  // ─── Lv6: 神圣永恒城墙 ───────────────────────────────────────────────────
+  private _drawWallLv6(g: Phaser.GameObjects.Graphics, gy: number, wallX: number) {
+    const wallH  = 144;
+    const gateW  = 56;
+    const wingW  = 80;
+    const towerW = 34;
+    const wx     = wallX - Math.floor(gateW / 2);
+    const crenH  = 18;
+    const crenW  = 14;
+    const crenGap = 10;
+
+    // ── 两翼神圣乳白城墙（全面符文覆盖）──
+    for (const [wingX, ww] of [[wx - wingW, wingW], [wx + gateW, wingW]] as [number, number][]) {
+      // 乳白石底
+      g.fillStyle(0xF8F4E8); g.fillRect(wingX, gy - wallH, ww, wallH);
+      // 精整砌缝（极细）
+      g.fillStyle(0xd8d4c0);
+      for (let row = 0; row < 8; row++) {
+        const rowY = gy - wallH + 2 + row * 17;
+        g.fillRect(wingX, rowY, ww, 1);
+        const off = (row % 2) * 16;
+        for (let bx = wingX + off; bx < wingX + ww; bx += 28) {
+          g.fillRect(bx, rowY - 15, 1, 16);
+        }
+      }
+      // 金色符文（发光）覆盖整面墙
+      g.fillStyle(0xFFD700);
+      for (let row = 0; row < 5; row++) {
+        for (let col = 0; col < 4; col++) {
+          const rx = wingX + 4 + col * Math.floor((ww - 8) / 3);
+          const ry = gy - wallH + 10 + row * Math.floor((wallH - 20) / 4);
+          // 符文形状（T形/十字）
+          g.fillRect(rx, ry, 4, 1);
+          g.fillRect(rx + 1, ry - 3, 2, 7);
+        }
+      }
+      // 天界蓝白光晕叠加
+      g.fillStyle(0xA0C8FF, 0.3);
+      for (let i = 0; i < 6; i++) {
+        g.fillRect(wingX + 2 + (i * 14 % (ww - 4)), gy - wallH + 4 + (i * 9 % (wallH - 8)), 5, 2);
+      }
+      // 天使翼形垛口
+      for (let i = 0, cx = wingX + 2; cx < wingX + ww - crenW; cx += crenW + crenGap, i++) {
+        g.fillStyle(0xF8F4E8); g.fillRect(cx, gy - wallH - crenH, crenW, crenH);
+        g.fillStyle(0xFFD700); g.fillRect(cx, gy - wallH - crenH, crenW, 2);
+        // 翅膀展开形（向两侧微翘）
+        g.fillStyle(0xF8F4E8);
+        g.fillRect(cx - 2, gy - wallH - crenH + 4, 3, crenH - 6);  // 左翼
+        g.fillRect(cx + crenW - 1, gy - wallH - crenH + 4, 3, crenH - 6); // 右翼
+        g.fillStyle(0xFFD700);
+        g.fillRect(cx - 2, gy - wallH - crenH + 4, 3, 2);
+        g.fillRect(cx + crenW - 1, gy - wallH - crenH + 4, 3, 2);
+      }
+      // 顶边金色镶边
+      g.fillStyle(0xFFD700); g.fillRect(wingX, gy - wallH, ww, 2);
+    }
+
+    // ── 以太灵塔（双塔，星月顶饰）──
+    for (const tx of [wx - towerW - 4, wx + gateW + 4]) {
+      const th = wallH + 40;
+      // 塔身（乳白）
+      g.fillStyle(0xF0ECE0); g.fillRect(tx, gy - th, towerW, th);
+      // 符文密布
+      g.fillStyle(0xFFD700);
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 2; col++) {
+          const rx = tx + 4 + col * Math.floor(towerW / 2);
+          const ry = gy - th + 6 + row * Math.floor((th - 12) / 7);
+          g.fillRect(rx, ry, 3, 1);
+          g.fillRect(rx + 1, ry - 2, 1, 5);
+        }
+      }
+      // 天界蓝光
+      g.fillStyle(0xA0C8FF, 0.4);
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(tx + 2 + (i * 6 % (towerW - 4)), gy - th + 5 + i * 8, 4, 2);
+      }
+      // 腰带（金色三道）
+      g.fillStyle(0xFFD700);
+      for (const belt of [0.25, 0.5, 0.75]) {
+        g.fillRect(tx, gy - th + Math.floor(th * belt), towerW, 3);
+      }
+      // 锥形塔帽
+      const roofH = 26;
+      for (let i = 0; i < roofH; i++) {
+        const rw = Math.round(towerW * (roofH - i) / roofH);
+        const rx = tx + Math.floor((towerW - rw) / 2);
+        g.fillStyle(i < 4 ? 0xFFD700 : 0xA0C8FF); g.fillRect(rx, gy - th - roofH + i, rw, 1);
+      }
+      // 星月顶饰（crescent + star）
+      const spireX = tx + Math.floor(towerW / 2);
+      g.fillStyle(0xFFD700);
+      g.fillRect(spireX - 1, gy - th - roofH - 12, 2, 12); // 杆
+      g.fillRect(spireX - 4, gy - th - roofH - 18, 8, 2);  // 弦月横
+      g.fillRect(spireX - 2, gy - th - roofH - 20, 4, 2);  // 弦月弧
+      g.fillRect(spireX - 5, gy - th - roofH - 22, 2, 4);  // 左角
+      g.fillRect(spireX + 3, gy - th - roofH - 22, 2, 4);  // 右角
+      g.fillStyle(0xfff0a0); g.fillRect(spireX, gy - th - roofH - 14, 1, 1); // 星点
+      // 神圣焰柱（divine flame pillars）
+      g.fillStyle(0xFF9820); g.fillRect(tx + Math.floor(towerW / 2) - 2, gy - th + 4, 4, 8);
+      g.fillStyle(0xFFD700); g.fillRect(tx + Math.floor(towerW / 2) - 1, gy - th + 2, 2, 4);
+      g.fillStyle(0xfff8e0); g.fillRect(tx + Math.floor(towerW / 2), gy - th + 1, 1, 2);
+      // 天界旗帜（带神祇符号）
+      g.fillStyle(0xFFD700); g.fillRect(tx + 3, gy - th + 14, 2, 18);
+      g.fillStyle(0xA0C8FF); g.fillRect(tx + 5, gy - th + 14, 14, 11);
+      g.fillStyle(0xFFD700); g.fillRect(tx + 10, gy - th + 17, 4, 5); // 神祇符
+      g.fillRect(tx + 12, gy - th + 15, 1, 9); // 符文十字
+    }
+
+    // ── 天界圣门（太阳光芒纹纯金属）──
+    const gateH = 72;
+    const gateY = gy - gateH;
+    const archR = 24;
+    // 神圣光晕背景（门拱顶放射）
+    g.fillStyle(0xFFD700, 0.15);
+    for (let r = archR + 10; r > archR; r--) {
+      const rw = r * 2;
+      g.fillRect(wx + Math.floor(gateW / 2) - r, gateY - archR - (r - archR), rw, 1);
+    }
+    // 门洞（神圣光）
+    g.fillStyle(0xf0e8c0); g.fillRect(wx, gateY, gateW, gateH);
+    // 拱顶
+    for (let i = 0; i < archR; i++) {
+      const arcW = Math.round(archR * 2 * Math.sqrt(1 - ((archR - i) / archR) ** 2));
+      const arcX = wx + Math.floor(gateW / 2) - Math.floor(arcW / 2);
+      g.fillStyle(0xf0e8c0); g.fillRect(arcX, gateY - archR + i, arcW, 1);
+    }
+    // 纯金属门框（厚重）
+    g.fillStyle(0xFFD700);
+    g.fillRect(wx - 5, gateY - archR, 7, gateH + archR);
+    g.fillRect(wx + gateW - 2, gateY - archR, 7, gateH + archR);
+    // 金属门板（太阳光芒纹）
+    g.fillStyle(0xF5D060);
+    g.fillRect(wx + 2, gateY, Math.floor(gateW / 2) - 2, gateH);
+    g.fillRect(wx + Math.floor(gateW / 2) + 2, gateY, gateW - Math.floor(gateW / 2) - 4, gateH);
+    // 太阳光芒纹（放射线）
+    const dcx = wx + Math.floor(gateW / 2);
+    const dcy = gateY + Math.floor(gateH / 2);
+    g.fillStyle(0xFF9820);
+    for (let angle = 0; angle < 8; angle++) {
+      const rad = (angle * Math.PI) / 4;
+      for (let r = 4; r < 16; r++) {
+        const rx = Math.round(dcx + r * Math.cos(rad));
+        const ry = Math.round(dcy + r * Math.sin(rad));
+        g.fillRect(rx - 1, ry - 1, 2, 2);
+      }
+    }
+    g.fillStyle(0xFFD700); g.fillRect(dcx - 3, dcy - 3, 6, 6); // 太阳核
+    // 金色铆钉
+    g.fillStyle(0xff9820);
+    for (let row = 0; row < 4; row++) {
+      g.fillRect(wx + 4, gateY + 5 + row * 15, 2, 2);
+      g.fillRect(wx + gateW - 6, gateY + 5 + row * 15, 2, 2);
+    }
+    // 门缝（细金线）
+    g.fillStyle(0xFFD700); g.fillRect(wx + Math.floor(gateW / 2) - 1, gateY, 2, gateH);
+    // 拱顶楔形金石
+    g.fillStyle(0xfff8c0); g.fillRect(wx + Math.floor(gateW / 2) - 3, gateY - archR - 5, 6, 7);
+    // 门顶神圣光圈（divine sigil circle）
+    const sigX = wx + Math.floor(gateW / 2);
+    const sigY = gy - wallH - 16;
+    g.fillStyle(0xFFD700); g.fillRect(sigX - 8, sigY, 16, 3);   // 横
+    g.fillRect(sigX - 1, sigY - 8, 3, 18);  // 竖
+    g.fillRect(sigX - 6, sigY - 5, 12, 12); // 外圆（方形近似）
+    g.fillStyle(0xF8F4E8); g.fillRect(sigX - 4, sigY - 3, 8, 8);  // 内填充
+    g.fillStyle(0xFF9820); g.fillRect(sigX - 2, sigY - 1, 4, 4);  // 核心光
+    // 浮空魔法球（光链锚定）
+    for (const [ox, oy] of [[-20, -20], [20, -20]] as [number, number][]) {
+      const bx = wx + Math.floor(gateW / 2) + ox;
+      const by = gy - wallH + oy;
+      // 光链（虚线）
+      g.fillStyle(0xFFD700, 0.6);
+      for (let i = 0; i < 5; i++) {
+        g.fillRect(bx + (ox > 0 ? -i * 3 : i * 3), by + i * 3, 2, 2);
+      }
+      // 魔法球
+      g.fillStyle(0xA0C8FF); g.fillRect(bx - 4, by - 4, 8, 8);
+      g.fillStyle(0xfff8ff); g.fillRect(bx - 2, by - 2, 4, 4);
+      g.fillStyle(0xFFD700, 0.8); g.fillRect(bx - 1, by - 1, 2, 2);
+    }
+    // 门基神圣火焰柱（divine flame pillars）
+    for (const fx of [wx - 4, wx + gateW + 2]) {
+      // 底座
+      g.fillStyle(0xFFD700); g.fillRect(fx, gy - 16, 6, 16);
+      g.fillStyle(0xF5D060); g.fillRect(fx - 1, gy - 18, 8, 4);
+      // 火焰
+      g.fillStyle(0xFF9820); g.fillRect(fx, gy - 24, 6, 8);
+      g.fillStyle(0xFFD700); g.fillRect(fx + 1, gy - 28, 4, 6);
+      g.fillStyle(0xfff8c0); g.fillRect(fx + 2, gy - 30, 2, 4);
     }
   }
 
@@ -2051,4 +2766,3 @@ export class TownScene extends Phaser.Scene {
     return null;
   }
 }
-
