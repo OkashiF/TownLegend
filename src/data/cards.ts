@@ -20,10 +20,14 @@ const LEVEL_UPKEEP: Record<number, number> = {
   3: 35,
   4: 55,
   5: 80,
+  6: 120,
 };
 
-function cost(level: number)   { return LEVEL_COST[level]   ?? 20; }
-function upkeep(level: number) { return LEVEL_UPKEEP[level] ?? 5;  }
+function cost(level: number) {
+    // 返回指定等级的基础价格，如果等级超出定义范围，则返回最高等级的价格
+    return LEVEL_COST[level] ?? LEVEL_COST[Object.keys(LEVEL_COST).length - 1];
+}
+function upkeep(level: number) { return LEVEL_UPKEEP[level] ?? LEVEL_UPKEEP[Object.keys(LEVEL_UPKEEP).length - 1]; }
 
 // ── 商店刷新费用 ──────────────────────────────────────────────────────────────
 export function shopRefreshCost(townLevel: number): number {
@@ -331,7 +335,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[草药师]薇妲',
     type: CardType.Human,
     level: 0,
-    cost: cost(1), upkeep: upkeep(1),
+    cost: cost(0), upkeep: upkeep(0),
     emoji: '🌿',
     description: '山林边缘长大的薇妲熟知百草药性，能以低廉成本采集稀有材料，兼具轻度治疗能力。她不善言辞，却总在队伍最疲惫时悄然奉上草药包。可合成。',
     stats: { hp: 15, maxHp: 15, atk: 2, def: 1, intellect: 2, strength: 1, diligence: 3 },
@@ -342,7 +346,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[斥候]雷恩',
     type: CardType.Human,
     level: 0,
-    cost: cost(1), upkeep: upkeep(1),
+    cost: cost(0), upkeep: upkeep(0),
     emoji: '🏹',
     description: '出身边境村落的流浪弓手雷恩，凭借惊人的感知力为城镇预警怪物来袭。他的箭永远先敌一步，虽然总是少一支。可合成。',
     stats: { hp: 15, maxHp: 15, atk: 4, def: 2, intellect: 2, strength: 2, diligence: 2 },
@@ -353,7 +357,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[炼金术士]科尔',
     type: CardType.Human,
     level: 1,
-    cost: cost(2), upkeep: upkeep(2),
+    cost: cost(1), upkeep: upkeep(1),
     emoji: '⚗️',
     description: '失意学者科尔离开学院后辗转流落至此，他能将普通材料提炼成价值翻倍的药剂。实验室总冒着奇怪的烟，但成品令商人趋之若鹜。可合成。',
     stats: { hp: 30, maxHp: 30, atk: 5, def: 3, intellect: 4, strength: 1, diligence: 2 },
@@ -364,7 +368,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[吟游诗人]索拉',
     type: CardType.Human,
     level: 1,
-    cost: cost(2), upkeep: upkeep(2),
+    cost: cost(1), upkeep: upkeep(1),
     emoji: '🎵',
     description: '索拉用歌声为酒馆招来三倍客流，顺手传播城镇的名声。她从不固定停留——直到发现这里值得一首史诗。可合成。',
     stats: { hp: 30, maxHp: 30, atk: 3, def: 3, intellect: 3, strength: 1, diligence: 2 },
@@ -375,7 +379,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[游侠]艾登',
     type: CardType.Human,
     level: 2,
-    cost: cost(3), upkeep: upkeep(2),
+    cost: cost(2), upkeep: upkeep(2),
     emoji: '🗡️',
     description: '艾登独自在荒野追猎怪物二十年，身上每道伤疤都是一份怪物志。他不在乎功名，只要有足够多的怪可以清剿。可合成。',
     stats: { hp: 60, maxHp: 60, atk: 15, def: 8, intellect: 2, strength: 4, diligence: 3 },
@@ -386,7 +390,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[财务官]葛霖',
     type: CardType.Human,
     level: 2,
-    cost: cost(3), upkeep: upkeep(3),
+    cost: cost(2), upkeep: upkeep(2),
     emoji: '📜',
     description: '葛霖在王都财政部任职三十年后"自愿"辞职，带着一肚子账本知识来到小镇。有他在，任何收入都能多出两成——当然他自己也会留一成。可合成。',
     stats: { hp: 50, maxHp: 50, atk: 4, def: 5, intellect: 5, strength: 0, diligence: 3 },
@@ -397,7 +401,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[审判者]塞拉芬',
     type: CardType.Human,
     level: 3,
-    cost: cost(4), upkeep: upkeep(3),
+    cost: cost(3), upkeep: upkeep(3),
     emoji: '⚖️',
     description: '前教廷特使塞拉芬因执法过于严苛被"调任"地方。他对怪物与腐败同样零容忍，总是正确的，也总是令人难以相处。可合成。',
     stats: { hp: 100, maxHp: 100, atk: 25, def: 15, intellect: 4, strength: 4, diligence: 4 },
@@ -408,7 +412,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[符文匠]奥瑞恩',
     type: CardType.Human,
     level: 3,
-    cost: cost(4), upkeep: upkeep(4),
+    cost: cost(3), upkeep: upkeep(3),
     emoji: '🔮',
     description: '奥瑞恩掌握一门濒临失传的符文刻印术，能为武器装备注入魔力。他的工作台永远乱糟糟，但每件出手的作品都价值连城。可合成。',
     stats: { hp: 90, maxHp: 90, atk: 12, def: 12, intellect: 5, strength: 2, diligence: 4 },
@@ -419,7 +423,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[影卫统领]幽兰',
     type: CardType.Human,
     level: 4,
-    cost: cost(5), upkeep: upkeep(4),
+    cost: cost(4), upkeep: upkeep(4),
     emoji: '🕵️',
     description: '没有人知道幽兰真正效忠于谁，连她自己也未必清楚。她掌握着城镇周边所有商路与威胁的情报，信息就是她的货币。可合成。',
     stats: { hp: 160, maxHp: 160, atk: 40, def: 20, intellect: 6, strength: 3, diligence: 5 },
@@ -430,7 +434,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[法术师长]艾尔文',
     type: CardType.Human,
     level: 4,
-    cost: cost(5), upkeep: upkeep(5),
+    cost: cost(4), upkeep: upkeep(4),
     emoji: '✨',
     description: '大陆上最著名的魔法院院长艾尔文在一次实验事故后悄然隐居此地。他的指尖随时蓄着足以夷平城堡的法术，表情却始终漫不经心。可合成。',
     stats: { hp: 140, maxHp: 140, atk: 55, def: 15, intellect: 7, strength: 4, diligence: 3 },
@@ -441,7 +445,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[神谕者]薇欧拉',
     type: CardType.Human,
     level: 5,
-    cost: cost(6), upkeep: upkeep(5),
+    cost: cost(5), upkeep: upkeep(5),
     emoji: '🌙',
     description: '薇欧拉在神殿侍奉了一百年，尽管神已沉默，她的预言从未出错过。她来到这座小城，因为神谕说这里会有"值得见证的奇迹"发生。',
     stats: { hp: 250, maxHp: 250, atk: 20, def: 30, intellect: 8, strength: 1, diligence: 6 },
@@ -451,7 +455,7 @@ export const CARD_DB: CardDefinition[] = [
     name: '[圣裁将军]卡利奥斯',
     type: CardType.Human,
     level: 5,
-    cost: cost(6), upkeep: upkeep(5),
+    cost: cost(5), upkeep: upkeep(5),
     emoji: '⚔️',
     description: '卡利奥斯曾率十万神国铁骑横扫黑暗军团，战后却主动放下元帅权杖，以一介武夫身份游历人间。他的到来让城墙外的怪物彻夜哀嚎。',
     stats: { hp: 350, maxHp: 350, atk: 85, def: 60, intellect: 3, strength: 9, diligence: 5 },

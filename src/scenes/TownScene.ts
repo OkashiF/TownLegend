@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import { ZoneConfig, computeZoneConfig } from '../config/zones';
@@ -635,7 +635,7 @@ export class TownScene extends Phaser.Scene {
       sp.monsterBehavior = 'waiting';
       if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
         sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
-        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+        sp.targetY = gy + (Math.random() - 0.5) * 6;// spawn点附近徘徊，偶尔小范围移动
       }
       return;
     }
@@ -645,7 +645,7 @@ export class TownScene extends Phaser.Scene {
       sp.monsterBehavior = 'waiting';
       if (Math.abs(sp.x - spawnX) > WANDER || Math.random() < 0.02) {
         sp.targetX = spawnX + (Math.random() - 0.5) * WANDER * 0.5;
-        sp.targetY = gy - 10 + (Math.random() - 0.5) * 6;
+        sp.targetY = gy + (Math.random() - 0.5) * 6;// spawn点附近徘徊，偶尔小范围移动
       }
       return;
     }
@@ -653,7 +653,7 @@ export class TownScene extends Phaser.Scene {
     const activeTown = townspeople.filter(c => c.isActive);
     if (activeTown.length === 0) {
       sp.monsterBehavior = 'retreating';
-      sp.targetX = spawnX; sp.targetY = gy - 10;
+      sp.targetX = spawnX; sp.targetY = gy;
       return;
     }
 
