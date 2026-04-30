@@ -22,6 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   pixelArt: true,
   antialias: false,
+  resolution: window.devicePixelRatio || 1,
   scene: [TownScene],
   scale: {
     mode: Phaser.Scale.NONE,

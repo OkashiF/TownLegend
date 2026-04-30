@@ -1031,7 +1031,7 @@ export class TownScene extends Phaser.Scene {
 
       const label = this.add.text(0, 0, def.name, {
         fontFamily: '"Silkscreen", monospace',
-        fontSize: '8px', color: '#f5e6c8',
+        fontSize: '16px', color: '#f5e6c8',
         stroke: '#000000', strokeThickness: 2,
       }).setOrigin(0.5, 1);
       this.labelLayer.add(label);
@@ -1093,7 +1093,7 @@ export class TownScene extends Phaser.Scene {
       if (sp.isStatic) {
         sp.sprite.setAlpha(inst.isActive ? 1 : 0.45);
         sp.sprite.setPosition(sp.x, sp.y);
-        sp.label.setPosition(sp.x, sp.y - 32);
+        sp.label.setPosition(sp.x, sp.y - 38);
         sp.hpBar.clear();
         sp.craftBar.clear();
         continue;
@@ -1171,7 +1171,7 @@ export class TownScene extends Phaser.Scene {
         }
       }
 
-      sp.label.setPosition(sp.x, sp.y - 30);
+      sp.label.setPosition(sp.x, sp.y - 38);
       this.drawHpBar(sp, inst);
       this.drawCraftBar(sp, inst, def);
     }
@@ -2336,7 +2336,7 @@ export class TownScene extends Phaser.Scene {
     }
 
     const labelStyle = {
-      fontFamily: '"Silkscreen", monospace', fontSize: '9px',
+      fontFamily: '"Silkscreen", monospace', fontSize: '16px',
       color: '#c8b890', stroke: '#000', strokeThickness: 2,
     };
     ([
@@ -2408,7 +2408,7 @@ export class TownScene extends Phaser.Scene {
   private spawnDamageText(x: number, y: number, dmg: number, color: string) {
     const txt = this.add.text(x, y - 20, `-${dmg}`, {
       fontFamily: '"Silkscreen", monospace',
-      fontSize: '10px', color,
+      fontSize: '18px', color,
       stroke: '#000000', strokeThickness: 2,
     }).setOrigin(0.5, 1);
     this.fxLayer.add(txt);
@@ -2420,7 +2420,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private spawnBubble(x: number, y: number, text: string) {
-    const bubble = this.add.text(x, y - 20, text, { fontSize: '16px' }).setOrigin(0.5, 1);
+    const bubble = this.add.text(x, y - 20, text, { fontSize: '20px' }).setOrigin(0.5, 1);
     this.fxLayer.add(bubble);
     this.tweens.add({
       targets: bubble, y: y - 54, alpha: 0,
@@ -2554,7 +2554,7 @@ export class TownScene extends Phaser.Scene {
 
     const labelStyle = {
       fontFamily: '"Silkscreen", monospace',
-      fontSize: '9px',
+      fontSize: '16px',
       color: '#ffd040',
       stroke: '#000000',
       strokeThickness: 2,
