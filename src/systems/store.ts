@@ -703,6 +703,34 @@ export class GameStore {
     return { ok: true };
   }
 
+  buyAllCards(): { bought: number } {
+    let bought = 0;
+    const len = this.shopSlots.length;
+    for (let i = 0; i < len; i++) {
+      const slot = this.shopSlots[i];
+      if (!slot || slot.sold) continue;
+      const r = this.buyCard(i);
+      if (r.ok) bought++;
+    }
+    return { bought };
+  }
+
+  upgradeAllCards(): { merged: number } {
+    const snapshot = new Map<string, number>();
+    for (const inst of this.hand) {
+      snapshot.set(inst.definitionId, (snapshot.get(inst.definitionId) ?? 0) + 1);
+    }
+    let merged = 0;
+    for (const [defId, count] of snapshot) {
+      if (count < 3) continue;
+      const def = defById(defId);
+      if (!def.upgradeTargetId) continue;
+      const r = this.upgradeCard(defId);
+      if (r.ok) merged++;
+    }
+    return { merged };
+  }
+
   sellCard(instanceId: string): { ok: boolean; reason?: string; gold?: number } {
     const handIdx = this.hand.findIndex(c => c.instanceId === instanceId);
     if (handIdx !== -1) {
