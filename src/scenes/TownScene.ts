@@ -1,5 +1,5 @@
 ﻿import Phaser from 'phaser';
-import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef } from '../systems/store';
+import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef, fieldCap } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import { ZoneConfig, computeZoneConfig } from '../config/zones';
 import {
@@ -162,6 +162,7 @@ export class TownScene extends Phaser.Scene {
         this.zoneConfig = computeZoneConfig(store.townLevel, store.segmentExpansions);
         this.cameras.main.setBounds(0, 0, this.zoneConfig.worldWidth, this.sceneH);
         this.rebuildWorldVisuals();
+        this.showTownLevelUpFX(store.townLevel);
       }
     });
 
@@ -2446,6 +2447,117 @@ export class TownScene extends Phaser.Scene {
         onComplete: () => dot.destroy(),
       });
     }
+  }
+
+  private spawnFirework(cx: number, cy: number): void {
+    const colors = [0xffd040, 0xff4040, 0x40d8ff, 0xffffff, 0xcc40cc, 0xff8c00];
+    const count  = 30 + Math.floor(Math.random() * 21); // 30-50 particles
+    for (let i = 0; i < count; i++) {
+      const dot  = this.add.graphics();
+      this.fxLayer.add(dot);
+      const size  = 3 + Math.random() * 5; // 3-8 px
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      dot.fillStyle(color);
+      dot.fillRect(0, 0, size, size);
+      dot.setPosition(cx, cy);
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 80 + Math.random() * 120;  // 80-200 px
+      const dur   = 600 + Math.random() * 600; // 600-1200 ms
+      this.tweens.add({
+        targets: dot,
+        x: cx + Math.cos(angle) * dist,
+        y: cy + Math.sin(angle) * dist,
+        alpha: 0, scaleX: 0, scaleY: 0,
+        duration: dur,
+        ease: 'Quad.Out',
+        onComplete: () => dot.destroy(),
+      });
+    }
+  }
+
+  private showTownLevelUpFX(newLevel: number): void {
+    // 去重：若已有升级弹窗，先移除
+    const existing = document.getElementById('town-levelup-modal');
+    if (existing) existing.remove();
+
+    const cam       = this.cameras.main;
+    const worldCX   = cam.scrollX + cam.width / 2 / cam.zoom;
+    const worldCY   = this.sceneH / 2;
+    const slotCount = fieldCap(newLevel);
+
+    // Step 1: 相机震动
+    cam.shake(600, 0.006);
+    // Step 2: 相机白闪
+    cam.flash(400, 255, 255, 200);
+
+    // Step 3: 5 波烟花，每波间隔 200ms
+    for (let wave = 0; wave < 5; wave++) {
+      this.time.delayedCall(wave * 200, () => {
+        this.spawnFirework(worldCX, worldCY);
+      });
+    }
+
+    // Step 4: DOM overlay
+    const levelColors: Record<number, string> = {
+      2: '#60cc60', 3: '#40b8d0', 4: '#d4a017', 5: '#cc60cc', 6: '#ff8c00',
+    };
+    const borderColor = levelColors[newLevel] ?? '#d4a017';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'town-levelup-modal';
+    overlay.style.cssText = `
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      z-index:300; display:flex; align-items:center; justify-content:center;
+      pointer-events:none;
+    `;
+
+    overlay.innerHTML = `
+      <div id="town-levelup-card" style="
+        background:rgba(20,12,5,0.97);
+        border:3px solid ${borderColor};
+        border-radius:10px;
+        padding:28px 40px;
+        min-width:280px; max-width:400px;
+        font-family:'Silkscreen',monospace;
+        color:#f5e6c8;
+        text-align:center;
+        box-shadow:0 0 40px ${borderColor}88;
+        transform:scale(0.5);
+        opacity:0;
+        transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease;
+      ">
+        <div style="font-size:24px; color:${borderColor}; letter-spacing:2px; margin-bottom:10px;">
+          🏰 城镇升至 ${newLevel} 级！
+        </div>
+        <div style="font-size:12px; color:#9a7a50; margin-top:6px;">
+          恭喜！槽位扩展至 ${slotCount} 个！
+        </div>
+      </div>
+    `;
+
+    const container = document.getElementById('game-container') ?? document.body;
+    container.appendChild(overlay);
+
+    // 进入动画（scale 0.5→1, opacity 0→1）
+    this.time.delayedCall(50, () => {
+      const card = document.getElementById('town-levelup-card');
+      if (card) {
+        card.style.transform = 'scale(1)';
+        card.style.opacity   = '1';
+      }
+    });
+
+    // 停留 2.0s 后退出动画（scale 1→1.1, opacity 0）
+    this.time.delayedCall(2450, () => {
+      const card = document.getElementById('town-levelup-card');
+      if (card) {
+        card.style.transition = 'transform 0.4s ease, opacity 0.4s ease';
+        card.style.transform  = 'scale(1.1)';
+        card.style.opacity    = '0';
+      }
+      this.time.delayedCall(420, () => { overlay.remove(); });
+    });
   }
 
   private buildSideLog() {
