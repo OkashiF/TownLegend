@@ -59,7 +59,7 @@ Tester           Debugger
 | 游戏引擎 | Phaser 3（WebGL / Canvas，像素渲染，antialias 关闭）|
 | 语言 | TypeScript |
 | 构建工具 | Vite |
-| 状态管理 | 自研响应式 `GameStore`（发布/订阅模式）；城镇升级时发出 `townLevelUp` 事件，`TownScene` 监听并调用 `rebuildWorldVisuals()` 实时重绘世界视觉 |
+| 状态管理 | 自研响应式 `GameStore`（发布/订阅模式）；城镇升级时发出 `townLevelUp` 事件，`TownScene` 监听并依次调用 `rebuildWorldVisuals()` 重绘世界视觉、`showTownLevelUpFX()` 播放升级庆典动画 |
 | UI 层 | 原生 DOM（卡牌面板、HUD、弹窗覆盖在 canvas 之上）|
 | 像素图形 | 纯代码绘制：`Phaser.GameObjects.Graphics` → `generateTexture` |
 | 存档 | `localStorage`（JSON 序列化，版本号 `8`）|
@@ -78,7 +78,7 @@ src/
 ├── systems/
 │   └── store.ts          # 游戏状态机（含彩蛋合成、攻城判断、出售、升级逻辑、成就系统）
 ├── scenes/
-│   └── TownScene.ts      # 场景：巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗、成就解锁弹窗、拖拽放卡区域高亮
+│   └── TownScene.ts      # 场景：巢穴系统、怪物AI、战士回血、伤害飘字、年度总结弹窗、成就解锁弹窗、拖拽放卡区域高亮、城镇升级庆典动画
 ├── ui/
 │   └── UIController.ts   # 出售按钮、商店刷新价格动态显示、成就面板、手牌拖拽放卡状态机
 └── utils/
@@ -654,6 +654,19 @@ totalCraftMult = buildingBonus × hasteBonus
 - 商店自动刷新，商店规模扩展（+2格）
 - 1→2级时商店开始出现Lv1卡；2→3级时开始出现建筑卡、魔法卡
 
+### 升级庆典动画
+
+城镇每次升级时，`TownScene` 在 `rebuildWorldVisuals()` 之后立即调用 `showTownLevelUpFX(newLevel)`，播放以下多层特效（方案 C：Phaser 粒子 + DOM 标题卡混合）：
+
+| 步骤 | 效果 | 参数 |
+|---|---|---|
+| 相机震动 | `cam.shake` | 600ms，强度 0.006 |
+| 相机白闪 | `cam.flash` | 400ms，RGBA(255,255,200,α) |
+| 5波烟花 | `spawnFirework(worldCX, worldCY)` × 5，每波间隔 200ms | 每波 30-50 个多色粒子（金/红/青/白/紫/橙），散射 80-200px，600-1200ms 消散 |
+| DOM 弹窗 | `#town-levelup-modal` 覆盖层 | 居中标题卡，按等级配色（2级绿/3级青/4级金/5级紫/6级橙），进入弹簧动画 scale 0.5→1，停留约 2s 后退出 scale 1→1.1 + 淡出 |
+
+弹窗内容示例：`🏰 城镇升至 N 级！` + 新槽位上限提示。所有 Phaser 粒子在 tween onComplete 中 `.destroy()`；DOM 弹窗在退出动画完成后 `.remove()`，无内存泄漏。
+
 ---
 
 ## 存档系统
@@ -1010,6 +1023,7 @@ totalCraftMult = buildingBonus × hasteBonus
 - ✅ **建筑纹理按等级扩展**（四座固定建筑随等级从 Lv1（48×51px）线性扩展至 Lv6（156×87px）；Lv2-Lv6 均新增左翼/右翼，各有独特功能性附属建筑（储物间/炮台/展廊/圣殿等）；`bldgTexSize(level)` 统一管理纹理尺寸；`drawTownHall` 迁移至 `sprites.ts`，四座建筑绘制函数均统一在同一模块）
 - ✅ **新增角色卡牌路线**（新增12张具名角色人物卡，含 Lv0~Lv5 两条新合成路线：草药师→炼金术士→财务官→符文匠→影卫统领→神谕者；斥候/吟游诗人→游侠→审判者→法术师长→圣裁将军；彩蛋卡名称升级为具名角色全名）
 - ✅ **场景区域布局重构**（`zones.ts` 引入动态段扩展系统：INITIAL_SEG_GAP=320px / SEG_STEP=140px / WALL_MARGIN=180px；世界宽度基准调整为 2400px（1级）；每段建筑区可独立扩展槽位；区域坐标全部由 `computeZoneConfig(townLevel, segmentExpansions)` 统一计算）
+- ✅ **城镇升级庆典动画**（城镇升级时播放相机震动（600ms）+ 白闪（400ms）+ 5波烟花粒子特效（每波30-50个多色粒子，散射80-200px，600-1200ms消散）+ DOM标题卡弹窗（弹簧进入/退出动画，按等级配色），方案C：Phaser粒子+DOM混合实现）
 
 ---
 
@@ -1078,4 +1092,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 特别鸣谢：感谢玩家 ***万亿核爆*** 的测试反馈和建议！
 
-*文档版本：v4.7 · 最后更新：新增12张具名角色人物卡（两条新合成路线）；彩蛋卡名更新为具名角色；卡名工匠大师改为工匠宗师；定价表新增 Lv6；区域坐标更新为动态段扩展布局（zones.ts 重构）*
+*文档版本：v5.2 · 最后更新：城镇升级庆典动画（相机震动+白闪+5波烟花粒子+DOM弹窗弹簧动画，方案C混合实现）*
