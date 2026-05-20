@@ -318,6 +318,18 @@ function renderHand() {
     });
     c.appendChild(el);
   }
+
+  const mergeAllBtn = document.createElement('button');
+  mergeAllBtn.id = 'hand-merge-all-btn';
+  mergeAllBtn.innerHTML = `⬆️ 一键<br><span style="font-size:8px">合成</span>`;
+  mergeAllBtn.onclick = () => {
+    const r = store.upgradeAllCards();
+    if (r.merged > 0) notify(`一键合成了 ${r.merged} 次`, 'success');
+    else notify('手牌中没有可合成的卡牌', 'info');
+    updateHUD();
+    renderCurrentTab();
+  };
+  c.prepend(mergeAllBtn);
 }
 
 // ── Render shop ───────────────────────────────────────────────────────────────
@@ -336,6 +348,18 @@ function renderShop() {
     else { renderShop(); updateHUD(); }
   };
   c.appendChild(btn);
+
+  const buyAllBtn = document.createElement('button');
+  buyAllBtn.id = 'shop-buy-all-btn';
+  buyAllBtn.innerHTML = `🛒 一键<br><span style="font-size:8px">购买</span>`;
+  buyAllBtn.onclick = () => {
+    const r = store.buyAllCards();
+    if (r.bought > 0) notify(`一键购买了 ${r.bought} 张卡牌`, 'success');
+    else notify('没有可购买的卡牌或金币不足', 'danger');
+    updateHUD();
+    renderShop();
+  };
+  c.appendChild(buyAllBtn);
 
   for (let i = 0; i < store.shopSlots.length; i++) {
     const slot = store.shopSlots[i];
