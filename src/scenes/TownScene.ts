@@ -2490,10 +2490,13 @@ export class TownScene extends Phaser.Scene {
     // Step 2: 相机白闪
     cam.flash(400, 255, 255, 200);
 
-    // Step 3: 5 波烟花，每波间隔 200ms
-    for (let wave = 0; wave < 5; wave++) {
-      this.time.delayedCall(wave * 200, () => {
-        this.spawnFirework(worldCX, worldCY);
+    // Step 3: 12 波烟花，每波间隔 220ms，随机散布在可视区域内
+    const visW = cam.width / cam.zoom;
+    for (let wave = 0; wave < 12; wave++) {
+      this.time.delayedCall(wave * 220, () => {
+        const rx = worldCX + (Math.random() - 0.5) * visW * 0.8;
+        const ry = this.sceneH * (0.10 + Math.random() * 0.55);
+        this.spawnFirework(rx, ry);
       });
     }
 
