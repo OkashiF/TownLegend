@@ -2,6 +2,7 @@
 import { store, LogEntry, defById, TICKS_PER_MONTH, YearSummary, AchievementDef, fieldCap } from '../systems/store';
 import { CardType, JobType, CardInstance, CardDefinition, HumanStats, MonsterStats, SpawnZone } from '../types';
 import { ZoneConfig, computeZoneConfig } from '../config/zones';
+import { getDialogue, DialogueScene } from '../data/dialogues';
 import {
   generateAllTextures, spriteKeyForCard,
   drawPasserby,
@@ -24,6 +25,9 @@ const MONSTER_SCALE = 0.65;
 const ATTACK_COOLDOWN = 8;
 const ATTACK_RANGE    = 60;
 const CHASE_RANGE     = 800;
+
+/** 气泡节流：每次显示台词后冷却的 tick 数（约 8 秒） */
+const BUBBLE_COOLDOWN = 40;
 
 type WarriorState    = 'patrol' | 'chase' | 'fight' | 'loot' | 'return' | 'heal';
 type MonsterBehavior = 'waiting' | 'marching' | 'fighting' | 'attacking' | 'retreating';
@@ -58,6 +62,8 @@ interface FieldSprite {
   dyingTimer:      number;
   // ── Bug修复：标记该sprite是否为"临时死亡占位"，阻止syncSprites重新创建 ──
   isDead: boolean;
+  /** 台词气泡冷却（>0 时不显示新台词）每 tick 递减 */
+  bubbleCooldown: number;
 }
 
 interface PasserbySprite {
@@ -105,6 +111,11 @@ export class TownScene extends Phaser.Scene {
   private tickAccum   = 0;
   private lootDropSeq = 0;
   private hiddenAt    = 0;
+
+  /** 攻城状态追踪（场景侧，用于 siegeStart/End 台词） */
+  private _lastSiegeStateScene = false;
+  /** 制造进行中状态追踪（用于 craftStart 台词） */
+  private _lastCraftInProgress = false;
 
   constructor() { super({ key: 'TownScene' }); }
 
@@ -264,9 +275,17 @@ export class TownScene extends Phaser.Scene {
       for (const sp of this.sprites.values()) {
         if (sp.hitFlashTimer > 0) sp.hitFlashTimer--;
         if (sp.knockbackTimer > 0) sp.knockbackTimer--;
+        if (sp.bubbleCooldown > 0) sp.bubbleCooldown--;
         if (sp.shopServeTarget) {
           sp.shopServeTarget.timer--;
-          if (sp.shopServeTarget.timer <= 0) sp.shopServeTarget = null;
+          if (sp.shopServeTarget.timer <= 0) {
+            // 交易完成：商店员工说售出台词
+            if (sp.bubbleCooldown === 0) {
+              sp.bubbleCooldown = BUBBLE_COOLDOWN;
+              this.spawnBubble(sp.x, sp.y, getDialogue('saleDone'));
+            }
+            sp.shopServeTarget = null;
+          }
         }
         if (sp.dyingTimer > 0) {
           sp.dyingTimer--;
@@ -298,8 +317,50 @@ export class TownScene extends Phaser.Scene {
         });
         if (craftWorker) {
           const sp = this.sprites.get(craftWorker.instanceId);
-          if (sp) this.spawnBubble(sp.x, sp.y, craftedEmoji);
+          if (sp) {
+            // 制造完成：显示台词（带 emoji），替换原来的纯 emoji 气泡
+            const text = `${craftedEmoji} ${getDialogue('craftDone')}`;
+            sp.bubbleCooldown = BUBBLE_COOLDOWN;
+            this.spawnBubble(sp.x, sp.y, text);
+          }
         }
+      }
+
+      // ── 制造开始台词检测 ──────────────────────────────────────────────────
+      const { points: craftPts, maxPoints: craftMax } = store.getCraftProgressInfo();
+      const craftInProgress = craftMax > 0 && craftPts > 0;
+      if (craftInProgress && !this._lastCraftInProgress) {
+        const craftWorker = store.field.find(c => {
+          const d = defById(c.definitionId);
+          return d.type === CardType.Human && c.jobAssignment === JobType.Craft && c.isActive;
+        });
+        if (craftWorker) {
+          const sp = this.sprites.get(craftWorker.instanceId);
+          if (sp && sp.bubbleCooldown === 0) {
+            sp.bubbleCooldown = BUBBLE_COOLDOWN;
+            this.spawnBubble(sp.x, sp.y, getDialogue('craftStart'));
+          }
+        }
+      }
+      this._lastCraftInProgress = craftInProgress;
+
+      // ── 攻城开始/结束台词检测 ─────────────────────────────────────────────
+      const currentSiege = store.isUnderSiege;
+      if (currentSiege !== this._lastSiegeStateScene) {
+        const scene: DialogueScene = currentSiege ? 'siegeStart' : 'siegeEnd';
+        // 找一个活跃的人类 sprite 来说话
+        for (const inst of store.field) {
+          if (!inst.definitionId) continue;
+          const d = defById(inst.definitionId);
+          if (d.type !== CardType.Human || !inst.isActive) continue;
+          const sp = this.sprites.get(inst.instanceId);
+          if (sp && !sp.isDead && sp.bubbleCooldown === 0) {
+            sp.bubbleCooldown = BUBBLE_COOLDOWN;
+            this.spawnBubble(sp.x, sp.y, getDialogue(scene));
+            break;
+          }
+        }
+        this._lastSiegeStateScene = currentSiege;
       }
 
       if (store.tick % 24 === 0) this.maybeSpawnPasserby();
@@ -582,6 +643,11 @@ export class TownScene extends Phaser.Scene {
       if (nearestInst && nearestSp) {
         sp.combatTarget = nearestInst.instanceId;
         if (nearestDist <= ATTACK_RANGE) {
+          // fight 状态首帧：说开始战斗台词
+          if (sp.warriorState !== 'fight' && sp.bubbleCooldown === 0) {
+            sp.bubbleCooldown = BUBBLE_COOLDOWN;
+            this.spawnBubble(sp.x, sp.y, getDialogue('fight'));
+          }
           sp.warriorState = 'fight';
           sp.attackCooldown--;
           if (sp.attackCooldown <= 0) {
@@ -589,6 +655,11 @@ export class TownScene extends Phaser.Scene {
             this.resolveHit(inst, nearestInst);
           }
         } else {
+          // chase 状态首帧：说前往战斗台词
+          if (sp.warriorState !== 'chase' && sp.bubbleCooldown === 0) {
+            sp.bubbleCooldown = BUBBLE_COOLDOWN;
+            this.spawnBubble(sp.x, sp.y, getDialogue('chase'));
+          }
           sp.warriorState = 'chase';
           const dirX = nearestSp.x > sp.x ? 1 : -1;
           sp.targetX = nearestSp.x - dirX * (ATTACK_RANGE - 10);
@@ -762,6 +833,11 @@ export class TownScene extends Phaser.Scene {
       attacker.isActive       = false;
       attacker.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(attacker.definitionId).name} 被打倒，休息 ${store.townLevel} 月`, 'bad');
+      // 战斗失败台词
+      if (hSp && hSp.bubbleCooldown === 0) {
+        hSp.bubbleCooldown = BUBBLE_COOLDOWN;
+        this.spawnBubble(hSp.x, hSp.y, getDialogue('defeat'));
+      }
       if (hSp) { hSp.targetX = this.zoneConfig.town; hSp.targetY = this.groundY; }
       store.checkSiegeTransition();
     }
@@ -806,6 +882,11 @@ export class TownScene extends Phaser.Scene {
       human.isActive       = false;
       human.restMonthsLeft = store.townLevel;
       store.addLog(`😵 ${defById(human.definitionId).name} 被 ${defById(monster.definitionId).name} 击败！`, 'bad');
+      // 战斗失败台词
+      if (hSp && hSp.bubbleCooldown === 0) {
+        hSp.bubbleCooldown = BUBBLE_COOLDOWN;
+        this.spawnBubble(hSp.x, hSp.y, getDialogue('defeat'));
+      }
       if (hSp) { hSp.targetX = this.zoneConfig.town; hSp.targetY = this.groundY; }
       store.checkSiegeTransition();
     }
@@ -824,6 +905,13 @@ export class TownScene extends Phaser.Scene {
     store.addLog(`⚔️ ${defById(attacker.definitionId).name} 击败了 ${defById(defender.definitionId).name}！`, 'good');
 
     if (mSp) this.spawnLootDrop(defender, mSp.x, mSp.y);
+
+    // 胜利台词（attacker 说）
+    const attackerSp = this.sprites.get(attacker.instanceId);
+    if (attackerSp && !attackerSp.isDead && attackerSp.bubbleCooldown === 0) {
+      attackerSp.bubbleCooldown = BUBBLE_COOLDOWN;
+      this.spawnBubble(attackerSp.x, attackerSp.y, getDialogue('victory'));
+    }
 
     // ── Bug修复：死亡动画期间标记isDead，阻止syncSprites重新创建sprite ──
     if (mSp) {
@@ -1073,7 +1161,18 @@ export class TownScene extends Phaser.Scene {
         monsterBehavior: 'waiting',
         knockbackX: 0, knockbackTimer: 0,
         dyingTimer: 0,
+        bubbleCooldown: 0,
       });
+
+      // 上岗台词：人类角色有职业分配时说台词
+      if (def.type === CardType.Human && inst.jobAssignment && inst.jobAssignment !== JobType.Idle) {
+        const newSp = this.sprites.get(inst.instanceId)!;
+        const scene: DialogueScene =
+          inst.jobAssignment === JobType.Combat ? 'assignCombat' :
+          inst.jobAssignment === JobType.Craft  ? 'assignCraft'  : 'assignShop';
+        newSp.bubbleCooldown = BUBBLE_COOLDOWN;
+        this.spawnBubble(newSp.x, newSp.y, getDialogue(scene));
+      }
     }
 
     this.syncDens();
@@ -2394,7 +2493,7 @@ export class TownScene extends Phaser.Scene {
           if (nearestWorkerSp) {
             nearestWorkerSp.shopServeTarget = { x: p.x, timer: 28 };
             p.hasTraded = true;
-            this.spawnBubble(p.x, p.groundY, '💰');
+            this.spawnBubble(p.x, p.groundY, getDialogue('passerby'));
           }
         }
       }
@@ -2421,12 +2520,45 @@ export class TownScene extends Phaser.Scene {
   }
 
   private spawnBubble(x: number, y: number, text: string) {
-    const bubble = this.add.text(x, y - 20, text, { fontSize: '20px' }).setOrigin(0.5, 1);
-    this.fxLayer.add(bubble);
+    const PADDING_X = 7;
+    const PADDING_Y = 4;
+    const RADIUS    = 5;
+    const TAIL_H    = 7;
+    const TAIL_W    = 8;
+
+    // 先创建 Text 以便测量文字尺寸
+    const txtObj = this.add.text(0, 0, text, {
+      fontFamily: '"Silkscreen", monospace',
+      fontSize: '11px',
+      color: '#222222',
+    }).setOrigin(0.5, 0.5);
+
+    const bgW = Math.max(txtObj.width + PADDING_X * 2, 32);
+    const bgH = txtObj.height + PADDING_Y * 2;
+
+    // 绘制背景（以 Container 原点为三角尾端）
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 0.95);
+    // 圆角矩形：位于三角上方
+    g.fillRoundedRect(-bgW / 2, -(bgH + TAIL_H), bgW, bgH, RADIUS);
+    // 三角尾巴，指向 (0, 0)（角色头部方向）
+    g.fillTriangle(-TAIL_W / 2, -TAIL_H, TAIL_W / 2, -TAIL_H, 0, 0);
+
+    // 将文字居中放在矩形内
+    txtObj.setPosition(0, -(TAIL_H + bgH / 2));
+
+    // Container 原点位于 y - 60（高于名字标签 y-38 和血条 y-26）
+    const container = this.add.container(x, y - 60);
+    this.fxLayer.add(container);
+    container.add([g, txtObj]);
+
     this.tweens.add({
-      targets: bubble, y: y - 54, alpha: 0,
-      duration: 1100, ease: 'Quad.Out',
-      onComplete: () => bubble.destroy(),
+      targets: container,
+      y: y - 94,
+      alpha: 0,
+      duration: 1600,
+      ease: 'Quad.Out',
+      onComplete: () => container.destroy(),
     });
   }
 
