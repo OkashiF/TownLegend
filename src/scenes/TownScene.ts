@@ -2919,11 +2919,15 @@ export class TownScene extends Phaser.Scene {
   screenToWorld(clientX: number, clientY: number): { worldX: number; worldY: number } {
     const rect = this.game.canvas.getBoundingClientRect();
     const cam  = this.cameras.main;
-    const sx   = this.game.canvas.width  / rect.width;
-    const sy   = this.game.canvas.height / rect.height;
+    // Use Phaser logical game size (this.scale.width/height) instead of
+    // canvas.width/height. On HiDPI screens canvas.width = gameWidth × dpr,
+    // which inflates the scale factor; the world coordinate system is in
+    // logical pixels and does not include dpr, so we must not factor it in.
+    const scaleX = this.scale.width  / rect.width;
+    const scaleY = this.scale.height / rect.height;
     return {
-      worldX: (clientX - rect.left) * sx / cam.zoom + cam.scrollX,
-      worldY: (clientY - rect.top)  * sy / cam.zoom + cam.scrollY,
+      worldX: (clientX - rect.left) * scaleX / cam.zoom + cam.scrollX,
+      worldY: (clientY - rect.top)  * scaleY / cam.zoom + cam.scrollY,
     };
   }
 
