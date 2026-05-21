@@ -74,7 +74,8 @@ src/
 │   └── zones.ts          # 区域坐标单一来源：ZoneConfig 接口 + computeZoneConfig()，替代原散落的三处硬编码
 ├── data/
 │   ├── cards.ts          # 卡牌定义 + 升级映射 + 彩蛋映射 + 商店规模/刷新费
-│   └── items.ts          # 战利品 / 成品 / 配方定义
+│   ├── items.ts          # 战利品 / 成品 / 配方定义
+│   └── dialogues.ts      # 角色头顶气泡台词数据：DialogueScene 类型 + DIALOGUES 常量（14 场景×5句）+ getDialogue() 随机取句工具函数
 ├── systems/
 │   └── store.ts          # 游戏状态机（含彩蛋合成、攻城判断、出售、升级逻辑、成就系统）
 ├── scenes/
@@ -397,6 +398,29 @@ npm run build  # 构建单文件 dist/index.html
 | 无（Idle）| x = 1800 ± 40 | 城镇大厅随机漫步 |
 
 不活跃（受伤 / 罢工）的人物：透明度降低，飘向城镇大厅。
+
+### 台词气泡
+
+各类角色在特定场景下会在头顶浮现**白色圆角气泡**（含三角形尾巴指向角色），气泡位于名字与血条上方（Container y 偏移 −60），浮起淡出动画历时约 1600ms 后自动销毁。每角色设有 `bubbleCooldown` 节流（40 tick ≈ 8秒），防止重复弹出。
+
+台词内容由 `src/data/dialogues.ts` 统一管理，共 **14 个场景 × 5 句随机台词**：
+
+| 场景（DialogueScene）| 触发时机 | 说话角色 |
+|---|---|---|
+| `assignCombat` | 人物新上场且岗位为战斗 | 战斗工人 |
+| `assignCraft` | 人物新上场且岗位为制造 | 制造工人 |
+| `assignShop` | 人物新上场且岗位为商店 | 商店工人 |
+| `chase` | 战士进入 chase 状态首帧 | 战士 |
+| `fight` | 战士进入 fight 状态首帧 | 战士 |
+| `victory` | 战士击败怪物（`killMonster`）| 攻击方战士 |
+| `defeat` | 人物 HP ≤ 0（被怪物击倒）| 倒下的人物 |
+| `craftStart` | 制造工人开始新一轮制造 | 制造工人 |
+| `craftDone` | 制造工人完成一件成品 | 制造工人 |
+| `saleDone` | 商店工人服务行人后计时器归零 | 商店工人 |
+| `passerby` | 行人在商店区购买时 | 行人精灵 |
+| `restock` | （保留场景，数据已备）| — |
+| `siegeStart` | 检测到攻城状态由 false 变 true | 场上所有活跃人物 |
+| `siegeEnd` | 检测到攻城状态由 true 变 false | 场上所有活跃人物 |
 
 **精灵动画（interpolate）：**
 - 移动时：sin 函数 ×4 步伐弹跳（bobPhase 驱动）。
@@ -1028,6 +1052,7 @@ totalCraftMult = buildingBonus × hasteBonus
 - ✅ **城镇升级庆典动画**（城镇升级时播放相机震动（600ms）+ 白闪（400ms）+ 12波烟花粒子特效（每波220ms间隔，随机散布在可视区内，每波30-50个多色粒子，散射80-200px，600-1200ms消散）+ DOM标题卡弹窗（弹簧进入/退出动画，按等级配色），方案C：Phaser粒子+DOM混合实现）
 - ✅ **一键购买**（商店页签刷新按钮后新增绿色"🛒 一键购买"按钮，一次性购买当前商店所有未售出且金币足够的卡牌，弹出提示浮窗，日志逐条记录每张卡购买信息；后端 `buyAllCards()` 遍历快照长度内的 shopSlots，返回 `{ bought: number }`）
 - ✅ **一键合成**（手牌页签最前新增紫色"⬆️ 一键合成"按钮，对手牌中数量 ≥ 3 且存在 upgradeTargetId 的各卡牌各执行一次升级（单轮判断），弹出提示浮窗，日志逐条记录含彩蛋结果；后端 `upgradeAllCards()` 基于手牌快照统计，返回 `{ merged: number }`）
+- ✅ **角色台词气泡系统**（为战士、工匠、商店员工、行人、怪物添加头顶白色圆角气泡；14个触发场景（上岗/追击/战斗/胜利/击倒/开工/完工/售货/攻城等）× 5句随机台词；台词数据独立管理于 `src/data/dialogues.ts`；气泡浮起淡出 1600ms，40tick 节流防重复；`spawnBubble()` 使用 Phaser Container 包裹白色圆角背景 + 三角尾巴 + Text，tween 结束后自动销毁）
 
 ---
 
@@ -1096,4 +1121,4 @@ totalCraftMult = buildingBonus × hasteBonus
 
 特别鸣谢：感谢玩家 ***万亿核爆*** 的测试反馈和建议！
 
-*文档版本：v5.4 · 最后更新：城镇升级烟花改为12波随机散布（方案A）*
+*文档版本：v5.9 · 最后更新：角色台词气泡系统（14场景×5句随机台词，独立dialogues.ts管理）*
