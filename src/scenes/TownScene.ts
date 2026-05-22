@@ -2554,9 +2554,10 @@ export class TownScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: container,
-      y: y - 94,
+      y: y - 80,
       alpha: 0,
-      duration: 1600,
+      delay: 1500,
+      duration: 600,
       ease: 'Quad.Out',
       onComplete: () => container.destroy(),
     });
