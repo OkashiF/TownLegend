@@ -2789,8 +2789,8 @@ export class TownScene extends Phaser.Scene {
       });
     }
 
-    // ── 幕三 (2400ms起)：彩带 + DOM 弹窗 ──────────────────────────────────
-    this.time.delayedCall(2400, () => {
+    // ── 幕三 (1200ms起)：彩带 + DOM 弹窗 ──────────────────────────────────
+    this.time.delayedCall(1200, () => {
       // 彩带缓降（在屏幕中心附近）
       const confettiX = worldCX;
       const confettiY = this.sceneH * 0.35;
