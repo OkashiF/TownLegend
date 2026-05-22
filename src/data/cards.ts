@@ -1042,7 +1042,20 @@ export function getCardPool(townLevel: number): CardDefinition[] {
 }
 
 /**
- * 生成一批商店卡牌（允许重复，有放回随机抽取）
+ * 各卡牌类型的抽取权重常量，方便后续调整
+ * human:6  monster:2  building:1  magic:1
+ */
+const TYPE_WEIGHTS: Record<CardType, number> = {
+  [CardType.Human]: 6,
+  [CardType.Monster]: 2,
+  [CardType.Building]: 1,
+  [CardType.Magic]: 1,
+};
+
+/**
+ * 生成一批商店卡牌（两阶段加权抽取，允许重复，有放回）
+ * 第一阶段：按 TYPE_WEIGHTS 加权随机选类型（跳过子池为空的类型）
+ * 第二阶段：在选中类型的子池中等概率抽一张
  * 彩蛋卡不在商店出现，只能通过合成获得
  */
 export function drawShopCards(townLevel: number, count: number): CardDefinition[] {
@@ -1054,9 +1067,35 @@ export function drawShopCards(townLevel: number, count: number): CardDefinition[
   ]);
   const pool = CARD_DB.filter(c => c.level < townLevel && !WILDCARD_IDS.has(c.id));
   if (pool.length === 0) return [];
+
+  // 按类型分组子池
+  const subPools: Partial<Record<CardType, CardDefinition[]>> = {};
+  for (const card of pool) {
+    if (!subPools[card.type]) subPools[card.type] = [];
+    subPools[card.type]!.push(card);
+  }
+
+  // 过滤掉空类型，计算有效权重总和
+  const activeTypes = (Object.keys(subPools) as CardType[]).filter(
+    t => (subPools[t]?.length ?? 0) > 0
+  );
+  const totalWeight = activeTypes.reduce((sum, t) => sum + TYPE_WEIGHTS[t], 0);
+
   const result: CardDefinition[] = [];
   for (let i = 0; i < count; i++) {
-    result.push(pool[Math.floor(Math.random() * pool.length)]);
+    // 第一阶段：按权重选类型
+    let rand = Math.random() * totalWeight;
+    let chosenType = activeTypes[activeTypes.length - 1];
+    for (const t of activeTypes) {
+      rand -= TYPE_WEIGHTS[t];
+      if (rand <= 0) {
+        chosenType = t;
+        break;
+      }
+    }
+    // 第二阶段：在选中类型子池中等概率抽一张
+    const sub = subPools[chosenType]!;
+    result.push(sub[Math.floor(Math.random() * sub.length)]);
   }
   return result;
 }
